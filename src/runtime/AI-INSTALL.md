@@ -36,6 +36,7 @@ Before writing files, show the user the target runtime tree and ask for confirma
 
 The CatPaw source may be provided as either:
 
+- The public source repository URL: `https://github.com/shiqkuangsan/catpaw`.
 - A local path to a CatPaw source checkout.
 - A local path to a generated runtime package root.
 - A GitHub URL or other reachable repository URL.
@@ -89,7 +90,7 @@ Rules:
 - If `~/.catpaw/` already exists, list existing files before overwriting.
 - Do not delete unknown files.
 - Do not copy the runtime package into any project `.catpaw/` directory.
-- Do not modify `~/.claude/CLAUDE.md` until the user confirms the runtime install target.
+- Do not modify provider global instruction files until the user confirms the runtime install target.
 - Scan copied files for obvious secrets before reporting completion.
 
 Recommended install behavior:
@@ -104,13 +105,20 @@ Recommended install behavior:
 8. Run a secrets keyword scan over `~/.catpaw/`.
 9. Do not create or copy `~/.catpaw/state/` during install; it is per-machine state created on first registry write.
 
-## 3. CLAUDE.md Integration
+## 3. Provider Adapter Integration
 
-Only after global runtime install, ask whether to update `~/.claude/CLAUDE.md`.
+Only after global runtime install, ask whether to update provider global
+instruction files.
 
-Before editing `~/.claude/CLAUDE.md`:
+Common provider files include:
 
-- Create a dated backup: `~/.claude/CLAUDE.md.YYYY-MM-DD.bak`.
+- Claude Code: `~/.claude/CLAUDE.md`
+- Codex: `~/.codex/AGENTS.md`
+- Other providers: their equivalent global instruction file
+
+Before editing any provider global file:
+
+- Create a dated backup next to the file, such as `CLAUDE.md.YYYY-MM-DD.bak` or `AGENTS.md.YYYY-MM-DD.bak`.
 - Preserve existing user instructions and red lines.
 - Add a thin CatPaw reference instead of embedding the full specs.
 
@@ -129,7 +137,7 @@ Do not commit, push, create PRs, or publish anything unless the user explicitly 
 
 Provider adapter files should reference `~/.catpaw/`; do not install runtime files
 under provider-specific directories. Use `snippets/global-adapter.md` for
-global provider files such as `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`.
+global provider files, and keep provider-specific wording minimal.
 
 ## 4. Project-local `.catpaw/` Init
 
@@ -189,7 +197,7 @@ When reporting completion, include:
 - Runtime target path, if installed.
 - Runtime version, if installed or upgraded.
 - Project-board upgrade summary, if `upgrade-runtime` surveyed the registry.
-- CLAUDE.md backup path, if edited.
+- Provider adapter backup path(s), if edited.
 - Project `.catpaw/` path, if initialized.
 - Legacy paths preserved, if migrated.
 - Files written or changed.

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.4 - 2026-05-22
+
+- Prepare CatPaw runtime documentation for public source distribution with English-first runtime docs and a Chinese public README at the source repo root.
+- Clarify public GitHub URL install paths in root and runtime `AI-INSTALL.md`.
+- Generalize provider adapter installation guidance from Claude-only wording to provider-neutral global instruction files.
+- Expand Laoer / `老二` and Laosan / `老三` provider aliases to include English intent aliases such as `second opinion`, `second reviewer`, `third opinion`, and `third reviewer`.
+- Add open-source metadata and contributor-facing files at the source repo root: license, notice, security policy, contribution guide, and GitHub issue/PR templates.
+
+Migration note (2.0.3 -> 2.0.4):
+
+```text
+Runtime upgrade: run catpaw:upgrade-runtime once so installed runtime docs, provider alias guidance, and install instructions match the public source release.
+Project impact: no required project artifact schema migration; existing reqs, plans, reviews, tests, research, and lessons remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: update provider global adapters only if the user wants Claude, Codex, or another provider to reference the latest CatPaw protocol snippet.
+Verification: source/dist/installed VERSION = 2.0.4; verify-runtime result is PASS.
+Rollback / non-goals: no migrations/2.0.4.md is required; this release changes public/runtime guidance and provider alias semantics, not project artifact schema.
+```
+
 ## 2.0.3 - 2026-05-21
 
 - Add `scripts/verify-runtime.mjs` to check source, dist, installed runtime, key protocol invariants, and registered board stamps.

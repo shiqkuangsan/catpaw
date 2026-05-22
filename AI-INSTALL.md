@@ -2,6 +2,12 @@
 
 This is the source-repository bootstrap for AI agents.
 
+Public source repository:
+
+```text
+https://github.com/shiqkuangsan/catpaw
+```
+
 ## Source Layout
 
 The authored runtime package source lives at:
@@ -32,3 +38,6 @@ node scripts/build-runtime.mjs
 
 Do not copy repository-root `docs/`, `scripts/`, `.git/`, or future resource
 directories into `~/.catpaw/`.
+
+If the user starts from the public GitHub URL instead of an existing checkout,
+clone or fetch the repository first, then follow the same source-layout rules.
