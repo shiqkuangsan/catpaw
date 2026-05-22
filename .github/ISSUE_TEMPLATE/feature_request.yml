@@ -1,0 +1,83 @@
+name: Feature Request
+description: Suggest a CatPaw workflow, runtime, command, or documentation improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. CatPaw changes are easiest to review when the workflow problem and affected runtime surface are clear.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What workflow problem should this solve?
+      placeholder: "When an agent works on ..., CatPaw currently ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed behavior
+      description: How should CatPaw behave after this change?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      multiple: true
+      options:
+        - Runtime policy
+        - Command semantics
+        - Project board schema
+        - Templates
+        - Guides
+        - Provider adapters
+        - Registry or upgrade flow
+        - Maintainer docs
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      options:
+        - No migration expected
+        - Existing project boards may need migration
+        - Global runtime upgrade behavior may change
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workaround or different design you considered?
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Link related issues, docs, examples, or prior project cases.
+      placeholder: |
+        - Related issue:
+        - Related command/spec:
+        - Example project case:
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other context about the request.
+    validations:
+      required: false

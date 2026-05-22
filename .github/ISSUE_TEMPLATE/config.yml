@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/shiqkuangsan/catpaw/security/advisories/new
+    about: Please report suspected vulnerabilities privately instead of opening a public issue.
+  - name: Runtime documentation
+    url: https://github.com/shiqkuangsan/catpaw/blob/main/src/runtime/README.md
+    about: Read the runtime package documentation before filing usage questions.

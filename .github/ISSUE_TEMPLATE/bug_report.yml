@@ -1,0 +1,136 @@
+name: Bug Report
+description: Report a CatPaw runtime, command, template, or documentation problem
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a CatPaw issue. Please share the smallest useful evidence and remove any private project data, credentials, or customer information.
+
+  - type: input
+    id: version
+    attributes:
+      label: CatPaw version
+      description: Use `cat ~/.catpaw/VERSION` for an installed runtime, or note the commit/tag if using the source repo.
+      placeholder: "e.g. 0.3.0 or commit abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Installed runtime (~/.catpaw)
+        - Source repo
+        - Project board (.catpaw)
+        - Command semantics
+        - Templates or artifact schema
+        - Provider adapter instructions
+        - Documentation only
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider or agent
+      options:
+        - Codex
+        - Claude Code
+        - Gemini
+        - Other
+        - Not applicable
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened?
+      placeholder: "Describe the behavior you observed..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can someone reproduce the issue?
+      placeholder: |
+        1. Install or upgrade CatPaw with ...
+        2. Run or ask the agent to ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should CatPaw have done?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What did CatPaw or the agent do instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Relevant paths or artifacts
+      description: List only relevant paths. Do not paste private source code.
+      placeholder: |
+        - ~/.catpaw/commands/...
+        - .catpaw/reqs/...
+        - AGENTS.md / CLAUDE.md adapter instructions
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or evidence
+      description: Paste the smallest relevant excerpt. Remove credentials, secrets, tokens, private URLs, and customer data.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification tried
+      description: Commands or checks already run.
+      placeholder: |
+        - node scripts/build-runtime.mjs
+        - node scripts/verify-runtime.mjs
+        - catpaw doctor
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other context that helps explain the issue.
+    validations:
+      required: false

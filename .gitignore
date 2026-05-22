@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Runtime/editor noise
+*.log
+.tmp/
+dist/
+
+# Local agent/runtime state
+.catpaw/
+.claude/
+.codex/
