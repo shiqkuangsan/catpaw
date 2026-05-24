@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.5 - 2026-05-24
+
+- Strengthen the Progress Handoff Contract into an explicit L1/L2/L3 user-visible checkpoint and final-response gate.
+- Require handoff self-checks to state `Next` and `Needs user decision` explicitly for CatPaw-routed L1/L2/L3 work.
+- Clarify that L0 remains lightweight and does not require the structured handoff footer unless risk or scope escalates.
+- Update global and project adapter snippets so providers inherit the checkpoint handoff requirement.
+
+Migration note (2.0.4 -> 2.0.5):
+
+```text
+Runtime upgrade: run catpaw:upgrade-runtime once so installed runtime policy and adapter snippets include the stricter L1/L2/L3 handoff gate.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: refresh provider global/project adapters if they should explicitly mention the L1/L2/L3 handoff gate.
+Verification: source/dist/installed VERSION = 2.0.5; verify-runtime result is PASS.
+Rollback / non-goals: no migrations/2.0.5.md is required; this release changes provider reporting discipline, not artifact schema.
+```
+
 ## 2.0.4 - 2026-05-22
 
 - Prepare CatPaw runtime documentation for public source distribution with English-first runtime docs and a Chinese public README at the source repo root.

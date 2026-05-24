@@ -44,7 +44,8 @@ Next recommended action:
 Needs user decision:
 ```
 
-For progress handoff during active work, a compact form is acceptable:
+For CatPaw-routed L1/L2/L3 progress handoff during active work, use this compact
+form at each user-visible checkpoint and in the final response:
 
 ```text
 Completed:
@@ -53,6 +54,9 @@ Verification:
 Next:
 Needs user decision:
 ```
+
+`Next` and `Needs user decision` are required. If no user decision is needed,
+say `Needs user decision: no`.
 
 ## Registry lastSeen
 

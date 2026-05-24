@@ -92,23 +92,28 @@ Rules:
 
 ### Progress Handoff Contract
 
-After each meaningful L1/L2/L3 step, the primary agent should proactively hand
-off status instead of waiting for the user to ask what is next.
+For CatPaw-routed L1/L2/L3 work, the primary agent must proactively hand off
+status at each user-visible checkpoint and in the final response. The checkpoint
+is not complete until the handoff self-check includes `Next` and
+`Needs user decision`.
 
-Meaningful steps include:
+User-visible checkpoints include:
 
 - completing a plan step;
 - writing or updating req / plan / research / tests / reviews / lessons;
 - completing verification;
 - completing review;
 - discovering a blocker, scope change, or risk;
+- preparing to ask for commit / push / PR / deploy / destructive confirmation;
 - changing the next action.
 
 Rules:
 
+- L0 stays lightweight; do not require the structured handoff footer for tiny direct work unless the task escalates, touches CatPaw artifacts, or needs a user decision.
 - If a CatPaw plan exists, update the relevant step checkbox/status, verification note, or risk ledger before reporting the handoff.
 - If no CatPaw artifacts exist, still provide an inline handoff.
 - Keep handoffs short; do not write activity logs.
+- Always state `Next` and `Needs user decision` explicitly. If no user decision is needed, say so.
 - If there is no next action, say `Next: none; ready for closeout`, `ready for commit`, or `waiting for user review`.
 - Do not make the user ask after every phase completion.
 

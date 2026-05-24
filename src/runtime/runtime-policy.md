@@ -266,10 +266,12 @@ Needs user decision:
 
 Progress Handoff Contract:
 
-- After every meaningful L1/L2/L3 step, report a compact handoff before moving on.
-- A meaningful step includes plan step completion, artifact write, verification completion, review completion, blocker/risk discovery, scope change, or any point where the next action changes.
+- For CatPaw-routed L1/L2/L3 work, every user-visible checkpoint and final response must pass the handoff self-check before the step is considered complete.
+- A user-visible checkpoint includes plan step completion, artifact write, verification completion, review completion, blocker/risk discovery, scope change, before external-action confirmation, or any point where the next action changes.
+- L0 does not require the structured handoff footer by default; use one only if the task escalates, touches CatPaw artifacts, or needs a user decision.
 - If a CatPaw plan exists, update the relevant plan checkbox/status, verification note, or risk ledger before reporting the handoff.
 - Handoff reports must include what was completed, which artifacts changed, fresh verification state, the next action, and whether a user decision is needed.
+- Always state `Next` and `Needs user decision` explicitly. If no user decision is needed, say `Needs user decision: no`.
 - If no next action remains, say `Next: none; ready for closeout`, `Next: none; ready for commit`, or `Next: none; waiting for user review` as appropriate.
 - Do not make the user ask "what is next?" after a step or closeout unless the next action genuinely requires their choice.
 

@@ -184,7 +184,8 @@ Final reports should include:
 Do not turn internal activity logs into user reports. Reports serve user
 decisions; CatPaw files serve cross-session continuity.
 
-For multi-step work, provide progress handoff after each meaningful step:
+For CatPaw-routed L1/L2/L3 work, provide progress handoff after each
+user-visible checkpoint and in the final response:
 
 ```text
 Completed:
@@ -197,6 +198,11 @@ Needs user decision:
 If a plan exists, update plan step / verification / risk ledger before the
 handoff. The handoff should say what the agent will do next or what decision it
 is waiting for.
+
+`Next` and `Needs user decision` are required fields for L1/L2/L3 handoff
+self-checks. If no user decision is needed, say so explicitly. L0 may remain a
+single concise completion note unless it escalates, touches CatPaw artifacts, or
+needs a user decision.
 
 ## 10. Status / Doctor / Reconcile
 
