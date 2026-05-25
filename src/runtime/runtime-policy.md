@@ -144,6 +144,27 @@ Review / completion gate:
 - Verify that optimizations improve cost without narrowing or expanding result semantics unless that behavior change was explicitly accepted.
 - Report remaining risks as `deferred` / `not addressed`; do not present mitigation as full correctness.
 
+### 4.2 Frontend / UI Self-Verification
+
+For frontend or UI-facing changes, the provider must attempt self-verification
+with the strongest available interactive surface before handing the task back to
+the user.
+
+Preferred order, when available:
+
+1. automated browser, component, integration, or app-level tests already present in the repo;
+2. Browser / browser-use / in-app browser for localhost, `127.0.0.1`, `::1`, file targets, or web pages visible inside the current provider;
+3. Playwright or Chrome DevTools for reproducible browser flows, console/network checks, screenshots, and responsive viewport checks;
+4. Computer Use for real local app or browser-window interaction, OS-level dialogs, native shell flows, accessibility tree inspection, or flows that cannot be reached through browser automation;
+5. manual code-level reasoning only when interactive tooling is unavailable or blocked.
+
+Rules:
+
+- Do not ask the user to "please check it" for UI work until the provider has either exercised the UI or reported why it cannot.
+- Verification evidence should name the URL/app/window, flow, viewport/device when relevant, observed result, and remaining gap.
+- Escalate to the user only for credentials, private app state, physical device/permission, blocked environment, or product judgment that requires the user's choice.
+- Browser Use and Computer Use do not bypass CatPaw safety gates: external submissions, permission changes, destructive UI actions, commits, pushes, deploys, and other visible side effects still require explicit user confirmation.
+
 ## 5. Canonical Artifact Paths
 
 Use these paths when CatPaw artifacts are needed:

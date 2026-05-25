@@ -15,6 +15,7 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - For L3, create req + plan with Risk Gates and Council sections, plus test matrix skeleton.
 - For L2/L3, choose lifecycle roles from the active stage and risk triggers before implementation.
 - For behavior-sensitive L2/L3 work, require `Contracts / Invariants`, boundary verification, and a risk ledger before implementation.
+- For frontend or UI-facing work, name the intended self-verification surface in the plan: existing tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, Computer Use, or a blocked/unavailable reason.
 - Do not implement before the plan is approved when the user is in plan-only / research-first mode.
 - Keep plan steps small and verifiable.
 - Do not create duplicate active plans for the same req.
@@ -35,6 +36,7 @@ Quality gate:
 
 - Contracts must describe what must not change.
 - Boundary verification must cover at least one new branch, threshold, fallback, cache state, pagination boundary, or migration path.
+- UI verification must exercise the changed flow through the strongest available interactive tool before user handoff, unless the plan records why that is blocked.
 - Risk ledger statuses are limited to `fixed`, `mitigated`, `deferred`, and `not addressed`.
 - If no contract can be stated, stop and research before writing implementation code.
 

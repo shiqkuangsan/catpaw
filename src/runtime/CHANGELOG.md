@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.6 - 2026-05-25
+
+- Add Frontend / UI Self-Verification rules so agents try available interactive UI tools before handing visual or browser-facing work back to the user.
+- Name Browser / browser-use / in-app browser, Playwright, Chrome DevTools, and Computer Use as valid provider-dependent verification surfaces.
+- Update classify/plan/review commands, QA Strategist, Design Reviewer, operating rules, plan/test templates, and provider adapter snippets with interactive UI verification evidence requirements.
+- Clarify that Computer Use / Browser Use do not bypass explicit user confirmation for external side effects.
+
+Migration note (2.0.5 -> 2.0.6):
+
+```text
+Runtime upgrade: run catpaw:upgrade-runtime once so installed runtime policy, specs, templates, roles, and adapter snippets include interactive UI self-verification.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: refresh provider global/project adapters so frontend tasks explicitly prefer Browser / browser-use / Playwright / Chrome DevTools / Computer Use when available.
+Verification: source/dist/installed VERSION = 2.0.6; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.0.6.md is required; this release changes provider verification discipline, not project artifact schema.
+```
+
 ## 2.0.5 - 2026-05-24
 
 - Strengthen the Progress Handoff Contract into an explicit L1/L2/L3 user-visible checkpoint and final-response gate.

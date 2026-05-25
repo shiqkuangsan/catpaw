@@ -21,6 +21,7 @@ What this verification covers.
 |---|---|---|---|---|
 | Contract | ... | automated/manual | Existing behavior/API/result semantics are preserved | pending |
 | Boundary case | ... | automated/manual | Branch/fallback/cache/query edge behaves as specified | pending |
+| UI interaction | ... | Browser / browser-use / Playwright / Chrome DevTools / Computer Use / manual | Changed UI flow behaves as specified | pending |
 | Happy path | ... | automated/manual | ... | pending |
 | Edge case | ... | automated/manual | ... | pending |
 | Regression | ... | automated/manual | ... | pending |
@@ -34,5 +35,6 @@ What this verification covers.
 
 ## Evidence
 - Command / manual check:
+- Interactive UI surface:
 - Output summary:
 - Artifact:

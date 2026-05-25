@@ -118,19 +118,29 @@ async function verifyVersions(sourceManifest) {
 async function verifyProtocolInvariants(rootLabel, root) {
   const files = {
     policy: path.join(root, "runtime-policy.md"),
+    classify: path.join(root, "commands", "classify.md"),
+    plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
+    review: path.join(root, "commands", "review.md"),
     status: path.join(root, "commands", "status.md"),
     doctor: path.join(root, "commands", "doctor.md"),
     registryDoctor: path.join(root, "commands", "registry-doctor.md"),
+    globalAdapter: path.join(root, "snippets", "global-adapter.md"),
+    projectAdapter: path.join(root, "snippets", "project-adapter.md"),
     testMatrix: path.join(root, "templates", "test-matrix.md"),
   };
 
   if (!(await pathExists(files.policy))) return;
 
   const policy = await readText(files.policy);
+  const classify = await readText(files.classify);
+  const plan = await readText(files.plan);
+  const review = await readText(files.review);
   const status = await readText(files.status);
   const doctor = await readText(files.doctor);
   const registryDoctor = await readText(files.registryDoctor);
+  const globalAdapter = await readText(files.globalAdapter);
+  const projectAdapter = await readText(files.projectAdapter);
   const testMatrix = await readText(files.testMatrix);
 
   record(
@@ -142,6 +152,26 @@ async function verifyProtocolInvariants(rootLabel, root) {
     `${rootLabel} progress handoff`,
     policy.includes("Progress Handoff Contract"),
     "runtime-policy.md",
+  );
+  record(
+    `${rootLabel} frontend UI self-verification`,
+    policy.includes("Frontend / UI Self-Verification") &&
+      policy.includes("Browser / browser-use") &&
+      policy.includes("Computer Use"),
+    "runtime-policy.md",
+  );
+  record(
+    `${rootLabel} UI verification command guidance`,
+    classify.includes("interactive surface") &&
+      plan.includes("self-verification surface") &&
+      review.includes("Interactive UI Evidence"),
+    "commands/classify.md + commands/plan.md + commands/review.md",
+  );
+  record(
+    `${rootLabel} UI verification adapter snippets`,
+    globalAdapter.includes("Computer Use") &&
+      projectAdapter.includes("Computer Use"),
+    "snippets/global-adapter.md + snippets/project-adapter.md",
   );
   record(
     `${rootLabel} provider command exists`,

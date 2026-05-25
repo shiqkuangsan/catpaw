@@ -1,6 +1,6 @@
 # 08. Operating Rules
 
-> Status: draft · Last updated: 2026-05-22
+> Status: draft · Last updated: 2026-05-25
 
 This file records practical CatPaw usage rules. Earlier specs define structure,
 levels, and templates; this file defines how agents classify, escalate, report,
@@ -112,7 +112,27 @@ Execution rules:
 - Treat performance fast paths as possible semantic changes until equivalence is proven or the behavior change is explicitly accepted.
 - If no contract can be defined, pause implementation and move into research; return to planning after the conclusion stabilizes.
 
-## 6. Lifecycle Role Orchestration
+## 6. Frontend / UI Interactive Verification
+
+For frontend or UI-facing work, the agent should not hand ordinary verification
+back to the user while it has a usable interactive surface.
+
+Preferred surfaces, in order when available:
+
+1. repo-native automated browser, component, integration, or app-level tests;
+2. Browser / browser-use / in-app browser for local or visible web targets;
+3. Playwright or Chrome DevTools for reproducible flows, console/network checks, screenshots, and responsive coverage;
+4. Computer Use for real local app/browser-window interaction, OS-level dialogs, native flows, accessibility tree checks, or cases browser automation cannot reach;
+5. manual reasoning only when interactive tools are unavailable or blocked.
+
+Rules:
+
+- Verification reports should name the URL/app/window, flow, viewport/device when relevant, observed result, and remaining gap.
+- Escalate to the user only for credentials, private app state, physical device/permission, blocked environment, or product judgment.
+- Browser Use and Computer Use are verification surfaces, not permission grants. They do not authorize external submissions, destructive UI actions, permission changes, commits, pushes, PRs, deploys, or other visible side effects.
+- Do not require browser/screenshot evidence for non-UI work.
+
+## 7. Lifecycle Role Orchestration
 
 Expert Council roles are chosen first by lifecycle stage, then by risk.
 
@@ -134,7 +154,7 @@ Rules:
 - Provider selection follows `catpaw:provider`; provider output must be summarized by the primary agent as accepted / rejected / conflicts.
 - Role recommendations do not authorize external actions, destructive actions, scope expansion, or secret access.
 
-## 7. Escalation / De-escalation
+## 8. Escalation / De-escalation
 
 Escalate when:
 
@@ -150,7 +170,7 @@ De-escalate when:
 - Existing CatPaw artifacts are not deleted just because the level de-escalated; archive or clean them based on value.
 - De-escalation must also be user-visible.
 
-## 8. Completion
+## 9. Completion
 
 When a task completes:
 
@@ -171,7 +191,7 @@ When a task completes:
   - after close, scan stale language such as `pending`, `future`, `in progress`, `plans/active`, `status: active`;
   - report uncertainty instead of silently rewriting substantive content.
 
-## 9. Reporting
+## 10. Reporting
 
 Final reports should include:
 
@@ -204,7 +224,7 @@ self-checks. If no user decision is needed, say so explicitly. L0 may remain a
 single concise completion note unless it escalates, touches CatPaw artifacts, or
 needs a user decision.
 
-## 10. Status / Doctor / Reconcile
+## 11. Status / Doctor / Reconcile
 
 When the user asks for progress, next action, or CatPaw consistency:
 

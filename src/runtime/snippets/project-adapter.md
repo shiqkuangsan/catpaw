@@ -4,6 +4,7 @@
 - When working with project workflow artifacts, read `~/.catpaw/runtime-policy.md` first.
 - When CatPaw routes a task, tell the user the selected `L0`/`L1`/`L2`/`L3` level, short reason, artifact expectation, and verification expectation before meaningful work.
 - For CatPaw-routed L1/L2/L3 work, every user-visible checkpoint and final response must include a compact handoff with `Completed`, `Updated artifacts`, `Verification`, `Next`, and `Needs user decision`. L0 stays lightweight unless it escalates or needs a decision.
+- For frontend or UI-facing work, self-verify with the strongest available interactive surface before user handoff: repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, or Computer Use. If blocked, report the blocker and remaining gap.
 - Project CatPaw artifacts live in this repository's `.catpaw/` directory.
 - Use `.catpaw/index.md` as the active work dashboard.
 - For project-local CatPaw init, follow `~/.catpaw/commands/init-project.md`.

@@ -26,6 +26,7 @@ One sentence to one short paragraph explaining the overall approach.
 - [ ] Contract regression:
 - [ ] Boundary case:
 - [ ] Existing test / manual check:
+- [ ] UI / interactive check:
 
 ## Risk Ledger
 | Risk | Status | Evidence / Decision |

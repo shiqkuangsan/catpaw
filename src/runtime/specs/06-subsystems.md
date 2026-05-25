@@ -1,6 +1,6 @@
 # 06. Subsystems
 
-> Status: draft · Last updated: 2026-05-22
+> Status: draft · Last updated: 2026-05-25
 
 CatPaw uses L0/L1/L2/L3 only at the task orchestration layer. Subsystems do not
 copy that level matrix; they inherit minimum requirements from the task level.
@@ -54,6 +54,7 @@ Rules:
 - Test artifacts record how correctness is proven; they are not activity logs.
 - QA Strategist is the default test-stage role. Add Security / Performance / Design only when tests must prove those contracts.
 - Behavior-sensitive L2/L3 verification must derive tests from contracts and implementation boundaries. At least one high-risk boundary case should cover new branches, thresholds, fallbacks, cache states, pagination cursor/offset, or migration paths.
+- Frontend / UI-facing verification should use the strongest available interactive surface before user handoff: repo-native tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, or Computer Use. If blocked, record the blocker and remaining verification gap.
 
 ## 4. Lessons
 

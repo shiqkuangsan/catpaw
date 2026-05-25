@@ -12,6 +12,7 @@ Run an Expert Council review for the current task, plan, implementation, or rele
 - Role files are optional unless formal review or reusable findings justify them.
 - Providers are execution details; roles are expert perspectives.
 - For behavior-sensitive changes, include contract / semantic checks even when review mode is light.
+- For frontend or UI-facing work, include whether available interactive verification was attempted through repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, or Computer Use.
 
 ## Role Selection
 
@@ -49,6 +50,20 @@ Risk triggers:
 - Same-tool subagent and heterogeneous second opinion may both be used for review, planning discussion, debugging, or risk calls.
 - The summary must name role and provider, for example `Engineering Reviewer via current-tool subagent + Security Reviewer via Laoer / second opinion`.
 - Generic provider orchestration for CLI calls, multi-round dialogue, debug, ask, implement, or summarize uses `catpaw:provider`.
+
+## Interactive UI Evidence
+
+For UI review, prefer evidence from the strongest available surface:
+
+- repo-native automated tests;
+- Browser / browser-use / in-app browser;
+- Playwright or Chrome DevTools;
+- Computer Use for real local app/browser-window or OS-level UI;
+- blocked/unavailable reason when no interactive surface can be used.
+
+Browser Use and Computer Use do not authorize external submissions,
+destructive UI actions, permission changes, commits, pushes, PRs, deploys, or
+other visible side effects.
 
 ## Contract / Semantic Checks
 

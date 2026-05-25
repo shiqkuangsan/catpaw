@@ -32,6 +32,7 @@ Intent classification
 - L1: light plan, no artifacts by default.
 - L2: req + plan + verification record.
 - L3: req + plan + tests + formal review + explicit gates.
+- For frontend or UI-facing work, verification should name the intended interactive surface when possible: repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, Computer Use, or blocked/unavailable.
 
 ## Lifecycle Role Routing
 

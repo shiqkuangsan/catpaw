@@ -1,6 +1,6 @@
 # 09. Roles
 
-> Status: draft · Last updated: 2026-05-22
+> Status: draft · Last updated: 2026-05-25
 
 This file defines the CatPaw Expert Council role catalog. The catalog is not a
 direct copy of gstack commands; it normalizes public specialist evidence and
@@ -125,6 +125,7 @@ Rules:
 - CLI calls and multi-round provider dialogue are governed by `catpaw:provider`.
 - Provider-native resume/session support is an optimization only; the primary agent still maintains compact dialogue state.
 - Providers may be used for ask / discuss / debug / review / implement / summarize. Review is only one mode.
+- Provider-native Browser / browser-use, Playwright, Chrome DevTools, and Computer Use capabilities are verification surfaces. Use them for frontend or UI-facing evidence when available, but they do not authorize external actions or bypass CatPaw confirmation gates.
 
 Examples:
 
