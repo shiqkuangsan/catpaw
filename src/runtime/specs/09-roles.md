@@ -167,6 +167,8 @@ Principles:
 - L0/L1 do not call Expert Council by default unless risk triggers appear.
 - L2 usually chooses one stage-primary role and at most one add-on risk role.
 - L3 must declare roles in plan `Council` and preserve disagreements in formal review.
+- Forced provider gates override inline role handling when task risk requires
+  non-primary judgment.
 - Role routing does not authorize code edits, commits, pushes, PRs, deploys, destructive actions, or scope expansion.
 
 ### 6.1 Stage Routing Table
@@ -187,8 +189,8 @@ Principles:
 |---|---|
 | L0 | No Expert Council by default; primary agent may use a role lens internally. |
 | L1 | No Expert Council by default; add one role only for clear risk and keep output inline. |
-| L2 | Select roles from the active lifecycle stage; default cap is one or two. Summarize accepted / rejected / conflicts if a provider is used. |
-| L3 | Declare intended roles in plan `Council`; use formal review, record providers, preserve disagreements. |
+| L2 | Select roles from the active lifecycle stage; default cap is one or two. Behavior-sensitive or cross-boundary L2 must include at least one non-primary provider for contract, semantic, or architecture review. Summarize accepted / rejected / conflicts if a provider is used. |
+| L3 | Declare intended roles in plan `Council`; use formal review, record providers, preserve disagreements. Formal review must include at least one non-primary provider or an explicit provider gap accepted by the user. |
 
 ### 6.3 Provider Selection
 
@@ -200,11 +202,21 @@ Principles:
 | Multimodal, UI, design, or tie-breaking | Laosan / `老三` / Third opinion |
 | Multi-round architecture/debug discussion | Use `catpaw:provider` discuss/debug and maintain CatPaw-mediated dialogue state |
 
+Forced provider selection:
+
+- Release, security, external action, CI/CD, migration, incident, or destructive
+  operation gates attempt Laoer / heterogeneous second opinion first.
+- Repeated failures use `debug` mode with a non-primary provider before another
+  repair loop.
+- If the required provider is unavailable, record the reason and fallback used;
+  if no fallback is available, record a provider gap.
+
 ### 6.4 Reporting Rules
 
 - Dispatch / classify should name role stance for L2/L3 or review-heavy work.
 - Plans should record role intent in `Notes.Review` for L2 and `Council` for L3.
-- Review summaries must list role + provider pairs, accepted/rejected findings, conflicts, and final decision.
+- Review summaries must list role + provider pairs, accepted/rejected findings,
+  conflicts, provider gaps, and final decision.
 - Test matrices should record QA / Security / Performance / Design roles only when their evidence changes verification strategy.
 - Reflect should write lessons only when reusable; do not create role-specific retrospective files by default.
 

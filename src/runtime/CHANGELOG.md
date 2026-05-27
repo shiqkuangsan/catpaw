@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.7 - 2026-05-27
+
+- Add Forced Provider Gate rules so L3 formal review, high-risk ship/security
+  gates, behavior-sensitive L2 work, repeated failures, and cross-boundary plans
+  require non-primary provider evidence or an explicit provider gap.
+- Update provider, plan, review, and role orchestration docs with heterogeneous
+  second-opinion fallback behavior and formal-review provider constraints.
+
+Migration note (2.0.6 -> 2.0.7):
+
+```text
+Runtime upgrade: run catpaw:upgrade-runtime if agents should enforce the 2.0.7 provider gate rules.
+Project impact: no required project artifact schema migration; existing artifacts remain valid.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: refresh provider global/project adapters if they should explicitly mention the forced provider gate.
+Verification: source/dist/installed VERSION = 2.0.7 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.0.7.md is required; this release changes provider review discipline, not project artifact schema or write-through commands.
+```
+
 ## 2.0.6 - 2026-05-25
 
 - Add Frontend / UI Self-Verification rules so agents try available interactive UI tools before handing visual or browser-facing work back to the user.

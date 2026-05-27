@@ -12,6 +12,8 @@ Run an Expert Council review for the current task, plan, implementation, or rele
 - Role files are optional unless formal review or reusable findings justify them.
 - Providers are execution details; roles are expert perspectives.
 - For behavior-sensitive changes, include contract / semantic checks even when review mode is light.
+- For forced provider triggers, include non-primary provider evidence or an
+  explicit provider gap.
 - For frontend or UI-facing work, include whether available interactive verification was attempted through repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, or Computer Use.
 
 ## Role Selection
@@ -49,6 +51,16 @@ Risk triggers:
 - Laosan / `老三` / third opinion / third reviewer defaults to Gemini; use it for multimodal UI checks or third-party judgment.
 - Same-tool subagent and heterogeneous second opinion may both be used for review, planning discussion, debugging, or risk calls.
 - The summary must name role and provider, for example `Engineering Reviewer via current-tool subagent + Security Reviewer via Laoer / second opinion`.
+- L3 formal review must include at least one non-primary provider. `current
+  coding agent` alone is not a valid provider list for formal review.
+- Release, security, external action, CI/CD, migration, incident, or destructive
+  operation review must attempt Laoer / heterogeneous second opinion first.
+- Behavior-sensitive L2 review must include at least one non-primary contract /
+  semantic review provider.
+- Repeated-failure review must use provider `debug` before another repair loop.
+- If a required provider is unavailable, times out, or returns no usable
+  evidence, record the reason, fall back to current-tool subagent, and mark any
+  remaining provider gap.
 - Generic provider orchestration for CLI calls, multi-round dialogue, debug, ask, implement, or summarize uses `catpaw:provider`.
 
 ## Interactive UI Evidence
@@ -90,6 +102,7 @@ Write or report review summary:
 Mode: none | light | formal
 Roles:
 Providers:
+Provider gaps:
 Accepted findings:
 Rejected findings:
 Contract / semantic checks:
@@ -103,3 +116,5 @@ Decision: proceed | revise plan | block
 - Advisory-only by default.
 - Do not auto-apply reviewer fixes without user approval when findings came from external providers.
 - Do not commit / push / PR / deploy.
+- Do not mark a forced provider gate as `proceed` when the only provider is the
+  current coding agent, unless the user explicitly accepted the provider gap.

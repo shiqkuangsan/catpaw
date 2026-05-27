@@ -144,7 +144,39 @@ Review / completion gate:
 - Verify that optimizations improve cost without narrowing or expanding result semantics unless that behavior change was explicitly accepted.
 - Report remaining risks as `deferred` / `not addressed`; do not present mitigation as full correctness.
 
-### 4.2 Frontend / UI Self-Verification
+### 4.2 Forced Provider Gate
+
+CatPaw normally lets the primary agent choose the lightest safe provider path,
+but some risks require non-primary judgment. A forced provider gate is advisory
+evidence, not authority; it never authorizes commits, pushes, PRs, deploys,
+destructive actions, or scope expansion.
+
+Forced provider triggers:
+
+- L3 formal review requires at least one non-primary provider.
+- Release, security, external action, CI/CD, migration, incident, or destructive
+  operation gates require attempting Laoer / heterogeneous second opinion first.
+- Behavior-sensitive L2 work requires at least one non-primary contract /
+  semantic review; current-tool subagent is sufficient unless risk requires a
+  heterogeneous second opinion.
+- Repeated failure requires provider debug when the same issue survives two
+  repair attempts, the same test fails twice without a stable cause, or the
+  root-cause hypothesis changes repeatedly.
+- Cross-boundary planning requires at least current-tool subagent review when
+  the work spans 2+ subsystems, frontend/backend or IPC boundaries, platform
+  differences, persistent formats, API contracts, or long-lived compatibility.
+
+Fallback rules:
+
+- If a required heterogeneous provider is unavailable, times out, or returns no
+  usable evidence, record the reason and fall back to current-tool subagent.
+- If no non-primary provider is available, record a `provider gap` in the plan
+  or review summary and treat the gate as incomplete, not silently satisfied.
+- A formal review summary must not list only `current coding agent` as provider.
+  If the forced gate cannot be satisfied, the decision must be `revise plan` or
+  `block` unless the user explicitly accepts the provider gap.
+
+### 4.3 Frontend / UI Self-Verification
 
 For frontend or UI-facing changes, the provider must attempt self-verification
 with the strongest available interactive surface before handing the task back to
@@ -232,7 +264,9 @@ Rules:
 - L0/L1 default to no Expert Council unless risk triggers appear.
 - L2 usually uses one stage-primary role plus at most one risk role.
 - L3 must declare the intended role set in the plan/Council area and preserve disagreements in the review summary.
-- A role may be handled inline by the primary agent; use `catpaw:provider` only when another provider materially improves judgment.
+- A role may be handled inline by the primary agent unless a forced provider
+  trigger applies; use `catpaw:provider` when another provider is required or
+  materially improves judgment.
 
 ## 7. Subsystems
 
@@ -249,7 +283,8 @@ Minimums:
 - L0/L1: inline verification.
 - L2: verification record, preferably in plan.
 - L2 with Expert Council: at least `reviews/<req-id>-<slug>/summary.md`.
-- L3: test matrix + formal review + review summary.
+- L3: test matrix + formal review + review summary with at least one
+  non-primary provider, or an explicit provider gap accepted by the user.
 
 ## 8. Status Sync and Artifact Integrity
 

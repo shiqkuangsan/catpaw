@@ -2,10 +2,10 @@
 
 Coordinate external provider agents through CLI or native subagent mechanisms.
 
-This command is broader than review. Use it when the primary agent needs another
-agent for architecture discussion, task research, bug diagnosis, implementation
-advice, code review, multi-provider disagreement, or a multi-round technical
-dialogue.
+This command is broader than review. Use it when CatPaw requires or the primary
+agent needs another agent for architecture discussion, task research, bug
+diagnosis, implementation advice, code review, multi-provider disagreement, or a
+multi-round technical dialogue.
 
 ## Principle
 
@@ -50,6 +50,33 @@ opinion" or "get a third opinion" as the same routing signal.
 If the user does not specify a provider, choose the lightest provider that can
 answer the question safely. Do not involve multiple providers by default for
 L0/L1 work.
+
+## Forced Provider Gate
+
+Some CatPaw gates are triggered by task risk instead of primary-agent
+preference:
+
+- L3 formal review requires at least one non-primary provider.
+- Release, security, external action, CI/CD, migration, incident, or destructive
+  operation gates require attempting Laoer / heterogeneous second opinion first.
+- Behavior-sensitive L2 work requires at least one non-primary contract /
+  semantic review; current-tool subagent is sufficient unless risk requires a
+  heterogeneous second opinion.
+- Repeated failure requires provider `debug` when the same issue survives two
+  repair attempts, the same test fails twice without a stable cause, or the
+  root-cause hypothesis changes repeatedly.
+- Cross-boundary planning requires at least current-tool subagent review when
+  the work spans 2+ subsystems, frontend/backend or IPC boundaries, platform
+  differences, persistent formats, API contracts, or long-lived compatibility.
+
+Fallback:
+
+- If a required heterogeneous provider is unavailable, times out, or returns no
+  usable evidence, record the reason and fall back to current-tool subagent.
+- If no non-primary provider is available, record a `provider gap`; do not mark
+  the forced gate satisfied silently.
+- Formal review must not list only `current coding agent` as provider unless the
+  review explicitly records a provider gap and the user accepts that gap.
 
 ## CLI Playbook
 
@@ -146,6 +173,10 @@ Stop when:
 - additional rounds require external action, destructive action, or credentials;
 - the user asks to stop.
 
+Unavailable providers are not successful stop conditions for forced gates.
+Record the timeout/error/no-output reason, try the required fallback, and surface
+any remaining provider gap in the plan or review summary.
+
 ## Implement Mode
 
 Default implementation request is advisory:
@@ -199,6 +230,8 @@ Decision:
 - L2/L3 provider discussions with durable decision value may be recorded under
   `.catpaw/research/<topic>/provider-dialogue.md`.
 - Formal review still writes `.catpaw/reviews/<req-id>-<slug>/summary.md`.
+- Forced provider gaps must be recorded in the relevant plan, review summary, or
+  inline handoff when no artifact exists.
 - Do not create provider-specific directories by default.
 
 ## Limits

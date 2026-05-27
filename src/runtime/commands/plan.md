@@ -15,6 +15,8 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - For L3, create req + plan with Risk Gates and Council sections, plus test matrix skeleton.
 - For L2/L3, choose lifecycle roles from the active stage and risk triggers before implementation.
 - For behavior-sensitive L2/L3 work, require `Contracts / Invariants`, boundary verification, and a risk ledger before implementation.
+- For forced provider triggers, name the required non-primary provider path,
+  fallback, and any provider gap before implementation.
 - For frontend or UI-facing work, name the intended self-verification surface in the plan: existing tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, Computer Use, or a blocked/unavailable reason.
 - Do not implement before the plan is approved when the user is in plan-only / research-first mode.
 - Keep plan steps small and verifiable.
@@ -43,9 +45,25 @@ Quality gate:
 Role gate:
 
 - L2 usually names one stage-primary role plus at most one risk role in `Notes.Review`.
-- L3 must fill the plan `Council` section with intended roles and providers.
+- Behavior-sensitive L2 must include at least one non-primary contract /
+  semantic review provider; current-tool subagent is sufficient unless risk
+  calls for Laoer / heterogeneous second opinion.
+- Cross-boundary L2 must include at least current-tool subagent architecture or
+  contract review when it spans 2+ subsystems, frontend/backend or IPC
+  boundaries, platform differences, persistent formats, API contracts, or
+  long-lived compatibility.
+- L3 must fill the plan `Council` section with intended roles and providers,
+  including at least one non-primary provider for formal review.
+- Release, security, external action, CI/CD, migration, incident, or destructive
+  operation gates must attempt Laoer / heterogeneous second opinion first, then
+  fall back to current-tool subagent if unavailable.
 - Use the lifecycle role routing table in `specs/09-roles.md`: Think, Plan, Build, Review, Test, Ship, Reflect each have different default roles.
-- A role may be handled inline by the primary agent; use `catpaw:provider` only when another provider adds material judgment.
+- A role may be handled inline by the primary agent only when no forced provider
+  trigger applies; use `catpaw:provider` when another provider is required or
+  adds material judgment.
+- If a forced provider cannot be reached, record the unavailable reason and
+  provider gap in the plan. Do not treat the gate as complete unless the user
+  explicitly accepts the gap.
 
 ## Artifact Paths
 
@@ -64,6 +82,7 @@ Created/updated:
 Level:
 Roles:
 Review mode:
+Provider gate:
 Verification plan:
 Next action:
 ```
