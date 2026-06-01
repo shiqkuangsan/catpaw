@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.8 - 2026-06-02
+
+- Add `scripts/catpaw-project.mjs`, a read-only source checkout helper for
+  CatPaw project graph status and doctor checks.
+- Add Node test fixtures for active boards, terminal closeout drift, and
+  registry/board stamp mismatch.
+- Extend `scripts/verify-runtime.mjs` to assert that the project graph
+  inspector and its tests remain present.
+- Align the project graph inspector, plan template, review summary template,
+  and runtime verification with the 2.0.7 Forced Provider Gate.
+- Standardize the active `index.md` display on a compact
+  `ID / Title / Status / Links` table, with grouped artifact links for Req,
+  Plan, Tests, Review, and Research.
+
+Migration note (2.0.7 -> 2.0.8):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should see the 2.0.8 release note and source-checkout helper references.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: run node --test tests/catpaw-project.test.mjs and node scripts/verify-runtime.mjs from the source checkout.
+Optional actions: use node scripts/catpaw-project.mjs status|doctor --project <project-root> for read-only artifact graph inspection. Existing active-only indexes may adopt the ID / Title / Status / Links table shape when convenient.
+Verification: source/dist/installed VERSION = 2.0.8 after runtime sync; verify-runtime result should be PASS after installed runtime sync; project graph doctor should flag L3/formal-review provider gate gaps unless explicitly accepted by the user.
+Rollback / non-goals: no migrations/2.0.8.md is required; this release adds source-level executable inspection and index display guidance, not project artifact schema or write-through commands.
+```
+
 ## 2.0.7 - 2026-05-27
 
 - Add Forced Provider Gate rules so L3 formal review, high-risk ship/security

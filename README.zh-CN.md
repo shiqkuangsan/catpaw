@@ -96,6 +96,21 @@ node scripts/verify-runtime.mjs
 `dist/runtime/`。`verify-runtime.mjs` 会检查 source、dist、已安装 runtime
 和 registry 中的项目工作板 stamp。
 
+从 source checkout 只读检查项目 board：
+
+```bash
+node scripts/catpaw-project.mjs status --project /path/to/project
+node scripts/catpaw-project.mjs doctor --project /path/to/project
+node scripts/catpaw-project.mjs doctor --project /path/to/project --json
+```
+
+`catpaw-project.mjs` 不写入项目 `.catpaw/`。它会从 project artifact graph
+生成 active work 摘要，并在执行未来的 reconcile / close 写操作前报告 closeout
+或 registry stamp 漂移。
+
+Active work 统一展示成 `ID / Title / Status / Links` 表格，方便用户扫描当前
+事项，并直接跳转到 Req、Plan、Tests、Review 或 Research artifact。
+
 ## 设计边界
 
 - Global spec, local artifacts：全局 runtime 只放一份；项目 `.catpaw/`

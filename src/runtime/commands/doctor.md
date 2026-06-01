@@ -57,6 +57,11 @@ Suggested:
   catpaw:reconcile FR-001 --dry-run
 ```
 
+When running from a CatPaw source checkout,
+`node scripts/catpaw-project.mjs doctor --project <project-root> --json` may be
+used as read-only evidence for status, closeout drift, and registry stamp
+findings. The helper does not write project `.catpaw/` files.
+
 ## Severity
 
 - `error`: lifecycle contradiction or broken link.

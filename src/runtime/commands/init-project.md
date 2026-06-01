@@ -76,7 +76,8 @@ runtime: x.y.z
 
 ## Active Work
 
-_No active work._
+| ID | Title | Status | Links |
+|---|---|---|---|
 
 ## Active Research
 

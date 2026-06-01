@@ -135,6 +135,22 @@ file exists.
 `verify-runtime.mjs` checks the source package, generated package, installed
 runtime when present, protocol invariants, and registered project board stamps.
 
+Inspect a project board from the source checkout:
+
+```bash
+node scripts/catpaw-project.mjs status --project /path/to/project
+node scripts/catpaw-project.mjs doctor --project /path/to/project
+node scripts/catpaw-project.mjs doctor --project /path/to/project --json
+```
+
+`catpaw-project.mjs` is read-only. It builds a lightweight project artifact
+graph from `.catpaw/`, reports active work, and flags closeout or registry stamp
+drift before any future reconcile or close command writes files.
+
+Active work is presented as an `ID / Title / Status / Links` table so users can
+scan the current item and jump directly to Req, Plan, Tests, Review, or Research
+artifacts.
+
 ## Install / Upgrade
 
 For AI-assisted install or upgrade from this source checkout, start with:

@@ -36,6 +36,8 @@ One sentence to one short paragraph explaining the overall approach.
 ## Notes
 - Roles:
 - Review:
+- Provider gate:
+- Provider gap:
 
 <!-- L3 extension
 ## Risk Gates
@@ -47,5 +49,7 @@ One sentence to one short paragraph explaining the overall approach.
 ## Council
 - Required roles:
 - Providers:
+- Provider gate:
+- Provider gaps:
 - Summary:
 -->

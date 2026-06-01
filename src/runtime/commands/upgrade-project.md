@@ -66,6 +66,7 @@ The checks below are the converged target state for the installed runtime. They 
 - Index:
   - Keep `.catpaw/index.md` active-only.
   - Frontmatter must include `runtime: <installed-runtime-version>` after apply.
+  - Prefer the active work table shape `| ID | Title | Status | Links |` when rewriting active dashboard entries.
   - Do not add completed history.
   - Flag active entries that contradict req frontmatter.
 - Links:

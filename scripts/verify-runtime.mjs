@@ -70,6 +70,30 @@ async function verifyPackageRoot(label, root, manifest) {
   }
 }
 
+async function verifySourceTooling() {
+  const projectInspector = path.join(repoRoot, "scripts", "catpaw-project.mjs");
+  const projectInspectorTest = path.join(repoRoot, "tests", "catpaw-project.test.mjs");
+
+  record(
+    "source project graph inspector exists",
+    await pathExists(projectInspector),
+    "scripts/catpaw-project.mjs",
+  );
+  if (await pathExists(projectInspector)) {
+    const text = await readText(projectInspector);
+    record(
+      "source project graph inspector exports analyzeProject",
+      text.includes("export async function analyzeProject"),
+      "scripts/catpaw-project.mjs",
+    );
+  }
+  record(
+    "source project graph inspector tests exist",
+    await pathExists(projectInspectorTest),
+    "tests/catpaw-project.test.mjs",
+  );
+}
+
 async function verifyVersions(sourceManifest) {
   const sourceVersion = (await readText(path.join(sourceRoot, "VERSION"))).trim();
   const runtimeReadme = await readText(path.join(sourceRoot, "README.md"));
@@ -119,6 +143,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const files = {
     policy: path.join(root, "runtime-policy.md"),
     classify: path.join(root, "commands", "classify.md"),
+    initProject: path.join(root, "commands", "init-project.md"),
     plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
     review: path.join(root, "commands", "review.md"),
@@ -127,6 +152,10 @@ async function verifyProtocolInvariants(rootLabel, root) {
     registryDoctor: path.join(root, "commands", "registry-doctor.md"),
     globalAdapter: path.join(root, "snippets", "global-adapter.md"),
     projectAdapter: path.join(root, "snippets", "project-adapter.md"),
+    projectDirectory: path.join(root, "specs", "03-project-directory.md"),
+    rolesSpec: path.join(root, "specs", "09-roles.md"),
+    planTemplate: path.join(root, "templates", "plan.md"),
+    reviewTemplate: path.join(root, "templates", "review-summary.md"),
     testMatrix: path.join(root, "templates", "test-matrix.md"),
   };
 
@@ -134,13 +163,19 @@ async function verifyProtocolInvariants(rootLabel, root) {
 
   const policy = await readText(files.policy);
   const classify = await readText(files.classify);
+  const initProject = await readText(files.initProject);
   const plan = await readText(files.plan);
+  const provider = await readText(files.provider);
   const review = await readText(files.review);
   const status = await readText(files.status);
   const doctor = await readText(files.doctor);
   const registryDoctor = await readText(files.registryDoctor);
   const globalAdapter = await readText(files.globalAdapter);
   const projectAdapter = await readText(files.projectAdapter);
+  const projectDirectory = await readText(files.projectDirectory);
+  const rolesSpec = await readText(files.rolesSpec);
+  const planTemplate = await readText(files.planTemplate);
+  const reviewTemplate = await readText(files.reviewTemplate);
   const testMatrix = await readText(files.testMatrix);
 
   record(
@@ -174,9 +209,32 @@ async function verifyProtocolInvariants(rootLabel, root) {
     "snippets/global-adapter.md + snippets/project-adapter.md",
   );
   record(
+    `${rootLabel} index active work table shape`,
+    initProject.includes("| ID | Title | Status | Links |") &&
+      status.includes("| ID | Title | Status | Links |") &&
+      projectDirectory.includes("Recommended Active Work shape"),
+    "commands/init-project.md + commands/status.md + specs/03-project-directory.md",
+  );
+  record(
     `${rootLabel} provider command exists`,
     await pathExists(files.provider),
     "commands/provider.md",
+  );
+  record(
+    `${rootLabel} forced provider gate guidance`,
+    policy.includes("Forced Provider Gate") &&
+      provider.includes("Forced Provider Gate") &&
+      plan.includes("Provider gate") &&
+      review.includes("Provider gaps") &&
+      rolesSpec.includes("Forced provider gates"),
+    "runtime-policy.md + commands/provider.md + commands/plan.md + commands/review.md + specs/09-roles.md",
+  );
+  record(
+    `${rootLabel} forced provider gate templates`,
+    planTemplate.includes("Provider gate") &&
+      planTemplate.includes("Provider gap") &&
+      reviewTemplate.includes("Provider gaps"),
+    "templates/plan.md + templates/review-summary.md",
   );
   record(
     `${rootLabel} status read-only wording`,
@@ -286,6 +344,7 @@ async function verifyRegistry(installedVersion) {
 async function main() {
   const sourceManifest = await readJson(path.join(sourceRoot, "runtime-manifest.json"));
   await verifyVersions(sourceManifest);
+  await verifySourceTooling();
   await verifyPackageRoot("source", sourceRoot, sourceManifest);
   await verifyPackageRoot("dist", distRoot, sourceManifest);
   await verifyPackageRoot("installed", installedRoot, sourceManifest);

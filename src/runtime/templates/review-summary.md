@@ -23,6 +23,9 @@ light | formal
 - Engineering Reviewer via current-tool subagent
 - QA Strategist via Laoer / second opinion
 
+## Provider gaps
+- None
+
 ## Contract / Semantic Checks
 - Contracts reviewed:
 - Semantic equivalence risks:

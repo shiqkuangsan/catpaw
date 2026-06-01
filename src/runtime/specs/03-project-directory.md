@@ -115,6 +115,24 @@ Record:
 - Active Reviews;
 - Open Lessons / Promotion Candidates.
 
+Recommended Active Work shape:
+
+```markdown
+| ID | Title | Status | Links |
+|---|---|---|---|
+| FR-001 | Example title | active | [Req](reqs/FR-001-example.md) · [Plan](plans/active/FR-001-example.md) · [Tests](tests/matrices/FR-001-example.md) · [Review](reviews/FR-001-example/summary.md) |
+```
+
+Rules:
+
+- Use one row per non-terminal req or active plan entry.
+- Keep `Status` aligned with req frontmatter or the active plan status.
+- Use `Links` to group available artifact links in a compact order: Req, Plan,
+  Tests, Review, Research.
+- Omit missing artifact links instead of writing placeholder text.
+- When there is no active work, keep the table header with no rows or write
+  `_No active work._`; both are acceptable.
+
 Do not record:
 
 - completed work;

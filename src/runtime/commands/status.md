@@ -28,6 +28,12 @@ below.
 - If no next action remains, state the waiting state explicitly instead of
   leaving the user to ask what is next.
 - If artifacts are inconsistent, recommend `catpaw:doctor` or `catpaw:reconcile --dry-run`.
+- When running from a CatPaw source checkout, `node scripts/catpaw-project.mjs
+  status --project <project-root>` may be used as read-only evidence for this
+  command's status shape.
+- For non-empty active work, prefer the compact index table shape:
+  `| ID | Title | Status | Links |`, with `Links` grouping Req, Plan, Tests,
+  Review, and Research links when present.
 
 ## Output
 
