@@ -274,11 +274,19 @@ async function verifyProtocolInvariants(rootLabel, root) {
       provider.includes("Claude Code") &&
       provider.includes("Codex") &&
       provider.includes("OpenCode") &&
+      provider.includes("Capability fallback ladder") &&
+      provider.includes("Provider availability is a capability check") &&
+      provider.includes("Do not repeatedly pressure the user") &&
       provider.includes("provider-session.sh open") &&
+      provider.includes("provider-session.sh check") &&
       review.includes("observable long-running provider mode") &&
       operatingRules.includes("Provider Availability") &&
+      operatingRules.includes("tmux, Claude Code, Codex, Gemini, OpenCode") &&
+      operatingRules.includes("observable provider session -> provider-native or") &&
       operatingRules.includes("No stdout") &&
       providerSession.includes("provider-session.sh") &&
+      providerSession.includes("cmd_check") &&
+      providerSession.includes("FALLBACK non-interactive-cli") &&
       providerSession.includes("claude)") &&
       providerSession.includes("codex)") &&
       providerSession.includes("opencode)") &&

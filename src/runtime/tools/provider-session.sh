@@ -2,6 +2,7 @@
 # provider-session.sh - optional tmux-backed observable provider sessions.
 #
 # Usage:
+#   provider-session.sh check  <provider>
 #   provider-session.sh open   <provider> [cwd]
 #   provider-session.sh send   <provider> <message>
 #   provider-session.sh read   <provider> [lines]
@@ -41,6 +42,36 @@ require_tmux() {
   if ! command -v tmux >/dev/null 2>&1; then
     echo "ERR: tmux is required for observable provider sessions." >&2
     exit 1
+  fi
+}
+
+cmd_check() {
+  local provider=$1
+  local command
+  command=$(provider_cmd "$provider")
+
+  echo "PROVIDER $provider"
+  if command -v "$command" >/dev/null 2>&1; then
+    echo "CLI available $command"
+  else
+    echo "CLI missing $command"
+  fi
+
+  if command -v tmux >/dev/null 2>&1; then
+    echo "TMUX available tmux"
+  else
+    echo "TMUX missing tmux"
+  fi
+
+  if command -v "$command" >/dev/null 2>&1 && command -v tmux >/dev/null 2>&1; then
+    echo "OBSERVABLE available"
+    echo "FALLBACK none"
+  elif command -v "$command" >/dev/null 2>&1; then
+    echo "OBSERVABLE unavailable"
+    echo "FALLBACK non-interactive-cli"
+  else
+    echo "OBSERVABLE unavailable"
+    echo "FALLBACK current-tool-subagent-or-inline-gap"
   fi
 }
 
@@ -164,7 +195,7 @@ cmd_close() {
 }
 
 if [ $# -lt 2 ]; then
-  echo "Usage: provider-session.sh <open|send|read|wait|status|close> <provider> [args...]"
+  echo "Usage: provider-session.sh <check|open|send|read|wait|status|close> <provider> [args...]"
   exit 1
 fi
 
@@ -173,6 +204,7 @@ provider=$(provider_key "$2")
 shift 2
 
 case "$command" in
+  check) cmd_check "$provider" "$@" ;;
   open) cmd_open "$provider" "$@" ;;
   send) cmd_send "$provider" "$@" ;;
   read) cmd_read "$provider" "$@" ;;

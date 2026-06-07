@@ -112,6 +112,8 @@ conflict.
 ## Invocation Strategy
 
 Use the lightest provider invocation that still gives enough observability.
+Provider availability is a capability check, not a requirement to install more
+tools or buy more subscriptions.
 
 | Situation | Preferred invocation |
 |---|---|
@@ -120,9 +122,27 @@ Use the lightest provider invocation that still gives enough observability.
 | Multi-round `discuss` / `debug` | Observable session or provider-native resume |
 | Provider expected to read many files or think for a long time | Observable session when available |
 | Observable wrapper unavailable | Non-interactive CLI, plus process/session checks before declaring unavailable |
+| Provider CLI unavailable | Current-tool subagent, if available |
+| No non-primary provider available | Inline role lens with explicit provider gap / skip reason |
 
 Provider output remains evidence and perspective, not authority. Observable
 mode improves status inspection; it does not expand provider permissions.
+
+Capability fallback ladder:
+
+1. Observable provider session, if tmux and the target provider CLI are
+   available.
+2. Provider-native or non-interactive CLI invocation, if the target provider CLI
+   is available but tmux is missing or unsuitable.
+3. Current-tool subagent, if the current provider supports subagents.
+4. Inline role lens with explicit provider gap / subagent skip reason.
+5. Block only when the workflow requires non-primary evidence and the user does
+   not accept the remaining provider gap.
+
+Do not repeatedly pressure the user to install tmux, Claude Code, Codex,
+Gemini, or OpenCode. Respect explicit user constraints such as "only use the
+current provider", missing subscriptions, missing login state, unavailable
+commands, or an environment where tmux cannot run.
 
 ## CLI Playbook
 
@@ -209,6 +229,7 @@ one available progress signal:
 CatPaw-owned optional wrapper:
 
 ```bash
+~/.catpaw/tools/provider-session.sh check cc
 ~/.catpaw/tools/provider-session.sh open cc "$PWD"
 ~/.catpaw/tools/provider-session.sh send cc "<prompt>"
 ~/.catpaw/tools/provider-session.sh status cc
@@ -227,9 +248,24 @@ Supported aliases:
 | `oc`, `opencode` | OpenCode |
 
 The wrapper is optional and tmux-backed. If tmux or the target provider CLI is
-unavailable, fall back to the non-interactive CLI playbook. Do not copy or
-depend on user-local scripts such as `~/.claude/scripts/cabinet.sh`; CatPaw may
-use cabinet-style behavior only as an implementation pattern.
+unavailable, use `check` to record the capability result and fall back through
+the invocation ladder. Do not copy or depend on user-local scripts such as
+`~/.claude/scripts/cabinet.sh`; CatPaw may use cabinet-style behavior only as
+an implementation pattern.
+
+Capability report shape:
+
+```text
+PROVIDER claude
+CLI available claude
+TMUX missing tmux
+OBSERVABLE unavailable
+FALLBACK non-interactive-cli
+```
+
+If both tmux and the target provider CLI are unavailable, this is not a CatPaw
+failure. Record the missing capability, use current-tool subagent or inline role
+lens when allowed, and surface any forced-gate provider gap.
 
 Wait policy:
 

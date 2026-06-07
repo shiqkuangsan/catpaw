@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.1.3 - 2026-06-07
+
+- Clarify provider availability as a capability-aware routing decision: tmux,
+  Claude Code, Codex, Gemini, OpenCode, and cross-provider subscriptions are
+  optional capabilities, not CatPaw prerequisites.
+- Add the provider fallback ladder: observable provider session ->
+  provider-native or non-interactive CLI -> current-tool subagent -> inline role
+  lens with explicit provider gap / skip reason.
+- Add `tools/provider-session.sh check <provider>` so agents can record whether
+  tmux and the target provider CLI are available before choosing a fallback.
+- Clarify that missing tmux, missing provider CLI, missing subscription, or a
+  user choice to use only one provider should downgrade verification strength,
+  not break ordinary CatPaw work.
+
+Migration note (2.1.2 -> 2.1.3):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use capability-aware provider fallback guidance and provider-session check diagnostics.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: run ~/.catpaw/tools/provider-session.sh check <provider> before long-running provider calls, especially on machines where tmux or secondary provider CLIs may be missing.
+Verification: source/dist/installed VERSION = 2.1.3 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.3.md is required; this release changes provider fallback guidance and optional diagnostics, not project artifact schema.
+```
+
 ## 2.1.2 - 2026-06-07
 
 - Add observable long-running provider mode guidance for L3 review,

@@ -219,6 +219,9 @@ Subagent Preference Gate:
 ## 10. Provider Availability
 
 Provider availability is based on observable state, not stdout alone.
+CatPaw must be capability-aware: tmux, Claude Code, Codex, Gemini, OpenCode,
+and provider subscriptions are optional user/environment capabilities, not
+runtime prerequisites.
 
 Rules:
 
@@ -227,11 +230,20 @@ Rules:
 - Before recording `unavailable`, `timeout`, or provider `gap`, inspect an
   available progress signal: process state, session status, recent pane output,
   provider-native state, or explicit waiting-for-input text.
+- Prefer this fallback order: observable provider session -> provider-native or
+  non-interactive CLI -> current-tool subagent -> inline role lens with explicit
+  provider gap / skip reason.
 - For L3 review, release/security/incident gates, multi-round discuss/debug, or
   provider work expected to read many files, prefer observable long-running
   provider mode when available.
 - Observable mode does not authorize writes, commits, pushes, PRs, deploys,
   destructive actions, scope expansion, or secret access.
+- Do not treat missing tmux, missing provider CLI, missing subscription, or
+  user refusal to use another provider as a reason to break ordinary L0/L1/L2
+  CatPaw work. Downgrade verification strength honestly and record the gap when
+  it matters.
+- Block only when the selected workflow requires non-primary provider evidence
+  and the user does not accept the remaining provider gap.
 
 ## 11. Escalation / De-escalation
 

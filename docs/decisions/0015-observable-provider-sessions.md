@@ -38,6 +38,15 @@ The tool is optional. CatPaw does not require tmux and does not depend on
 user-local scripts such as `~/.claude/scripts/cabinet.sh`. Cabinet-style tools
 are treated as useful implementation patterns, not runtime dependencies.
 
+Provider availability remains capability-aware. If tmux is missing, use
+provider-native or non-interactive CLI. If the target provider CLI or
+subscription is missing, use current-tool subagent or inline role lens with an
+explicit provider gap when the workflow requires one.
+
+`provider-session.sh check <provider>` reports tmux and provider CLI
+availability without requiring an active session, so agents can choose the
+fallback path before starting long-running work.
+
 ## Consequences
 
 - Long-running provider work can record invocation, observable surface,
@@ -50,6 +59,9 @@ are treated as useful implementation patterns, not runtime dependencies.
   commit, push, PR, deploy, destructive action, scope expansion, or secret
   access.
 - Quick provider asks can still use non-interactive CLI.
+- Missing tmux, missing secondary provider CLI, or a one-provider user setup
+  downgrades verification strength; it does not make ordinary CatPaw work
+  unusable.
 
 ## References
 
