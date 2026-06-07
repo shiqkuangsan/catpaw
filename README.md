@@ -2,14 +2,15 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw is an AI workflow runtime for software projects. It gives coding agents a
-small operating protocol: classify the work, expose the workflow level, keep
-durable project artifacts, call expert roles when risk justifies it, and close
-the loop with verification.
+CatPaw is an AI workflow runtime for software projects. It gives coding agents
+a small operating protocol for workflow routing, project artifact boards,
+provider gates, adapter activation, and executable governance.
 
 It is deliberately not an IDE, model provider, prompt pack, or task runner.
 CatPaw is the coordination layer between a user, their AI agents, and each
-project's durable work records.
+project's durable work records. It keeps collaboration visible: classify the
+work, name the state, write artifacts only when they add value, involve other
+providers when risk requires it, and close the loop with verification.
 
 Repository: https://github.com/shiqkuangsan/catpaw
 
@@ -42,12 +43,20 @@ Providers perform the work.
 Core capabilities:
 
 - User-visible workflow classification: `L0` / `L1` / `L2` / `L3`.
+- Canonical workflow control model for level, lifecycle stage, tracked state,
+  artifact policy, role/provider routing, and verification.
 - Artifact board for cross-session project memory.
 - Runtime commands for init, migration, upgrade, status, doctor, reconcile,
-  closeout, provider routing, planning, and review.
+  closeout, provider routing, adapter activation, planning, and review.
 - Expert Council roles for product, architecture, engineering, design, QA,
   security, performance, release, debugging, and retrospectives.
+- Forced Provider Gate and Subagent Preference Gate for non-primary judgment
+  when risk or uncertainty makes self-review weak.
+- Adapter activation guidance and doctor checks so projects can detect when
+  `AGENTS.md` / `CLAUDE.md` does not load CatPaw.
 - Manifest-first build and verification scripts for runtime releases.
+- Source checkout inspector for project board health, provider stance drift,
+  L3 matrix requirements, closeout drift, registry stamps, and adapter gaps.
 
 ## Quick Start
 
@@ -55,6 +64,13 @@ Ask your coding agent:
 
 ```text
 Install CatPaw from https://github.com/shiqkuangsan/catpaw and enable it in this project.
+```
+
+That means two separate actions:
+
+```text
+1. Install or upgrade the global runtime at ~/.catpaw/.
+2. Activate CatPaw for the project or provider via AGENTS.md / CLAUDE.md adapter guidance.
 ```
 
 For a local checkout:
@@ -81,7 +97,7 @@ When CatPaw applies, the agent should say something like:
 
 ```text
 CatPaw dispatch: L2 — cross-module behavior change.
-Artifacts: req+plan. Roles: Architecture Reviewer.
+State: planned. Artifacts: req+plan. Roles: Architecture Reviewer.
 Verification: record. Next: inspect current flow.
 ```
 
@@ -133,7 +149,8 @@ node scripts/verify-runtime.mjs
 `src/runtime/runtime-manifest.json` and verifies that every declared command
 file exists.
 `verify-runtime.mjs` checks the source package, generated package, installed
-runtime when present, protocol invariants, and registered project board stamps.
+runtime when present, protocol invariants, adapter activation guidance,
+executable governance checks, and registered project board stamps.
 
 Inspect a project board from the source checkout:
 
@@ -145,7 +162,9 @@ node scripts/catpaw-project.mjs doctor --project /path/to/project --json
 
 `catpaw-project.mjs` is read-only. It builds a lightweight project artifact
 graph from `.catpaw/`, reports active work, and flags closeout or registry stamp
-drift before any future reconcile or close command writes files.
+drift before any future reconcile or close command writes files. It also flags
+provider stance drift, missing L3 test matrices, active/archive plan status
+drift, and adapter activation gaps.
 
 Active work is presented as an `ID / Title / Status / Links` table so users can
 scan the current item and jump directly to Req, Plan, Tests, Review, or Research
@@ -167,6 +186,11 @@ src/runtime/AI-INSTALL.md
 
 Do not copy repository-root `docs/`, `scripts/`, `.git/`, or future resource
 directories into `~/.catpaw/`.
+
+Runtime install does not silently modify provider instruction files. Use
+`catpaw:install-adapter` when you want to add or update thin CatPaw references
+in global or project `AGENTS.md` / `CLAUDE.md` files. Adapter updates use a
+managed marker block and should be reviewed before apply.
 
 ## Design Boundaries
 
