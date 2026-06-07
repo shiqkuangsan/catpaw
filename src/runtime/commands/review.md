@@ -58,7 +58,9 @@ Risk triggers:
 - Same-tool subagent and heterogeneous second opinion may both be used for review, planning discussion, debugging, or risk calls.
 - The summary must name role and provider, for example `Engineering Reviewer via current-tool subagent + Security Reviewer via Laoer / second opinion`.
 - Provider stance should be reported as `forced`, `preferred`, or `inline` when
-  provider participation materially affects the review.
+  provider participation is required, preferred, or explicitly handled inline.
+  Provider outcomes such as `used`, `skipped`, `unavailable`, or `gap` should be
+  reported separately from stance.
 - L3 formal review must include at least one non-primary provider. `current
   coding agent` alone is not a valid provider list for formal review.
 - Release, security, external action, CI/CD, migration, incident, or destructive

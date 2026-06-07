@@ -187,6 +187,11 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const planTemplate = await readText(files.planTemplate);
   const reviewTemplate = await readText(files.reviewTemplate);
   const testMatrix = await readText(files.testMatrix);
+  const staleMaterialJudgment =
+    policy.includes("materially improves judgment") ||
+    plan.includes("adds material judgment") ||
+    review.includes("materially affects the review");
+  const skippedAsProviderStance = plan.includes("`preferred` or `skipped`");
 
   record(
     `${rootLabel} lifecycle role routing`,
@@ -253,13 +258,40 @@ async function verifyProtocolInvariants(rootLabel, root) {
       provider.includes("Subagent skipped: <why inline handling is sufficient>") &&
       classify.includes("provider stance as `preferred`") &&
       plan.includes("provider stance as") &&
+      plan.includes("`skipped` is an outcome, not a provider stance") &&
       plan.includes("Subagent skipped: <reason>") &&
       review.includes("Provider stance should be reported") &&
+      review.includes("reported separately from stance") &&
+      operatingRules.includes("Subagent Preference Gate") &&
       rolesSpec.includes("Provider stance should be classified") &&
       rolesSpec.includes("Preferred subagent selection") &&
       globalAdapter.includes("Prefer current-tool subagent") &&
       projectAdapter.includes("Prefer current-tool subagent"),
-    "runtime-policy.md + commands/provider.md + classify/plan/review + specs/09-roles.md + adapter snippets",
+    "runtime-policy.md + commands/provider.md + classify/plan/review + specs/08-operating-rules.md + specs/09-roles.md + adapter snippets",
+  );
+  record(
+    `${rootLabel} provider stance enum`,
+    provider.includes("`forced`:") &&
+      provider.includes("`preferred`:") &&
+      provider.includes("`inline`:") &&
+      review.includes("`forced`, `preferred`, or `inline`") &&
+      operatingRules.includes("| `inline` |") &&
+      operatingRules.includes("| `preferred` |") &&
+      operatingRules.includes("| `forced` |"),
+    "commands/provider.md + commands/review.md + specs/08-operating-rules.md",
+  );
+  record(
+    `${rootLabel} provider outcome separation`,
+    !staleMaterialJudgment &&
+      !skippedAsProviderStance &&
+      plan.includes("record provider outcome") &&
+      review.includes("Provider outcomes such as `used`, `skipped`, `unavailable`, or `gap`") &&
+      operatingRules.includes("Provider outcome is the observed result") &&
+      operatingRules.includes("| `used` |") &&
+      operatingRules.includes("| `skipped` |") &&
+      operatingRules.includes("| `unavailable` |") &&
+      operatingRules.includes("| `gap` |"),
+    "runtime-policy.md + commands/plan.md + commands/review.md + specs/08-operating-rules.md",
   );
   record(
     `${rootLabel} UI evidence templates include surface decision`,

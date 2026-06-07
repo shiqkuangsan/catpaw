@@ -18,7 +18,9 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - For forced provider triggers, name the required non-primary provider path,
   fallback, and any provider gap before implementation.
 - For Subagent Preference Gate triggers, record provider stance as
-  `preferred` or `skipped`; if skipped, include `Subagent skipped: <reason>`.
+  `preferred`; if the preferred subagent is not used, keep the stance as
+  `preferred` and record provider outcome with `Subagent skipped: <reason>`.
+  `skipped` is an outcome, not a provider stance.
 - For frontend or UI-facing work, name the intended self-verification surface in
   the plan: existing tests, Browser / browser-use / in-app browser, Playwright,
   Chrome DevTools, Computer Use, or a blocked/unavailable reason. Record why
@@ -76,8 +78,9 @@ Role gate:
   fall back to current-tool subagent if unavailable.
 - Use the lifecycle role routing table in `specs/09-roles.md`: Think, Plan, Build, Review, Test, Ship, Reflect each have different default roles.
 - A role may be handled inline by the primary agent only when no forced provider
-  trigger applies; use `catpaw:provider` when another provider is required or
-  adds material judgment.
+  trigger or Subagent Preference Gate trigger applies, or when a preference
+  trigger is explicitly skipped with a compact reason. Use `catpaw:provider`
+  when another provider is required or preferred.
 - If a forced provider cannot be reached, record the unavailable reason and
   provider gap in the plan. Do not treat the gate as complete unless the user
   explicitly accepts the gap.

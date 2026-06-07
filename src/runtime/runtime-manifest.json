@@ -1,6 +1,6 @@
 {
   "name": "catpaw-runtime",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "runtimePath": "~/.catpaw",
   "artifactSchemaVersion": 1,
   "released": "2026-06-07",

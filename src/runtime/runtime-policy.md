@@ -312,9 +312,11 @@ Rules:
 - L0/L1 default to no Expert Council unless risk triggers appear.
 - L2 usually uses one stage-primary role plus at most one risk role.
 - L3 must declare the intended role set in the plan/Council area and preserve disagreements in the review summary.
-- A role may be handled inline by the primary agent unless a forced provider
-  trigger applies; use `catpaw:provider` when another provider is required or
-  materially improves judgment.
+- A role may be handled inline by the primary agent when no forced provider
+  trigger applies and no Subagent Preference Gate trigger is active. If a
+  preference trigger is active but no subagent is used, record a compact
+  `Subagent skipped: <reason>` outcome. Use `catpaw:provider` when another
+  provider is required or preferred.
 
 ## 7. Subsystems
 

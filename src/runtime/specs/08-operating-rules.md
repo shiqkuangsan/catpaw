@@ -169,7 +169,33 @@ Rules:
 - Provider selection follows `catpaw:provider`; provider output must be summarized by the primary agent as accepted / rejected / conflicts.
 - Role recommendations do not authorize external actions, destructive actions, scope expansion, or secret access.
 
-## 8. Escalation / De-escalation
+## 8. Provider Selection
+
+Provider stance is the planned selection posture:
+
+| Stance | Meaning |
+|---|---|
+| `inline` | The primary agent handles the work directly. |
+| `preferred` | Current-tool subagent is the default, but may be skipped with a compact reason. |
+| `forced` | CatPaw requires a non-primary provider attempt or an explicit provider gap. |
+
+Provider outcome is the observed result and must not be mixed into stance:
+
+| Outcome | Meaning |
+|---|---|
+| `used` | A provider was consulted and produced usable evidence. |
+| `skipped` | A preferred provider was not used; record `Subagent skipped: <reason>`. |
+| `unavailable` | A provider could not be reached, timed out, or returned no usable output. |
+| `gap` | A forced provider requirement remains unsatisfied. |
+
+Subagent Preference Gate:
+
+- Prefer current-tool subagent for L2 work unless it is narrow, local, and already well understood.
+- Prefer current-tool subagent for L1 work touching 3+ files, shared helpers, public docs/protocols, runtime policy/spec/commands/templates, unfamiliar modules, weak tests, consistency-sensitive multi-file changes, non-trivial UI/design/QA review, or broad completion review.
+- If a preference trigger applies and no subagent is used, keep provider stance as `preferred` and record `Subagent skipped: <why inline handling is sufficient>`.
+- Forced Provider Gate has higher priority. If a forced provider is unavailable, record the provider outcome as `unavailable` and any remaining provider `gap`.
+
+## 9. Escalation / De-escalation
 
 Escalate when:
 
@@ -185,7 +211,7 @@ De-escalate when:
 - Existing CatPaw artifacts are not deleted just because the level de-escalated; archive or clean them based on value.
 - De-escalation must also be user-visible.
 
-## 9. Completion
+## 10. Completion
 
 When a task completes:
 
@@ -206,7 +232,7 @@ When a task completes:
   - after close, scan stale language such as `pending`, `future`, `in progress`, `plans/active`, `status: active`;
   - report uncertainty instead of silently rewriting substantive content.
 
-## 10. Reporting
+## 11. Reporting
 
 Final reports should include:
 

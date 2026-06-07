@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.10 - 2026-06-07
+
+- Fix provider stance terminology so `inline`, `preferred`, and `forced` remain
+  the only provider stance values.
+- Clarify that `used`, `skipped`, `unavailable`, and `gap` are provider
+  outcomes, not provider stances.
+- Update plan, review, runtime policy, and operating rules so Subagent
+  Preference Gate skip handling keeps stance as `preferred` and records
+  `Subagent skipped: <reason>` separately.
+- Extend `scripts/verify-runtime.mjs` to reject stale provider stance/outcome
+  wording and old `materially improves judgment` language.
+
+Migration note (2.0.9 -> 2.0.10):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use the corrected provider stance/outcome terminology.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: refresh provider global/project adapters if they should include the Computer Use priority selection rule and Subagent Preference Gate stance/outcome wording.
+Verification: source/dist/installed VERSION = 2.0.10 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.0.10.md is required; this release changes runtime guidance and verifier checks, not project artifact schema or write-through commands.
+```
+
 ## 2.0.9 - 2026-06-07
 
 - Add Computer Use priority guidance for frontend / UI self-verification
