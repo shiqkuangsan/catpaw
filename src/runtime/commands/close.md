@@ -13,6 +13,10 @@ catpaw:close <REQ-ID> --apply
 
 Closing is a scoped artifact transaction rooted at one req ID. It should not perform global cleanup.
 
+Closeout moves tracked work to the terminal workflow state `done` or
+`cancelled`. See `specs/13-workflow-control-model.md` for the canonical
+workflow state model and artifact policy.
+
 ## Behavior
 
 - Require fresh verification evidence or explicit user confirmation before marking a req terminal.
@@ -62,11 +66,13 @@ Needs user decision:
 Before claiming done, report fresh verification evidence:
 
 ```text
+Completed:
 Verification command/manual check:
 Result:
 Remaining risks:
 CatPaw artifacts changed:
 Next:
+Needs user decision:
 ```
 
 Do not mark a req `done` only because checklist items are checked. There must be verification evidence or explicit user confirmation.

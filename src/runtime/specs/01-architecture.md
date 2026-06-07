@@ -47,6 +47,9 @@ Cross-cutting control planes:
 Do not count lifecycle stages or workflow levels as extra layers. `Think ->
 Plan -> Build -> Review -> Test -> Ship -> Reflect` is lifecycle vocabulary,
 and `L0` / `L1` / `L2` / `L3` is workflow weight classification.
+The canonical table that combines workflow level, lifecycle stage, tracked
+state, artifact policy, role/provider routing, and verification is
+`specs/13-workflow-control-model.md`.
 
 ## 2. Lifecycle Vocabulary
 

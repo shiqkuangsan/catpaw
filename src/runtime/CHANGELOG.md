@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.1.0 - 2026-06-07
+
+- Add `specs/13-workflow-control-model.md` as the canonical decision table for
+  workflow level, lifecycle stage, tracked state, artifact policy,
+  role/provider routing, and verification.
+- Clarify that workflow state is control vocabulary, not a new required
+  frontmatter schema.
+- Update runtime policy, classification, closeout, operating rules, and
+  architecture specs to reference the canonical workflow control model.
+- Extend `scripts/verify-runtime.mjs` to guard the workflow control model and
+  state-aware dispatch guidance.
+
+Migration note (2.0.11 -> 2.1.0):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use the canonical workflow control model.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: use specs/13-workflow-control-model.md when discussing workflow state, artifact creation policy, or role/provider routing drift.
+Verification: source/dist/installed VERSION = 2.1.0 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.0.md is required; this release adds a canonical control model and guidance, not project artifact schema.
+```
+
 ## 2.0.11 - 2026-06-07
 
 - Strengthen the source checkout project doctor with executable governance

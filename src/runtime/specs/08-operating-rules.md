@@ -14,6 +14,7 @@ Classify in this order:
 Intent classification
 -> Workflow level classification: L0/L1/L2/L3
 -> Lifecycle/subsystem decisions: research / plan / review / tests / lessons
+-> Workflow state target when tracked
 -> Lifecycle role routing
 -> Artifact decisions: whether .catpaw/ files are needed
 -> Verification level
@@ -23,11 +24,31 @@ Principles:
 
 - Classify user intent first, then risk/complexity, then artifact needs.
 - Workflow level belongs only to orchestration; Review / Tests / Lessons use their own lightweight states.
+- Workflow state is control vocabulary for tracked work, not a new required
+  frontmatter schema.
 - Workflow level is user-visible. Before meaningful execution, say `CatPaw dispatch: Lx ...` with level, short reason, artifact expectation, role stance, verification/review expectation, and next step.
 - L2/L3 or review-heavy work should also name expected role stance: `Roles: none` or a concrete role set.
 - Explicit user override wins, but required verification cannot be skipped.
+- Use `specs/13-workflow-control-model.md` as the canonical decision table for
+  level, lifecycle stage, tracked state, artifact policy, roles, provider
+  stance, and verification.
 
-## 2. L0 / L1 Lightweight Execution
+## 2. Workflow State and Artifact Policy
+
+Canonical rules live in `specs/13-workflow-control-model.md`.
+
+Minimum operating expectations:
+
+- L0/L1 usually do not create artifacts.
+- L2 defaults to req + plan + verification record in plan.
+- L3 defaults to req + plan + test matrix + formal review summary.
+- State labels such as `framed`, `planned`, `building`, `reviewing`,
+  `verifying`, `done`, `blocked`, and `cancelled` describe work progression;
+  they do not replace existing artifact frontmatter statuses.
+- At user-visible checkpoints, report `Completed`, `Updated artifacts`,
+  `Verification`, `Next`, and `Needs user decision`.
+
+## 3. L0 / L1 Lightweight Execution
 
 Rules:
 
@@ -44,7 +65,7 @@ Use for:
 - low-risk single-module work;
 - small follow-up tweaks to work just completed.
 
-## 3. L2 Formal Work
+## 4. L2 Formal Work
 
 Rules:
 
@@ -65,7 +86,7 @@ Use for:
 - persistence format changes;
 - complex UI flows.
 
-## 4. L3 High-risk Work
+## 5. L3 High-risk Work
 
 Rules:
 
@@ -91,7 +112,7 @@ Use for:
 - production incident fixes;
 - force push / reset / destructive-operation requests.
 
-## 5. Contract-first Quality Gates
+## 6. Contract-first Quality Gates
 
 Behavior-sensitive changes must define preserved semantics before optimization
 or refactor work begins. Typical triggers:
@@ -112,7 +133,7 @@ Execution rules:
 - Treat performance fast paths as possible semantic changes until equivalence is proven or the behavior change is explicitly accepted.
 - If no contract can be defined, pause implementation and move into research; return to planning after the conclusion stabilizes.
 
-## 6. Frontend / UI Interactive Verification
+## 7. Frontend / UI Interactive Verification
 
 For frontend or UI-facing work, the agent should not hand ordinary verification
 back to the user while it has a usable interactive surface.
@@ -147,7 +168,7 @@ Rules:
 - Browser Use and Computer Use are verification surfaces, not permission grants. They do not authorize external submissions, destructive UI actions, permission changes, commits, pushes, PRs, deploys, or other visible side effects.
 - Do not require browser/screenshot evidence for non-UI work.
 
-## 7. Lifecycle Role Orchestration
+## 8. Lifecycle Role Orchestration
 
 Expert Council roles are chosen first by lifecycle stage, then by risk.
 
@@ -169,7 +190,7 @@ Rules:
 - Provider selection follows `catpaw:provider`; provider output must be summarized by the primary agent as accepted / rejected / conflicts.
 - Role recommendations do not authorize external actions, destructive actions, scope expansion, or secret access.
 
-## 8. Provider Selection
+## 9. Provider Selection
 
 Provider stance is the planned selection posture:
 
@@ -195,7 +216,7 @@ Subagent Preference Gate:
 - If a preference trigger applies and no subagent is used, keep provider stance as `preferred` and record `Subagent skipped: <why inline handling is sufficient>`.
 - Forced Provider Gate has higher priority. If a forced provider is unavailable, record the provider outcome as `unavailable` and any remaining provider `gap`.
 
-## 9. Escalation / De-escalation
+## 10. Escalation / De-escalation
 
 Escalate when:
 
@@ -211,7 +232,7 @@ De-escalate when:
 - Existing CatPaw artifacts are not deleted just because the level de-escalated; archive or clean them based on value.
 - De-escalation must also be user-visible.
 
-## 10. Completion
+## 11. Completion
 
 When a task completes:
 
@@ -232,7 +253,7 @@ When a task completes:
   - after close, scan stale language such as `pending`, `future`, `in progress`, `plans/active`, `status: active`;
   - report uncertainty instead of silently rewriting substantive content.
 
-## 11. Reporting
+## 12. Reporting
 
 Final reports should include:
 

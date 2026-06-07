@@ -12,6 +12,7 @@ or file edits.
 Intent classification
 → Workflow level classification: L0/L1/L2/L3
 → Lifecycle/subsystem decisions
+→ Workflow state target when tracked
 → Lifecycle role routing
 → Artifact decisions
 → Verification level
@@ -48,6 +49,8 @@ Intent classification
 - For medium-risk L1/L2 work, classify provider stance as `preferred` when a
   current-tool subagent should map, review, or QA-check the work; use `inline`
   only when the task is narrow, local, and well understood.
+- Use `specs/13-workflow-control-model.md` as the canonical table for combining
+  level, tracked state, artifact policy, roles, provider stance, and verification.
 
 ## Boundaries
 
@@ -64,7 +67,7 @@ line; for explicit `catpaw:classify` requests, include the structured fields.
 Compact form:
 
 ```text
-CatPaw dispatch: L2 — <short reason>. Artifacts: <none|req+plan|req+plan+tests+reviews>. Roles: <none|role set>. Verification: <inline|record|matrix>. Next: <action>.
+CatPaw dispatch: L2 — <short reason>. State: <planned|building|...>. Artifacts: <none|req+plan|req+plan+tests+reviews>. Roles: <none|role set>. Verification: <inline|record|matrix>. Next: <action>.
 ```
 
 Structured form:
@@ -72,8 +75,10 @@ Structured form:
 ```text
 Intent:
 Level:
+State target:
 Artifacts:
 Roles:
+Provider stance:
 Review:
 Verification:
 Reason:

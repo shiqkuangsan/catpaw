@@ -170,6 +170,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
     review: path.join(root, "commands", "review.md"),
+    close: path.join(root, "commands", "close.md"),
     status: path.join(root, "commands", "status.md"),
     doctor: path.join(root, "commands", "doctor.md"),
     registryDoctor: path.join(root, "commands", "registry-doctor.md"),
@@ -182,6 +183,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     operatingRules: path.join(root, "specs", "08-operating-rules.md"),
     projectDirectory: path.join(root, "specs", "03-project-directory.md"),
     rolesSpec: path.join(root, "specs", "09-roles.md"),
+    workflowControl: path.join(root, "specs", "13-workflow-control-model.md"),
     planTemplate: path.join(root, "templates", "plan.md"),
     reviewTemplate: path.join(root, "templates", "review-summary.md"),
     testMatrix: path.join(root, "templates", "test-matrix.md"),
@@ -195,6 +197,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const plan = await readText(files.plan);
   const provider = await readText(files.provider);
   const review = await readText(files.review);
+  const close = await readText(files.close);
   const status = await readText(files.status);
   const doctor = await readText(files.doctor);
   const registryDoctor = await readText(files.registryDoctor);
@@ -207,6 +210,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const operatingRules = await readText(files.operatingRules);
   const projectDirectory = await readText(files.projectDirectory);
   const rolesSpec = await readText(files.rolesSpec);
+  const workflowControl = await readText(files.workflowControl);
   const planTemplate = await readText(files.planTemplate);
   const reviewTemplate = await readText(files.reviewTemplate);
   const testMatrix = await readText(files.testMatrix);
@@ -233,6 +237,22 @@ async function verifyProtocolInvariants(rootLabel, root) {
     `${rootLabel} progress handoff`,
     policy.includes("Progress Handoff Contract"),
     "runtime-policy.md",
+  );
+  record(
+    `${rootLabel} workflow control model`,
+    workflowControl.includes("Workflow Control Model") &&
+      workflowControl.includes("Canonical Decision Table") &&
+      workflowControl.includes("framed -> planned -> building -> reviewing -> verifying -> done") &&
+      workflowControl.includes("not a new required frontmatter schema") &&
+      policy.includes("specs/13-workflow-control-model.md") &&
+      policy.includes("Workflow state target when tracked") &&
+      classify.includes("State target:") &&
+      classify.includes("specs/13-workflow-control-model.md") &&
+      close.includes("terminal workflow state `done` or") &&
+      operatingRules.includes("Workflow State and Artifact Policy") &&
+      operatingRules.includes("not a new required\n  frontmatter schema") &&
+      architectureSpec.includes("specs/13-workflow-control-model.md"),
+    "specs/13-workflow-control-model.md + runtime-policy.md + classify/close + specs/08-operating-rules.md + specs/01-architecture.md",
   );
   record(
     `${rootLabel} frontend UI self-verification`,

@@ -58,6 +58,7 @@ On every task, classify in this order:
 Intent classification
 → Workflow level classification: L0/L1/L2/L3
 → Lifecycle/subsystem decisions: research / plan / review / tests / lessons
+→ Workflow state target when tracked: framed / planned / building / reviewing / verifying / done / blocked / cancelled
 → Lifecycle role routing
 → Artifact decisions: whether to write .catpaw/ files
 → Verification level
@@ -67,13 +68,20 @@ User-visible dispatch rule:
 
 - When CatPaw applies to the task, state the selected workflow level before meaningful tool use or file edits.
 - Keep the dispatch note concise; expose the decision, not private chain-of-thought.
-- Include: `Level`, short reason, artifact expectation, role stance when relevant, verification/review expectation, and next action.
+- Include: `Level`, short reason, state target when tracked, artifact
+  expectation, role stance when relevant, verification/review expectation, and
+  next action.
 - For tiny L0 work, one compact sentence is enough.
 - For L1/L2/L3 work, prefer this shape:
 
 ```text
-CatPaw dispatch: L2 — <short reason>. Artifacts: <none|req+plan|...>. Roles: <none|role set>. Verification: <inline|record|matrix>. Next: <action>.
+CatPaw dispatch: L2 — <short reason>. State: <planned|building|...>. Artifacts: <none|req+plan|...>. Roles: <none|role set>. Verification: <inline|record|matrix>. Next: <action>.
 ```
+
+Canonical workflow state and artifact policy live in
+`specs/13-workflow-control-model.md`. Treat that file as the source of truth for
+how workflow level, lifecycle stage, tracked state, artifact policy,
+role/provider routing, and verification combine.
 
 - If scope changes and the level escalates or de-escalates, tell the user the new level and why before continuing.
 - Classification itself does not require user approval; approval is only required by normal gates such as plan-only mode, external actions, destructive operations, or project-local rules.
