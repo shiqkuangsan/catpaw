@@ -44,6 +44,14 @@ in-app browser, Playwright, Chrome DevTools, screenshots, responsive viewport
 checks, or Computer Use for real local app/browser-window behavior that browser
 automation cannot reach.
 
+Use Browser / browser-use for ordinary local web pages and simple visual
+inspection. Use Playwright or Chrome DevTools when screenshots, responsive
+viewport coverage, console/network checks, or reproducible browser flows matter.
+Promote Computer Use when design quality depends on the real app/window,
+native dialogs, OS-level interaction, cross-app behavior, accessibility tree
+inspection, browser extensions, profile/session state, or interaction surfaces
+browser automation cannot reach.
+
 ## Output Format
 
 ```markdown

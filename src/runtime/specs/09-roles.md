@@ -121,6 +121,10 @@ Rules:
 - If unspecified, the current coding agent chooses by risk, context, and available tools.
 - `subagent` means the current tool's native subagent unless stated otherwise.
 - Same-tool subagent and heterogeneous second opinion may both be used.
+- Provider stance should be classified as `forced`, `preferred`, or `inline`.
+- Forced gates require non-primary provider evidence or a provider gap.
+- Preferred gates default to current-tool subagent but may be skipped with a
+  compact reason when inline handling is sufficient.
 - Provider findings must be summarized by the primary agent as accepted / rejected / conflicts; advisory-only findings do not authorize code edits or external actions.
 - CLI calls and multi-round provider dialogue are governed by `catpaw:provider`.
 - Provider-native resume/session support is an optimization only; the primary agent still maintains compact dialogue state.
@@ -169,6 +173,9 @@ Principles:
 - L3 must declare roles in plan `Council` and preserve disagreements in formal review.
 - Forced provider gates override inline role handling when task risk requires
   non-primary judgment.
+- Subagent Preference Gate sits below forced gates: use current-tool subagent by
+  default for medium-risk L1/L2 mapping, consistency, review, QA, or UI/design
+  work unless the task is narrow, local, and well understood.
 - Role routing does not authorize code edits, commits, pushes, PRs, deploys, destructive actions, or scope expansion.
 
 ### 6.1 Stage Routing Table
@@ -189,7 +196,7 @@ Principles:
 |---|---|
 | L0 | No Expert Council by default; primary agent may use a role lens internally. |
 | L1 | No Expert Council by default; add one role only for clear risk and keep output inline. |
-| L2 | Select roles from the active lifecycle stage; default cap is one or two. Behavior-sensitive or cross-boundary L2 must include at least one non-primary provider for contract, semantic, or architecture review. Summarize accepted / rejected / conflicts if a provider is used. |
+| L2 | Select roles from the active lifecycle stage; default cap is one or two. Prefer current-tool subagent unless the work is narrow, local, and already well understood. Behavior-sensitive or cross-boundary L2 must include at least one non-primary provider for contract, semantic, or architecture review. Summarize accepted / rejected / conflicts if a provider is used. |
 | L3 | Declare intended roles in plan `Council`; use formal review, record providers, preserve disagreements. Formal review must include at least one non-primary provider or an explicit provider gap accepted by the user. |
 
 ### 6.3 Provider Selection
@@ -210,6 +217,18 @@ Forced provider selection:
   repair loop.
 - If the required provider is unavailable, record the reason and fallback used;
   if no fallback is available, record a provider gap.
+
+Preferred subagent selection:
+
+- Prefer current-tool subagent for L2 work unless narrow, local, and already
+  well understood.
+- Prefer current-tool subagent for L1 work touching 3+ files, shared helpers,
+  public docs/protocols, runtime policy/spec/commands/templates, or unfamiliar
+  modules.
+- Prefer current-tool subagent for consistency-sensitive multi-file changes,
+  weak or unavailable tests, non-trivial UI/design/QA review, or broad
+  completion review.
+- If a preference trigger is skipped, record `Subagent skipped: <reason>`.
 
 ### 6.4 Reporting Rules
 

@@ -125,6 +125,21 @@ Preferred surfaces, in order when available:
 4. Computer Use for real local app/browser-window interaction, OS-level dialogs, native flows, accessibility tree checks, or cases browser automation cannot reach;
 5. manual reasoning only when interactive tools are unavailable or blocked.
 
+Surface selection:
+
+- Browser / browser-use / in-app browser is the default for ordinary local web
+  UI inspection and simple local click/type flows.
+- Playwright or Chrome DevTools is preferred when the result should be
+  reproducible, inspect console/network state, compare responsive viewports, or
+  become regression evidence.
+- Computer Use moves ahead when the behavior depends on a real window, OS
+  dialog, permission prompt, file picker, native app, cross-app flow,
+  accessibility tree, browser extension, profile/session state, or another
+  surface browser automation cannot reach.
+- The handoff or review must state the selected surface, selection reason,
+  observed result, remaining gap, and blocked/unavailable reason when a stronger
+  surface was skipped.
+
 Rules:
 
 - Verification reports should name the URL/app/window, flow, viewport/device when relevant, observed result, and remaining gap.

@@ -51,6 +51,13 @@ If the user does not specify a provider, choose the lightest provider that can
 answer the question safely. Do not involve multiple providers by default for
 L0/L1 work.
 
+Provider stance:
+
+- `forced`: CatPaw requires a non-primary provider or explicit provider gap.
+- `preferred`: current-tool subagent is the default, but the primary agent may
+  skip it with a compact reason.
+- `inline`: primary agent handles the work directly.
+
 ## Forced Provider Gate
 
 Some CatPaw gates are triggered by task risk instead of primary-agent
@@ -77,6 +84,30 @@ Fallback:
   the forced gate satisfied silently.
 - Formal review must not list only `current coding agent` as provider unless the
   review explicitly records a provider gap and the user accepts that gap.
+
+## Subagent Preference Gate
+
+Prefer current-tool subagent when the task has medium-risk uncertainty but does
+not meet a forced gate:
+
+- L2 work unless narrow, local, and already well understood.
+- L1 work touching 3+ files, shared helpers, public docs/protocols, runtime
+  policy/spec/commands/templates, or unfamiliar modules.
+- Consistency-sensitive changes across multiple runtime files, generated output,
+  adapter snippets, templates, or docs.
+- Weak, missing, or unavailable tests where QA verification gaps matter.
+- Non-trivial UI changes needing design or QA perspective.
+- Completion review when a broad diff makes self-review likely weak.
+
+If skipped after a preference trigger, record:
+
+```text
+Subagent skipped: <why inline handling is sufficient>.
+```
+
+Do not treat preferred subagent use as authorization. Provider findings remain
+advisory and must be summarized by the primary agent as accepted / rejected /
+conflict.
 
 ## CLI Playbook
 

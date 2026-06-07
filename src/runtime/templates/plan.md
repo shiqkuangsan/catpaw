@@ -27,6 +27,9 @@ One sentence to one short paragraph explaining the overall approach.
 - [ ] Boundary case:
 - [ ] Existing test / manual check:
 - [ ] UI / interactive check:
+      - Selected surface:
+      - Selection reason:
+      - Remaining gap:
 
 ## Risk Ledger
 | Risk | Status | Evidence / Decision |
@@ -37,6 +40,8 @@ One sentence to one short paragraph explaining the overall approach.
 - Roles:
 - Review:
 - Provider gate:
+- Provider stance:
+- Subagent skipped:
 - Provider gap:
 
 <!-- L3 extension

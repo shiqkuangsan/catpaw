@@ -176,7 +176,38 @@ Fallback rules:
   If the forced gate cannot be satisfied, the decision must be `revise plan` or
   `block` unless the user explicitly accepts the provider gap.
 
-### 4.3 Frontend / UI Self-Verification
+### 4.3 Subagent Preference Gate
+
+Some work does not require a forced non-primary provider, but still benefits
+from cheap same-tool parallel judgment. A Subagent Preference Gate is advisory
+and lower priority than Forced Provider Gate: prefer current-tool subagent, but
+allow inline handling when the primary agent can state why the task is narrow,
+local, and already well understood.
+
+Prefer current-tool subagent for:
+
+- L2 work unless it is narrow, local, and already well understood.
+- L1 work touching 3+ files, shared helpers, public docs/protocols, runtime
+  policy/spec/commands/templates, or unfamiliar modules.
+- Consistency-sensitive changes spanning multiple runtime files, generated
+  artifacts, adapters, templates, or docs.
+- Weak, missing, or unavailable tests where QA verification gaps matter.
+- Non-trivial UI changes needing design or QA perspective.
+- Completion review when the diff is broad enough that self-review is likely
+  weak.
+
+If a preference trigger applies and no subagent is used, record a compact skip
+reason in the plan, review summary, or handoff:
+
+```text
+Subagent skipped: <why inline handling is sufficient>.
+```
+
+Subagent findings remain advisory evidence. The primary agent must summarize
+accepted / rejected / conflict findings and locally verify accepted facts before
+claiming completion.
+
+### 4.4 Frontend / UI Self-Verification
 
 For frontend or UI-facing changes, the provider must attempt self-verification
 with the strongest available interactive surface before handing the task back to
@@ -189,6 +220,23 @@ Preferred order, when available:
 3. Playwright or Chrome DevTools for reproducible browser flows, console/network checks, screenshots, and responsive viewport checks;
 4. Computer Use for real local app or browser-window interaction, OS-level dialogs, native shell flows, accessibility tree inspection, or flows that cannot be reached through browser automation;
 5. manual code-level reasoning only when interactive tooling is unavailable or blocked.
+
+Surface selection rules:
+
+- Use Browser / browser-use / in-app browser by default for ordinary local web
+  UI inspection, simple click/type flows, visual checks, and file/localhost
+  targets where the provider can directly open the page.
+- Use Playwright or Chrome DevTools when the evidence should be reproducible,
+  inspect console/network behavior, cover responsive viewports, capture
+  screenshots, or exercise a regression flow repeatedly.
+- Promote Computer Use ahead of browser automation when correctness depends on
+  the real browser or app window, OS dialogs, file pickers, permission prompts,
+  native app flows, cross-app workflows, accessibility tree inspection,
+  browser extensions, profile/session state, or any interaction browser
+  automation cannot reach.
+- Record the selected surface, why it was selected, what was observed, and any
+  remaining unverified gap. If a stronger surface was skipped, record the
+  blocked or unavailable reason.
 
 Rules:
 

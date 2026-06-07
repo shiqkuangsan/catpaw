@@ -152,6 +152,11 @@ async function verifyProtocolInvariants(rootLabel, root) {
     registryDoctor: path.join(root, "commands", "registry-doctor.md"),
     globalAdapter: path.join(root, "snippets", "global-adapter.md"),
     projectAdapter: path.join(root, "snippets", "project-adapter.md"),
+    qaStrategist: path.join(root, "roles", "qa-strategist.md"),
+    designReviewer: path.join(root, "roles", "design-reviewer.md"),
+    architectureSpec: path.join(root, "specs", "01-architecture.md"),
+    subsystemsSpec: path.join(root, "specs", "06-subsystems.md"),
+    operatingRules: path.join(root, "specs", "08-operating-rules.md"),
     projectDirectory: path.join(root, "specs", "03-project-directory.md"),
     rolesSpec: path.join(root, "specs", "09-roles.md"),
     planTemplate: path.join(root, "templates", "plan.md"),
@@ -172,6 +177,11 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const registryDoctor = await readText(files.registryDoctor);
   const globalAdapter = await readText(files.globalAdapter);
   const projectAdapter = await readText(files.projectAdapter);
+  const qaStrategist = await readText(files.qaStrategist);
+  const designReviewer = await readText(files.designReviewer);
+  const architectureSpec = await readText(files.architectureSpec);
+  const subsystemsSpec = await readText(files.subsystemsSpec);
+  const operatingRules = await readText(files.operatingRules);
   const projectDirectory = await readText(files.projectDirectory);
   const rolesSpec = await readText(files.rolesSpec);
   const planTemplate = await readText(files.planTemplate);
@@ -182,6 +192,14 @@ async function verifyProtocolInvariants(rootLabel, root) {
     `${rootLabel} lifecycle role routing`,
     policy.includes("Lifecycle role routing"),
     "runtime-policy.md",
+  );
+  record(
+    `${rootLabel} architecture layer model`,
+    architectureSpec.includes("4 conceptual layers + 2 cross-cutting control planes") &&
+      architectureSpec.includes("Artifact Graph") &&
+      architectureSpec.includes("Gates / Verification") &&
+      architectureSpec.includes("Do not count lifecycle stages or workflow levels as extra layers"),
+    "specs/01-architecture.md",
   );
   record(
     `${rootLabel} progress handoff`,
@@ -207,6 +225,57 @@ async function verifyProtocolInvariants(rootLabel, root) {
     globalAdapter.includes("Computer Use") &&
       projectAdapter.includes("Computer Use"),
     "snippets/global-adapter.md + snippets/project-adapter.md",
+  );
+  record(
+    `${rootLabel} Computer Use priority guidance`,
+    policy.includes("Surface selection rules") &&
+      policy.includes("Promote Computer Use") &&
+      policy.includes("profile/session state") &&
+      classify.includes("Computer Use should move ahead") &&
+      plan.includes("selected surface, selection reason") &&
+      review.includes("Review evidence should name the selected surface") &&
+      qaStrategist.includes("Selection rules") &&
+      qaStrategist.includes("Promote Computer Use") &&
+      designReviewer.includes("Promote Computer Use") &&
+      subsystemsSpec.includes("Computer Use moves ahead") &&
+      operatingRules.includes("Surface selection") &&
+      globalAdapter.includes("real-window") &&
+      projectAdapter.includes("real-window"),
+    "runtime-policy.md + classify/plan/review commands + QA/Design roles + specs + adapter snippets",
+  );
+  record(
+    `${rootLabel} Subagent Preference Gate guidance`,
+    policy.includes("Subagent Preference Gate") &&
+      policy.includes("Prefer current-tool subagent") &&
+      policy.includes("Subagent skipped: <why inline handling is sufficient>") &&
+      provider.includes("Provider stance") &&
+      provider.includes("Subagent Preference Gate") &&
+      provider.includes("Subagent skipped: <why inline handling is sufficient>") &&
+      classify.includes("provider stance as `preferred`") &&
+      plan.includes("provider stance as") &&
+      plan.includes("Subagent skipped: <reason>") &&
+      review.includes("Provider stance should be reported") &&
+      rolesSpec.includes("Provider stance should be classified") &&
+      rolesSpec.includes("Preferred subagent selection") &&
+      globalAdapter.includes("Prefer current-tool subagent") &&
+      projectAdapter.includes("Prefer current-tool subagent"),
+    "runtime-policy.md + commands/provider.md + classify/plan/review + specs/09-roles.md + adapter snippets",
+  );
+  record(
+    `${rootLabel} UI evidence templates include surface decision`,
+    planTemplate.includes("Selected surface") &&
+      planTemplate.includes("Selection reason") &&
+      reviewTemplate.includes("Interactive UI Evidence") &&
+      reviewTemplate.includes("Remaining gap"),
+    "templates/plan.md + templates/review-summary.md",
+  );
+  record(
+    `${rootLabel} provider stance templates include subagent skip`,
+    planTemplate.includes("Provider stance") &&
+      planTemplate.includes("Subagent skipped") &&
+      reviewTemplate.includes("Provider stance") &&
+      reviewTemplate.includes("Subagent skipped"),
+    "templates/plan.md + templates/review-summary.md",
   );
   record(
     `${rootLabel} index active work table shape`,

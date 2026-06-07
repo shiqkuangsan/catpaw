@@ -14,7 +14,13 @@ Run an Expert Council review for the current task, plan, implementation, or rele
 - For behavior-sensitive changes, include contract / semantic checks even when review mode is light.
 - For forced provider triggers, include non-primary provider evidence or an
   explicit provider gap.
-- For frontend or UI-facing work, include whether available interactive verification was attempted through repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, or Computer Use.
+- For Subagent Preference Gate triggers, include current-tool subagent findings
+  or a compact skip reason.
+- For frontend or UI-facing work, include whether available interactive
+  verification was attempted through repo tests, Browser / browser-use /
+  in-app browser, Playwright, Chrome DevTools, or Computer Use. Record the
+  selected surface, why it was sufficient, and any skipped stronger surface with
+  its blocked/unavailable reason.
 
 ## Role Selection
 
@@ -51,6 +57,8 @@ Risk triggers:
 - Laosan / `老三` / third opinion / third reviewer defaults to Gemini; use it for multimodal UI checks or third-party judgment.
 - Same-tool subagent and heterogeneous second opinion may both be used for review, planning discussion, debugging, or risk calls.
 - The summary must name role and provider, for example `Engineering Reviewer via current-tool subagent + Security Reviewer via Laoer / second opinion`.
+- Provider stance should be reported as `forced`, `preferred`, or `inline` when
+  provider participation materially affects the review.
 - L3 formal review must include at least one non-primary provider. `current
   coding agent` alone is not a valid provider list for formal review.
 - Release, security, external action, CI/CD, migration, incident, or destructive
@@ -61,6 +69,8 @@ Risk triggers:
 - If a required provider is unavailable, times out, or returns no usable
   evidence, record the reason, fall back to current-tool subagent, and mark any
   remaining provider gap.
+- For preferred subagent triggers, skip only when inline review is sufficient
+  and record `Subagent skipped: <reason>`.
 - Generic provider orchestration for CLI calls, multi-round dialogue, debug, ask, implement, or summarize uses `catpaw:provider`.
 
 ## Interactive UI Evidence
@@ -68,10 +78,17 @@ Risk triggers:
 For UI review, prefer evidence from the strongest available surface:
 
 - repo-native automated tests;
-- Browser / browser-use / in-app browser;
-- Playwright or Chrome DevTools;
-- Computer Use for real local app/browser-window or OS-level UI;
+- Browser / browser-use / in-app browser for ordinary local web UI inspection;
+- Playwright or Chrome DevTools for reproducible browser flows, console/network
+  checks, screenshots, and responsive viewport coverage;
+- Computer Use for real local app/browser-window, OS dialogs, file pickers,
+  permission prompts, native flows, cross-app workflows, accessibility tree
+  checks, browser extensions, profile/session state, or browser-automation
+  unreachable UI;
 - blocked/unavailable reason when no interactive surface can be used.
+
+Review evidence should name the selected surface, selection reason, observed
+result, and remaining verification gap.
 
 Browser Use and Computer Use do not authorize external submissions,
 destructive UI actions, permission changes, commits, pushes, PRs, deploys, or
@@ -103,6 +120,8 @@ Mode: none | light | formal
 Roles:
 Providers:
 Provider gaps:
+Provider stance:
+Subagent skipped:
 Accepted findings:
 Rejected findings:
 Contract / semantic checks:

@@ -32,7 +32,12 @@ Intent classification
 - L1: light plan, no artifacts by default.
 - L2: req + plan + verification record.
 - L3: req + plan + tests + formal review + explicit gates.
-- For frontend or UI-facing work, verification should name the intended interactive surface when possible: repo tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, Computer Use, or blocked/unavailable.
+- For frontend or UI-facing work, verification should name the intended
+  interactive surface when possible: repo tests, Browser / browser-use /
+  in-app browser, Playwright, Chrome DevTools, Computer Use, or
+  blocked/unavailable. Computer Use should move ahead when verification depends
+  on a real window, OS/native/cross-app flow, accessibility tree, browser
+  extension, profile/session state, or UI browser automation cannot reach.
 
 ## Lifecycle Role Routing
 
@@ -40,6 +45,9 @@ Intent classification
 - L2 usually names one stage-primary role plus at most one risk role.
 - L3 must name the intended role set for the plan `Council` section and formal review.
 - If another provider is useful, route through `catpaw:provider`; otherwise the primary agent may apply the role inline.
+- For medium-risk L1/L2 work, classify provider stance as `preferred` when a
+  current-tool subagent should map, review, or QA-check the work; use `inline`
+  only when the task is narrow, local, and well understood.
 
 ## Boundaries
 

@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.0.9 - 2026-06-07
+
+- Add Computer Use priority guidance for frontend / UI self-verification
+  surface selection.
+- Clarify that Browser / browser-use remains the default for ordinary local web
+  UI, Playwright / Chrome DevTools is preferred for reproducible browser
+  evidence, and Computer Use moves ahead for real-window, OS/native, cross-app,
+  accessibility, browser-extension, profile/session, or browser-automation
+  unreachable flows.
+- Update plan/review commands, QA Strategist, Design Reviewer, operating specs,
+  adapter snippets, and templates to record selected surface, selection reason,
+  observed evidence, and remaining verification gap.
+- Add Subagent Preference Gate guidance so medium-risk L1/L2 mapping,
+  consistency, review, QA, and UI/design work prefers current-tool subagent
+  participation while still allowing explicit inline skip reasons.
+- Clarify provider stance as `forced`, `preferred`, or `inline`, and require
+  `Subagent skipped: <reason>` only when a preference trigger is skipped.
+- Clarify CatPaw's architecture as 4 conceptual layers plus 2 cross-cutting
+  control planes: Artifact Graph and Gates / Verification.
+- Extend `scripts/verify-runtime.mjs` to guard Computer Use priority guidance in
+  source, dist, and installed runtime.
+- Extend `scripts/verify-runtime.mjs` to guard Subagent Preference Gate guidance
+  in source, dist, and installed runtime.
+
+Migration note (2.0.8 -> 2.0.9):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use the stronger Computer Use surface selection and Subagent Preference Gate guidance.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs.
+Optional actions: refresh provider global/project adapters if they should include the Computer Use priority selection rule.
+Verification: source/dist/installed VERSION = 2.0.9 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.0.9.md is required; this release changes UI verification guidance and templates, not project artifact schema or write-through commands.
+```
+
 ## 2.0.8 - 2026-06-02
 
 - Add `scripts/catpaw-project.mjs`, a read-only source checkout helper for

@@ -17,7 +17,15 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - For behavior-sensitive L2/L3 work, require `Contracts / Invariants`, boundary verification, and a risk ledger before implementation.
 - For forced provider triggers, name the required non-primary provider path,
   fallback, and any provider gap before implementation.
-- For frontend or UI-facing work, name the intended self-verification surface in the plan: existing tests, Browser / browser-use / in-app browser, Playwright, Chrome DevTools, Computer Use, or a blocked/unavailable reason.
+- For Subagent Preference Gate triggers, record provider stance as
+  `preferred` or `skipped`; if skipped, include `Subagent skipped: <reason>`.
+- For frontend or UI-facing work, name the intended self-verification surface in
+  the plan: existing tests, Browser / browser-use / in-app browser, Playwright,
+  Chrome DevTools, Computer Use, or a blocked/unavailable reason. Record why
+  that surface is sufficient, and promote Computer Use when the flow depends on
+  a real window, OS dialog, native app, cross-app interaction, accessibility
+  tree, browser extension, profile/session state, or a surface browser
+  automation cannot reach.
 - Do not implement before the plan is approved when the user is in plan-only / research-first mode.
 - Keep plan steps small and verifiable.
 - Do not create duplicate active plans for the same req.
@@ -38,13 +46,22 @@ Quality gate:
 
 - Contracts must describe what must not change.
 - Boundary verification must cover at least one new branch, threshold, fallback, cache state, pagination boundary, or migration path.
-- UI verification must exercise the changed flow through the strongest available interactive tool before user handoff, unless the plan records why that is blocked.
+- UI verification must exercise the changed flow through the strongest available
+  interactive tool before user handoff, unless the plan records why that is
+  blocked. The plan should state selected surface, selection reason, expected
+  evidence, and remaining gap.
 - Risk ledger statuses are limited to `fixed`, `mitigated`, `deferred`, and `not addressed`.
 - If no contract can be stated, stop and research before writing implementation code.
 
 Role gate:
 
 - L2 usually names one stage-primary role plus at most one risk role in `Notes.Review`.
+- L2 should prefer current-tool subagent unless the work is narrow, local, and
+  already well understood.
+- L1/L2 work touching 3+ files, shared helpers, public docs/protocols, runtime
+  policy/spec/commands/templates, unfamiliar modules, weak tests,
+  consistency-sensitive multi-file changes, non-trivial UI/design/QA review, or
+  broad completion review should use provider stance `preferred`.
 - Behavior-sensitive L2 must include at least one non-primary contract /
   semantic review provider; current-tool subagent is sufficient unless risk
   calls for Laoer / heterogeneous second opinion.
@@ -64,6 +81,7 @@ Role gate:
 - If a forced provider cannot be reached, record the unavailable reason and
   provider gap in the plan. Do not treat the gate as complete unless the user
   explicitly accepts the gap.
+- If a preferred subagent is skipped, record why inline handling is sufficient.
 
 ## Artifact Paths
 

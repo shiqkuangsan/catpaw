@@ -26,10 +26,20 @@ light | formal
 ## Provider gaps
 - None
 
+## Provider stance
+- forced | preferred | inline
+- Subagent skipped:
+
 ## Contract / Semantic Checks
 - Contracts reviewed:
 - Semantic equivalence risks:
 - Boundary-test coverage:
+
+## Interactive UI Evidence
+- Selected surface:
+- Selection reason:
+- Observed result:
+- Remaining gap:
 
 ## Findings
 - [accepted] ...

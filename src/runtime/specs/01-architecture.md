@@ -22,6 +22,32 @@ Expert Council provides judgment.
 Providers perform the work.
 ```
 
+Current layer count:
+
+```text
+4 conceptual layers + 2 cross-cutting control planes
+```
+
+Conceptual layers:
+
+| Layer | Responsibility |
+|---|---|
+| CatPaw Orchestrator | Chooses workflow level, lifecycle routing, artifact policy, and gates |
+| Execution Methodology | Provides engineering discipline such as planning, TDD, debugging, review, and verification |
+| Expert Council / Roles | Provides advisory perspectives such as Product, Architecture, QA, Security, Design, Release, and Retrospective |
+| Providers | Execute work or role perspectives through the current agent, current-tool subagent, Laoer, Laosan, or future agents |
+
+Cross-cutting control planes:
+
+| Plane | Responsibility |
+|---|---|
+| Artifact Graph | Stores project-local reqs, plans, reviews, tests, lessons, and active index state |
+| Gates / Verification | Applies safety gates, provider gates, subagent preference, UI verification surface selection, handoff checks, doctor, and runtime verification |
+
+Do not count lifecycle stages or workflow levels as extra layers. `Think ->
+Plan -> Build -> Review -> Test -> Ship -> Reflect` is lifecycle vocabulary,
+and `L0` / `L1` / `L2` / `L3` is workflow weight classification.
+
 ## 2. Lifecycle Vocabulary
 
 CatPaw uses the following lifecycle vocabulary as a shared language, not as a

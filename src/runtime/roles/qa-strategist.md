@@ -49,9 +49,21 @@ surface:
 4. Computer Use for real app/browser windows, native dialogs, accessibility tree checks, or flows outside browser automation;
 5. manual reasoning only when the interactive surface is unavailable or blocked.
 
+Selection rules:
+
+- Keep Browser / browser-use / in-app browser as the default for ordinary local
+  web UI inspection and simple click/type checks.
+- Prefer Playwright or Chrome DevTools when evidence must be reproducible,
+  inspect console/network state, cover responsive viewports, or become
+  regression evidence.
+- Promote Computer Use when verification depends on real app/browser windows,
+  OS dialogs, file pickers, permission prompts, native flows, cross-app
+  workflows, accessibility tree checks, browser extensions, profile/session
+  state, or behavior outside browser automation.
+
 Evidence should record the URL/app/window, flow, viewport/device if relevant,
-observed behavior, and remaining gaps. Do not require browser QA for non-UI
-work.
+selected surface, selection reason, observed behavior, and remaining gaps. Do
+not require browser QA for non-UI work.
 
 ## Output Format
 
