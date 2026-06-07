@@ -34,6 +34,18 @@ async function writeActiveBoard(root) {
 
   await write(
     root,
+    "AGENTS.md",
+    `# AGENTS.md
+
+# CatPaw Protocol
+
+- This project follows the global CatPaw runtime at \`~/.catpaw/\`.
+- When working with project workflow artifacts, read \`~/.catpaw/runtime-policy.md\` first.
+- Project CatPaw artifacts live in this repository's \`.catpaw/\` directory.
+`,
+  );
+  await write(
+    root,
     ".catpaw/index.md",
     `---
 runtime: 2.0.6
@@ -427,5 +439,45 @@ closed: null
     assert.equal(result.ok, false);
     assert.equal(activeDone?.severity, "error");
     assert.equal(archiveActive?.severity, "error");
+  });
+});
+
+test("doctor reports missing project adapter for CatPaw board", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await rm(path.join(root, "AGENTS.md"));
+
+    const result = await analyzeProject({ projectRoot: root });
+    const adapter = result.findings.find(
+      (finding) => finding.code === "project-adapter-missing",
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(adapter?.severity, "warning");
+    assert.match(adapter?.message ?? "", /adapter/i);
+    assert.equal(result.status.needsUserDecision, true);
+  });
+});
+
+test("doctor reports stale project adapter without CatPaw activation", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await write(
+      root,
+      "AGENTS.md",
+      `# AGENTS.md
+
+General project instructions only.
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+    const adapter = result.findings.find(
+      (finding) => finding.code === "project-adapter-stale",
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(adapter?.severity, "warning");
+    assert.match(adapter?.message ?? "", /CatPaw/);
   });
 });

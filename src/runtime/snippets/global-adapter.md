@@ -1,3 +1,4 @@
+<!-- CATPAW:BEGIN -->
 # CatPaw Protocol
 
 - CatPaw runtime path: `~/.catpaw/`; source repo: `<catpaw-source-repo>`.
@@ -11,3 +12,4 @@
 - Project-local `.catpaw/` directories are artifact boards; do not copy the full runtime package into them.
 - Project-local rules or current task constraints override this global protocol when they are more specific.
 - Full specs, templates, roles, source evidence, and command drafts live in `~/.catpaw/`.
+<!-- CATPAW:END -->

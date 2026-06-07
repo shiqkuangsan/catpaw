@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
 const ACTIVE_STATUSES = new Set(["active", "draft"]);
 const PROVIDER_STANCES = new Set(["inline", "preferred", "forced"]);
+const PROJECT_ADAPTER_FILES = ["AGENTS.md", "agents.md", "CLAUDE.md", "claude.md"];
 const NON_PRIMARY_PROVIDER_PATTERN =
   /\b(current-tool subagent|subagent|Laoer|laoer|老二|second opinion|second reviewer|Laosan|laosan|老三|third opinion|third reviewer|Claude Code|Codex|Gemini|cc|cx|gemini)\b/i;
 
@@ -163,6 +164,20 @@ function providerStanceValues(text) {
     values.push(match[1].toLowerCase());
   }
   return values;
+}
+
+function hasCatPawAdapter(text) {
+  return text.includes("CatPaw Protocol") &&
+    text.includes("~/.catpaw/runtime-policy.md");
+}
+
+async function existingProjectAdapters(projectRoot) {
+  const adapters = [];
+  for (const fileName of PROJECT_ADAPTER_FILES) {
+    const filePath = path.join(projectRoot, fileName);
+    if (await pathExists(filePath)) adapters.push(filePath);
+  }
+  return adapters;
 }
 
 async function readArtifacts(projectRoot, boardPath) {
@@ -476,6 +491,41 @@ function checkPlanDirectoryStatus(projectRoot, artifacts) {
   return findings;
 }
 
+async function checkProjectAdapters(projectRoot) {
+  const adapters = await existingProjectAdapters(projectRoot);
+
+  if (adapters.length === 0) {
+    return [
+      finding(
+        "warning",
+        "project-adapter-missing",
+        "global",
+        "adapter",
+        relative(projectRoot, projectRoot),
+        "Project has a CatPaw board but no AGENTS.md or CLAUDE.md project adapter.",
+        "Add the CatPaw project adapter snippet so agents load ~/.catpaw/runtime-policy.md.",
+      ),
+    ];
+  }
+
+  for (const adapterPath of adapters) {
+    const text = await readText(adapterPath);
+    if (hasCatPawAdapter(text)) return [];
+  }
+
+  return [
+    finding(
+      "warning",
+      "project-adapter-stale",
+      "global",
+      "adapter",
+      adapters.map((adapterPath) => relative(projectRoot, adapterPath)).join(", "),
+      "Project adapter files exist but do not activate CatPaw runtime guidance.",
+      "Update one project adapter with the CatPaw project adapter snippet.",
+    ),
+  ];
+}
+
 async function checkRegistry(projectRoot, boardPath, boardRuntime, registryPath) {
   if (!registryPath || !(await pathExists(registryPath))) return { registry: null, findings: [] };
 
@@ -570,6 +620,7 @@ export async function analyzeProject(options = {}) {
     ...checkProviderStanceValues(projectRoot, artifacts),
     ...checkL3TestMatrices(projectRoot, artifacts),
     ...checkPlanDirectoryStatus(projectRoot, artifacts),
+    ...(await checkProjectAdapters(projectRoot)),
     ...registryResult.findings,
   ];
   const status = buildStatus(projectRoot, artifacts);

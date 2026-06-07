@@ -2,6 +2,15 @@
 
 This repository is the versioned source for the CatPaw runtime package.
 
+## CatPaw Protocol
+
+- CatPaw runtime path: `~/.catpaw/`; source repo: this repository.
+- When this repository's `.catpaw/` board is involved, or the user mentions
+  CatPaw/init/migration/reqs/plans/research/reviews, read
+  `~/.catpaw/runtime-policy.md` before acting.
+- Project-local `.catpaw/` directories are artifact boards; do not copy the
+  full runtime package into them.
+
 ## Repository role
 
 - This repo defines and evolves the CatPaw runtime.

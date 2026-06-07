@@ -45,6 +45,12 @@ req -> plan -> research -> tests -> reviews -> lessons/docs
   - Provider outcomes such as `skipped`, `unavailable`, and `gap` should not be
     recorded as provider stance.
   - Forced provider gaps must be explicitly accepted when they remain unresolved.
+- Adapter activation:
+  - Projects with `.catpaw/` should have at least one project adapter such as
+    `AGENTS.md` or `CLAUDE.md` that references `~/.catpaw/runtime-policy.md`.
+  - Missing or stale project adapters are warnings, not artifact schema errors.
+  - Use `catpaw:install-adapter --project --dry-run` before applying adapter
+    changes.
 - Stale wording:
   - Flag suspicious closeout leftovers such as `pending`, `future`, `in progress`, `plans/active`, `status: active`, and stale TODO language.
 - Lessons:
@@ -67,8 +73,8 @@ Suggested:
 When running from a CatPaw source checkout,
 `node scripts/catpaw-project.mjs doctor --project <project-root> --json` may be
 used as read-only evidence for status, closeout drift, provider stance drift,
-L3 test matrix requirements, plan directory/status drift, and registry stamp
-findings. The helper does not write project `.catpaw/` files.
+L3 test matrix requirements, plan directory/status drift, adapter activation,
+and registry stamp findings. The helper does not write project `.catpaw/` files.
 
 ## Severity
 

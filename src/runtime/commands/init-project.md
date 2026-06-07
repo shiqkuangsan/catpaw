@@ -35,6 +35,10 @@ Default tree:
 - Create directories with `mkdir -p`.
 - Create new files directly with `Write`; do not `touch` then `Write`.
 - If `.catpaw/index.md` or `.catpaw/lessons.md` already exists, read it first and ask before overwriting non-empty content.
+- After scaffold creation, ask whether the project should activate CatPaw via
+  `AGENTS.md` or `CLAUDE.md`. If yes, follow `commands/install-adapter.md
+  --project`; do not silently modify provider instruction files.
+
 ## Runtime Stamp
 
 Every freshly created `.catpaw/index.md` must carry a frontmatter stamp recording the installed runtime version. Read `~/.catpaw/VERSION` at init time and write it as `runtime: x.y.z`.

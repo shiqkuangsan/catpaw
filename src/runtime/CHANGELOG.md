@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.1.1 - 2026-06-07
+
+- Add `catpaw:install-adapter` for explicit global/project provider adapter
+  activation with dry-run, backup, and marker-block replacement rules.
+- Add managed `<!-- CATPAW:BEGIN -->` / `<!-- CATPAW:END -->` blocks to global
+  and project adapter snippets.
+- Update install, init, and doctor guidance so adapter activation is explicit:
+  runtime install and project init do not silently modify provider instruction
+  files.
+- Extend the source checkout project doctor to warn when a project `.catpaw/`
+  board has no `AGENTS.md` / `CLAUDE.md` adapter, or when existing adapter files
+  do not reference `~/.catpaw/runtime-policy.md`.
+- Extend tests and `scripts/verify-runtime.mjs` to guard adapter activation
+  guidance and doctor coverage.
+
+Migration note (2.1.0 -> 2.1.1):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use explicit adapter activation and doctor warnings.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: run catpaw:install-adapter --global or --project --dry-run before applying adapter changes; run project doctor to detect adapter activation gaps.
+Verification: source/dist/installed VERSION = 2.1.1 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.1.md is required; this release adds adapter activation guidance and warnings, not project artifact schema.
+```
+
 ## 2.1.0 - 2026-06-07
 
 - Add `specs/13-workflow-control-model.md` as the canonical decision table for

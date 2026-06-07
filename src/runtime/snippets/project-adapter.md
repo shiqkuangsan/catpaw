@@ -1,3 +1,4 @@
+<!-- CATPAW:BEGIN -->
 # CatPaw Protocol
 
 - This project follows the global CatPaw runtime at `~/.catpaw/`.
@@ -12,3 +13,4 @@
 - For legacy CatPaw artifact migration, follow `~/.catpaw/commands/migrate-project.md`.
 - Do not copy global runtime files such as specs, roles, templates, source evidence, or commands into this project.
 - Do not delete, move, untrack, or bulk-clean legacy workflow artifacts such as `todos/` without explicit confirmation.
+<!-- CATPAW:END -->

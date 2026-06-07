@@ -91,7 +91,9 @@ async function verifySourceTooling() {
       text.includes("invalid-provider-stance") &&
         text.includes("l3-req-missing-test-matrix") &&
         text.includes("active-plan-terminal-status") &&
-        text.includes("archived-plan-active-status"),
+        text.includes("archived-plan-active-status") &&
+        text.includes("project-adapter-missing") &&
+        text.includes("project-adapter-stale"),
       "scripts/catpaw-project.mjs",
     );
   }
@@ -106,7 +108,9 @@ async function verifySourceTooling() {
       "source project graph inspector governance tests",
       testText.includes("doctor reports invalid provider stance values") &&
         testText.includes("doctor reports L3 req without test matrix") &&
-        testText.includes("doctor reports plan directory and status drift"),
+        testText.includes("doctor reports plan directory and status drift") &&
+        testText.includes("doctor reports missing project adapter") &&
+        testText.includes("doctor reports stale project adapter"),
       "tests/catpaw-project.test.mjs",
     );
   }
@@ -165,8 +169,10 @@ async function verifyVersions(sourceManifest) {
 async function verifyProtocolInvariants(rootLabel, root) {
   const files = {
     policy: path.join(root, "runtime-policy.md"),
+    aiInstall: path.join(root, "AI-INSTALL.md"),
     classify: path.join(root, "commands", "classify.md"),
     initProject: path.join(root, "commands", "init-project.md"),
+    installAdapter: path.join(root, "commands", "install-adapter.md"),
     plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
     review: path.join(root, "commands", "review.md"),
@@ -192,8 +198,10 @@ async function verifyProtocolInvariants(rootLabel, root) {
   if (!(await pathExists(files.policy))) return;
 
   const policy = await readText(files.policy);
+  const aiInstall = await readText(files.aiInstall);
   const classify = await readText(files.classify);
   const initProject = await readText(files.initProject);
+  const installAdapter = await readText(files.installAdapter);
   const plan = await readText(files.plan);
   const provider = await readText(files.provider);
   const review = await readText(files.review);
@@ -237,6 +245,22 @@ async function verifyProtocolInvariants(rootLabel, root) {
     `${rootLabel} progress handoff`,
     policy.includes("Progress Handoff Contract"),
     "runtime-policy.md",
+  );
+  record(
+    `${rootLabel} adapter activation guidance`,
+    aiInstall.includes("commands/install-adapter.md") &&
+      initProject.includes("commands/install-adapter.md") &&
+      installAdapter.includes("catpaw:install-adapter") &&
+      installAdapter.includes("<!-- CATPAW:BEGIN -->") &&
+      installAdapter.includes("marker block") &&
+      installAdapter.includes("Project adapter activation should be considered current") &&
+      doctor.includes("Adapter activation") &&
+      doctor.includes("catpaw:install-adapter --project --dry-run") &&
+      globalAdapter.includes("<!-- CATPAW:BEGIN -->") &&
+      globalAdapter.includes("<!-- CATPAW:END -->") &&
+      projectAdapter.includes("<!-- CATPAW:BEGIN -->") &&
+      projectAdapter.includes("<!-- CATPAW:END -->"),
+    "AI-INSTALL.md + commands/init-project.md + commands/install-adapter.md + commands/doctor.md + snippets",
   );
   record(
     `${rootLabel} workflow control model`,

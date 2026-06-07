@@ -4,13 +4,13 @@
 
 ## Quick Path
 
-- User wants to install CatPaw from a source checkout or package root: follow section 2, then section 3 only if the user wants provider adapter integration.
+- User wants to install CatPaw from a source checkout or package root: follow section 2, then use `commands/install-adapter.md` only if the user wants provider adapter integration.
 - User wants to release or prepare a CatPaw runtime source change: follow `commands/release-runtime.md`.
 - User wants to upgrade an existing CatPaw runtime: follow section 2 and `commands/upgrade-runtime.md`; by default it also surveys registered project boards from `~/.catpaw/state/projects.json`.
 - User wants to upgrade an existing project `.catpaw/` artifact board to the installed runtime stamp: follow `commands/upgrade-project.md`.
 - User wants to initialize CatPaw inside a project: follow section 4 here and `commands/init-project.md`.
 - User wants to migrate an older CatPaw project layout, such as `todos/`, to `.catpaw/`: follow section 5 here and `commands/migrate-project.md`.
-- User wants CatPaw project status, artifact health, reconciliation, or closeout: follow `commands/status.md`, `commands/doctor.md`, `commands/reconcile.md`, or `commands/close.md`.
+- User wants CatPaw project status, artifact health, adapter activation, reconciliation, or closeout: follow `commands/status.md`, `commands/doctor.md`, `commands/install-adapter.md`, `commands/reconcile.md`, or `commands/close.md`.
 - User wants to inspect, prune, or remove entries from the global project registry: follow `commands/registry-doctor.md` or `commands/unregister-project.md`.
 - User wants the primary agent to call Laoer / `老二` / second opinion, Laosan / `老三` / third opinion, Claude Code, Codex, Gemini, or a subagent: follow `commands/provider.md`.
 - Keep global runtime files, per-machine state (`~/.catpaw/state/`), and project-local `.catpaw/` artifacts separate.
@@ -108,7 +108,8 @@ Recommended install behavior:
 ## 3. Provider Adapter Integration
 
 Only after global runtime install, ask whether to update provider global
-instruction files.
+instruction files. If the user wants adapter activation, follow
+`commands/install-adapter.md`.
 
 Common provider files include:
 
@@ -122,7 +123,7 @@ Before editing any provider global file:
 - Preserve existing user instructions and red lines.
 - Add a thin CatPaw reference instead of embedding the full specs.
 
-Suggested snippet:
+Suggested snippet shape:
 
 ```markdown
 # CatPaw Protocol
@@ -173,7 +174,10 @@ Rules:
 - Show the project-local tree first and wait for confirmation.
 - Instantiate only the artifact scaffold.
 - Do not copy `specs/`, `roles/`, `source-evidence/`, `commands/`, or uninstantiated templates into the project.
-- If the project should opt in through `AGENTS.md` or `CLAUDE.md`, use `snippets/project-adapter.md` as the declaration template.
+- If the project should opt in through `AGENTS.md` or `CLAUDE.md`, use
+  `commands/install-adapter.md --project` with `snippets/project-adapter.md` as
+  the declaration template. Project init should ask about this; it should not
+  silently modify provider instruction files.
 - If `.catpaw/index.md` or `.catpaw/lessons.md` already exists, read it first and ask before overwriting non-empty content.
 - Normal application repositories usually ignore `.catpaw/`; workspace or meta repositories may track it.
 - Do not modify `.gitignore` without telling the user exactly what will change.
