@@ -15,6 +15,11 @@ What decision, diagnosis, or understanding this dialogue should produce.
 
 - Primary agent:
 - Provider(s):
+- Invocation:
+- Observable surface:
+- Observed status:
+- Last progress check:
+- Wait policy:
 - Scope:
 - Safety limits:
 
@@ -27,6 +32,10 @@ When to stop the dialogue and report a decision.
 ### Round 1
 
 Provider:
+
+Invocation:
+
+Observed status:
 
 Prompt:
 

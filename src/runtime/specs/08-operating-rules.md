@@ -216,7 +216,24 @@ Subagent Preference Gate:
 - If a preference trigger applies and no subagent is used, keep provider stance as `preferred` and record `Subagent skipped: <why inline handling is sufficient>`.
 - Forced Provider Gate has higher priority. If a forced provider is unavailable, record the provider outcome as `unavailable` and any remaining provider `gap`.
 
-## 10. Escalation / De-escalation
+## 10. Provider Availability
+
+Provider availability is based on observable state, not stdout alone.
+
+Rules:
+
+- No stdout while a provider process or session is still alive is not enough to
+  mark the provider `unavailable`.
+- Before recording `unavailable`, `timeout`, or provider `gap`, inspect an
+  available progress signal: process state, session status, recent pane output,
+  provider-native state, or explicit waiting-for-input text.
+- For L3 review, release/security/incident gates, multi-round discuss/debug, or
+  provider work expected to read many files, prefer observable long-running
+  provider mode when available.
+- Observable mode does not authorize writes, commits, pushes, PRs, deploys,
+  destructive actions, scope expansion, or secret access.
+
+## 11. Escalation / De-escalation
 
 Escalate when:
 
@@ -232,7 +249,7 @@ De-escalate when:
 - Existing CatPaw artifacts are not deleted just because the level de-escalated; archive or clean them based on value.
 - De-escalation must also be user-visible.
 
-## 11. Completion
+## 12. Completion
 
 When a task completes:
 
@@ -253,7 +270,7 @@ When a task completes:
   - after close, scan stale language such as `pending`, `future`, `in progress`, `plans/active`, `status: active`;
   - report uncertainty instead of silently rewriting substantive content.
 
-## 12. Reporting
+## 13. Reporting
 
 Final reports should include:
 

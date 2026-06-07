@@ -65,12 +65,17 @@ Risk triggers:
   coding agent` alone is not a valid provider list for formal review.
 - Release, security, external action, CI/CD, migration, incident, or destructive
   operation review must attempt Laoer / heterogeneous second opinion first.
+- L3 formal review and release/security/incident review should prefer
+  observable long-running provider mode when the provider task may run silently
+  for a long time.
 - Behavior-sensitive L2 review must include at least one non-primary contract /
   semantic review provider.
 - Repeated-failure review must use provider `debug` before another repair loop.
 - If a required provider is unavailable, times out, or returns no usable
   evidence, record the reason, fall back to current-tool subagent, and mark any
-  remaining provider gap.
+  remaining provider gap. No stdout from a live provider process/session is not
+  sufficient evidence of unavailability; inspect status, recent output, or
+  provider-native state first.
 - For preferred subagent triggers, skip only when inline review is sufficient
   and record `Subagent skipped: <reason>`.
 - Generic provider orchestration for CLI calls, multi-round dialogue, debug, ask, implement, or summarize uses `catpaw:provider`.

@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.1.2 - 2026-06-07
+
+- Add observable long-running provider mode guidance for L3 review,
+  release/security/incident gates, multi-round discuss/debug, and provider work
+  expected to read many files.
+- Clarify that no stdout while a provider process/session is still alive is not
+  sufficient evidence of provider unavailability.
+- Add optional tmux-backed `tools/provider-session.sh` for mainstream provider
+  aliases: Claude Code (`cc` / `claude`), Codex (`cx` / `codex`), Gemini, and
+  OpenCode (`oc` / `opencode`).
+- Update provider dialogue template, review guidance, and operating rules to
+  record invocation, observable surface, observed status, progress checks, and
+  wait policy.
+- Add ADR-0015 and runtime verification coverage for observable provider
+  sessions.
+
+Migration note (2.1.1 -> 2.1.2):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use observable provider session guidance and the optional provider-session tool.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: use ~/.catpaw/tools/provider-session.sh for long-running provider reviews when tmux and the provider CLI are available.
+Verification: source/dist/installed VERSION = 2.1.2 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.2.md is required; this release changes provider orchestration guidance and adds an optional tool, not project artifact schema.
+```
+
 ## 2.1.1 - 2026-06-07
 
 - Add `catpaw:install-adapter` for explicit global/project provider adapter

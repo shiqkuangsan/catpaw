@@ -109,10 +109,26 @@ Do not treat preferred subagent use as authorization. Provider findings remain
 advisory and must be summarized by the primary agent as accepted / rejected /
 conflict.
 
+## Invocation Strategy
+
+Use the lightest provider invocation that still gives enough observability.
+
+| Situation | Preferred invocation |
+|---|---|
+| Quick `ask`, small review, task lookup | Non-interactive CLI |
+| L3 review, release/security/incident gate | Observable long-running provider mode when available |
+| Multi-round `discuss` / `debug` | Observable session or provider-native resume |
+| Provider expected to read many files or think for a long time | Observable session when available |
+| Observable wrapper unavailable | Non-interactive CLI, plus process/session checks before declaring unavailable |
+
+Provider output remains evidence and perspective, not authority. Observable
+mode improves status inspection; it does not expand provider permissions.
+
 ## CLI Playbook
 
-These are default non-interactive shapes. Prefer passing compact context through
-the prompt instead of giving the provider broad filesystem permissions.
+These are default non-interactive shapes for short tasks and fallback paths.
+Prefer passing compact context through the prompt instead of giving the provider
+broad filesystem permissions.
 
 ### Claude Code (`cc`)
 
@@ -165,6 +181,65 @@ gemini --resume latest -p "<prompt>" --approval-mode plan --output-format text
 Use write-capable approval modes only after explicit user approval and a bounded
 write scope.
 
+### OpenCode
+
+Single-turn, read-only behavior depends on the installed OpenCode CLI. When an
+OpenCode command is available, use the safest non-write mode it supports and
+record the exact invocation.
+
+## Observable Long-Running Provider Mode
+
+Use observable long-running provider mode for provider work where a silent
+stdout stream is ambiguous: L3 review, release/security/incident gates,
+multi-round discuss/debug, or tasks expected to read many local files.
+
+No stdout while the provider process/session is still alive is not sufficient
+evidence that the provider is unavailable.
+
+Before recording `unavailable`, `timeout`, or a provider gap, inspect at least
+one available progress signal:
+
+- process state;
+- tmux/session status;
+- recent pane or transcript output;
+- provider-native session state;
+- explicit provider prompt waiting for input;
+- user instruction to stop waiting.
+
+CatPaw-owned optional wrapper:
+
+```bash
+~/.catpaw/tools/provider-session.sh open cc "$PWD"
+~/.catpaw/tools/provider-session.sh send cc "<prompt>"
+~/.catpaw/tools/provider-session.sh status cc
+~/.catpaw/tools/provider-session.sh read cc 200
+~/.catpaw/tools/provider-session.sh wait cc 1200
+~/.catpaw/tools/provider-session.sh close cc
+```
+
+Supported aliases:
+
+| Alias | Provider |
+|---|---|
+| `cc`, `claude` | Claude Code |
+| `cx`, `codex` | Codex |
+| `gemini` | Gemini |
+| `oc`, `opencode` | OpenCode |
+
+The wrapper is optional and tmux-backed. If tmux or the target provider CLI is
+unavailable, fall back to the non-interactive CLI playbook. Do not copy or
+depend on user-local scripts such as `~/.claude/scripts/cabinet.sh`; CatPaw may
+use cabinet-style behavior only as an implementation pattern.
+
+Wait policy:
+
+- Quick tasks may use short waits.
+- L3, release, security, incident, or complex review may wait longer when the
+  session is alive and progress checks show activity.
+- A fixed wait timeout is an observation point, not proof of provider failure.
+- If the provider is waiting for input, send a bounded follow-up or ask the user
+  when the next step needs product judgment, credentials, or external action.
+
 ## Multi-Round Dialogue
 
 Default to CatPaw-mediated transcript. Provider-native resume/session is an
@@ -178,6 +253,11 @@ Goal:
 Mode:
 Provider:
 Round:
+Invocation:
+Observable surface:
+Observed status:
+Last progress check:
+Wait policy:
 Primary position:
 Provider claim:
 Accepted:
@@ -205,8 +285,10 @@ Stop when:
 - the user asks to stop.
 
 Unavailable providers are not successful stop conditions for forced gates.
-Record the timeout/error/no-output reason, try the required fallback, and surface
-any remaining provider gap in the plan or review summary.
+Record the timeout/error/no-output reason, observed process/session state, try
+the required fallback, and surface any remaining provider gap in the plan or
+review summary. Do not treat no stdout as unavailable while the process/session
+is still alive.
 
 ## Implement Mode
 

@@ -52,6 +52,8 @@ Core capabilities:
   security, performance, release, debugging, and retrospectives.
 - Forced Provider Gate and Subagent Preference Gate for non-primary judgment
   when risk or uncertainty makes self-review weak.
+- Observable provider session guidance for long-running Claude Code, Codex,
+  Gemini, or OpenCode reviews when stdout is silent but the session is alive.
 - Adapter activation guidance and doctor checks so projects can detect when
   `AGENTS.md` / `CLAUDE.md` does not load CatPaw.
 - Manifest-first build and verification scripts for runtime releases.

@@ -175,6 +175,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     installAdapter: path.join(root, "commands", "install-adapter.md"),
     plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
+    providerSession: path.join(root, "tools", "provider-session.sh"),
     review: path.join(root, "commands", "review.md"),
     close: path.join(root, "commands", "close.md"),
     status: path.join(root, "commands", "status.md"),
@@ -192,6 +193,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     workflowControl: path.join(root, "specs", "13-workflow-control-model.md"),
     planTemplate: path.join(root, "templates", "plan.md"),
     reviewTemplate: path.join(root, "templates", "review-summary.md"),
+    providerDialogueTemplate: path.join(root, "templates", "provider-dialogue.md"),
     testMatrix: path.join(root, "templates", "test-matrix.md"),
   };
 
@@ -204,6 +206,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const installAdapter = await readText(files.installAdapter);
   const plan = await readText(files.plan);
   const provider = await readText(files.provider);
+  const providerSession = await readText(files.providerSession);
   const review = await readText(files.review);
   const close = await readText(files.close);
   const status = await readText(files.status);
@@ -221,6 +224,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const workflowControl = await readText(files.workflowControl);
   const planTemplate = await readText(files.planTemplate);
   const reviewTemplate = await readText(files.reviewTemplate);
+  const providerDialogueTemplate = await readText(files.providerDialogueTemplate);
   const testMatrix = await readText(files.testMatrix);
   const staleMaterialJudgment =
     policy.includes("materially improves judgment") ||
@@ -261,6 +265,26 @@ async function verifyProtocolInvariants(rootLabel, root) {
       projectAdapter.includes("<!-- CATPAW:BEGIN -->") &&
       projectAdapter.includes("<!-- CATPAW:END -->"),
     "AI-INSTALL.md + commands/init-project.md + commands/install-adapter.md + commands/doctor.md + snippets",
+  );
+  record(
+    `${rootLabel} observable provider sessions`,
+    provider.includes("Observable Long-Running Provider Mode") &&
+      provider.includes("No stdout while the provider process/session is still alive") &&
+      provider.includes("is not sufficient\nevidence") &&
+      provider.includes("Claude Code") &&
+      provider.includes("Codex") &&
+      provider.includes("OpenCode") &&
+      provider.includes("provider-session.sh open") &&
+      review.includes("observable long-running provider mode") &&
+      operatingRules.includes("Provider Availability") &&
+      operatingRules.includes("No stdout") &&
+      providerSession.includes("provider-session.sh") &&
+      providerSession.includes("claude)") &&
+      providerSession.includes("codex)") &&
+      providerSession.includes("opencode)") &&
+      providerDialogueTemplate.includes("Observed status") &&
+      providerDialogueTemplate.includes("Wait policy"),
+    "commands/provider.md + commands/review.md + specs/08-operating-rules.md + tools/provider-session.sh + templates/provider-dialogue.md",
   );
   record(
     `${rootLabel} workflow control model`,
