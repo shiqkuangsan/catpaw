@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.11 - 2026-06-07
+
+- Strengthen the source checkout project doctor with executable governance
+  checks for invalid provider stance values, L3 reqs missing test matrices, and
+  plan directory/status drift.
+- Add Node test coverage for provider stance validation, L3 test matrix
+  requirements, and active/archive plan status contradictions.
+- Extend `scripts/verify-runtime.mjs` to guard the new project inspector
+  behavior and release metadata coverage.
+- Update `catpaw:doctor` guidance to describe provider stance and plan status
+  consistency checks.
+
+Migration note (2.0.10 -> 2.0.11):
+
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use the stronger source checkout doctor and verifier checks.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. Registered boards can receive a stamp-only upgrade.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: run node scripts/catpaw-project.mjs doctor --project <project-root> --json on registered boards to detect newly-checkable drift.
+Verification: source/dist/installed VERSION = 2.0.11 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.0.11.md is required; this release adds executable inspection checks, not project artifact schema or write-through commands.
+```
+
 ## 2.0.10 - 2026-06-07
 
 - Fix provider stance terminology so `inline`, `preferred`, and `forced` remain

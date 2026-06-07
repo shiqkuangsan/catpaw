@@ -29,6 +29,8 @@ req -> plan -> research -> tests -> reviews -> lessons/docs
   - Active reqs may point to `plans/active/`.
   - Done/cancelled reqs should not require an active plan unless intentionally left open.
   - Archived plan links should not still point to `plans/active/`.
+  - Plans under `plans/active/` should not have terminal status.
+  - Plans under `plans/archive/` should not remain `active` or `draft`.
 - Research consistency:
   - Research linked from a closed req should not remain `active` unless it is intentionally continuing.
   - Validated research should not contain unresolved decision wording without a reported risk.
@@ -38,6 +40,11 @@ req -> plan -> research -> tests -> reviews -> lessons/docs
 - Review consistency:
   - Formal review summaries should point to the current plan path.
   - Review decisions should not conflict with req terminal status.
+- Provider consistency:
+  - Provider stance values must be `inline`, `preferred`, or `forced`.
+  - Provider outcomes such as `skipped`, `unavailable`, and `gap` should not be
+    recorded as provider stance.
+  - Forced provider gaps must be explicitly accepted when they remain unresolved.
 - Stale wording:
   - Flag suspicious closeout leftovers such as `pending`, `future`, `in progress`, `plans/active`, `status: active`, and stale TODO language.
 - Lessons:
@@ -59,7 +66,8 @@ Suggested:
 
 When running from a CatPaw source checkout,
 `node scripts/catpaw-project.mjs doctor --project <project-root> --json` may be
-used as read-only evidence for status, closeout drift, and registry stamp
+used as read-only evidence for status, closeout drift, provider stance drift,
+L3 test matrix requirements, plan directory/status drift, and registry stamp
 findings. The helper does not write project `.catpaw/` files.
 
 ## Severity

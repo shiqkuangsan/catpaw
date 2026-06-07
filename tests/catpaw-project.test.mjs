@@ -339,3 +339,93 @@ closed: null
     assert.match(gate?.message ?? "", /L3 plan/i);
   });
 });
+
+test("doctor reports invalid provider stance values", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await write(
+      root,
+      ".catpaw/plans/active/FR-001-demo.md",
+      `---
+id: PLAN-001
+req: FR-001
+status: active
+updated: 2026-05-27
+closed: null
+---
+
+# Plan
+
+## Notes
+- Provider stance: skipped
+- Subagent skipped: inline was enough
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+    const stance = result.findings.find(
+      (finding) => finding.code === "invalid-provider-stance",
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(stance?.severity, "error");
+    assert.match(stance?.message ?? "", /skipped/);
+  });
+});
+
+test("doctor reports L3 req without test matrix", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    const reqPath = path.join(root, ".catpaw/reqs/FR-001-demo.md");
+    const matrixPath = path.join(root, ".catpaw/tests/matrices/FR-001-demo.md");
+    const req = await readFile(reqPath, "utf8");
+    await writeFile(reqPath, req.replace("level: L2", "level: L3"));
+    await rm(matrixPath);
+
+    const result = await analyzeProject({ projectRoot: root });
+    const missing = result.findings.find(
+      (finding) => finding.code === "l3-req-missing-test-matrix",
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(missing?.severity, "error");
+    assert.match(missing?.message ?? "", /test matrix/i);
+  });
+});
+
+test("doctor reports plan directory and status drift", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    const activePlanPath = path.join(root, ".catpaw/plans/active/FR-001-demo.md");
+    const activePlan = await readFile(activePlanPath, "utf8");
+    await writeFile(activePlanPath, activePlan.replace("status: active", "status: done"));
+
+    await mkdirp(root, ".catpaw/plans/archive");
+    await write(
+      root,
+      ".catpaw/plans/archive/FR-002-archived-active.md",
+      `---
+id: PLAN-002
+req: FR-002
+status: active
+updated: 2026-05-27
+closed: null
+---
+
+# Archived Active Plan
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+    const activeDone = result.findings.find(
+      (finding) => finding.code === "active-plan-terminal-status",
+    );
+    const archiveActive = result.findings.find(
+      (finding) => finding.code === "archived-plan-active-status",
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(activeDone?.severity, "error");
+    assert.equal(archiveActive?.severity, "error");
+  });
+});

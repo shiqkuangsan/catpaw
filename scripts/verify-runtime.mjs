@@ -86,12 +86,30 @@ async function verifySourceTooling() {
       text.includes("export async function analyzeProject"),
       "scripts/catpaw-project.mjs",
     );
+    record(
+      "source project graph inspector governance checks",
+      text.includes("invalid-provider-stance") &&
+        text.includes("l3-req-missing-test-matrix") &&
+        text.includes("active-plan-terminal-status") &&
+        text.includes("archived-plan-active-status"),
+      "scripts/catpaw-project.mjs",
+    );
   }
   record(
     "source project graph inspector tests exist",
     await pathExists(projectInspectorTest),
     "tests/catpaw-project.test.mjs",
   );
+  if (await pathExists(projectInspectorTest)) {
+    const testText = await readText(projectInspectorTest);
+    record(
+      "source project graph inspector governance tests",
+      testText.includes("doctor reports invalid provider stance values") &&
+        testText.includes("doctor reports L3 req without test matrix") &&
+        testText.includes("doctor reports plan directory and status drift"),
+      "tests/catpaw-project.test.mjs",
+    );
+  }
 }
 
 async function verifyVersions(sourceManifest) {
@@ -105,6 +123,11 @@ async function verifyVersions(sourceManifest) {
   record(
     "source README version is current",
     runtimeReadme.includes(`Current runtime version: \`${sourceVersion}\`.`),
+    sourceVersion,
+  );
+  record(
+    "source changelog has version entry",
+    (await readText(path.join(sourceRoot, "CHANGELOG.md"))).includes(`## ${sourceVersion} -`),
     sourceVersion,
   );
 

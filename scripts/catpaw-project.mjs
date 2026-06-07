@@ -10,6 +10,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
+const ACTIVE_STATUSES = new Set(["active", "draft"]);
+const PROVIDER_STANCES = new Set(["inline", "preferred", "forced"]);
 const NON_PRIMARY_PROVIDER_PATTERN =
   /\b(current-tool subagent|subagent|Laoer|laoer|老二|second opinion|second reviewer|Laosan|laosan|老三|third opinion|third reviewer|Claude Code|Codex|Gemini|cc|cx|gemini)\b/i;
 
@@ -152,6 +154,15 @@ function hasAcceptedProviderGap(text) {
 
 function isFormalReview(review) {
   return review.mode === "formal" || /^## Mode\s*\n\s*formal\s*$/im.test(review.text);
+}
+
+function providerStanceValues(text) {
+  const values = [];
+  const pattern = /^\s*(?:-\s*)?Provider stance:\s*`?([A-Za-z_-]+)`?\s*$/gim;
+  for (const match of text.matchAll(pattern)) {
+    values.push(match[1].toLowerCase());
+  }
+  return values;
 }
 
 async function readArtifacts(projectRoot, boardPath) {
@@ -379,6 +390,92 @@ function checkProviderGates(projectRoot, artifacts) {
   return findings;
 }
 
+function checkProviderStanceValues(projectRoot, artifacts) {
+  const findings = [];
+  const providerArtifacts = [
+    ...artifacts.activePlans,
+    ...artifacts.archivedPlans,
+    ...artifacts.reviews,
+  ];
+
+  for (const artifact of providerArtifacts) {
+    for (const stance of providerStanceValues(artifact.text)) {
+      if (PROVIDER_STANCES.has(stance)) continue;
+      findings.push(
+        finding(
+          "error",
+          "invalid-provider-stance",
+          artifact.req ?? "global",
+          artifact.filePath.includes(`${path.sep}reviews${path.sep}`) ? "review" : "plan",
+          relative(projectRoot, artifact.filePath),
+          `Provider stance '${stance}' is invalid; use inline, preferred, or forced.`,
+          "Move skipped/unavailable/gap into provider outcome or Provider gaps, not Provider stance.",
+        ),
+      );
+    }
+  }
+
+  return findings;
+}
+
+function checkL3TestMatrices(projectRoot, artifacts) {
+  const findings = [];
+
+  for (const req of artifacts.reqs) {
+    if (req.level !== "L3") continue;
+    if (artifacts.tests.some((matrix) => artifactMatchesReq(matrix, req.id))) continue;
+    findings.push(
+      finding(
+        "error",
+        "l3-req-missing-test-matrix",
+        req.id,
+        "tests",
+        relative(projectRoot, req.filePath),
+        `L3 req ${req.id} does not have a test matrix.`,
+        "Create .catpaw/tests/matrices/<req-id>-<slug>.md or de-escalate the req level.",
+      ),
+    );
+  }
+
+  return findings;
+}
+
+function checkPlanDirectoryStatus(projectRoot, artifacts) {
+  const findings = [];
+
+  for (const plan of artifacts.activePlans) {
+    if (!TERMINAL_STATUSES.has(plan.status)) continue;
+    findings.push(
+      finding(
+        "error",
+        "active-plan-terminal-status",
+        plan.req ?? "global",
+        "plan",
+        relative(projectRoot, plan.filePath),
+        `Plan under plans/active has terminal status ${plan.status}.`,
+        "Archive decision-bearing terminal plans or restore status to active before continuing.",
+      ),
+    );
+  }
+
+  for (const plan of artifacts.archivedPlans) {
+    if (!ACTIVE_STATUSES.has(plan.status)) continue;
+    findings.push(
+      finding(
+        "error",
+        "archived-plan-active-status",
+        plan.req ?? "global",
+        "plan",
+        relative(projectRoot, plan.filePath),
+        `Plan under plans/archive has non-terminal status ${plan.status}.`,
+        "Move active plans back to plans/active or mark the archived plan terminal.",
+      ),
+    );
+  }
+
+  return findings;
+}
+
 async function checkRegistry(projectRoot, boardPath, boardRuntime, registryPath) {
   if (!registryPath || !(await pathExists(registryPath))) return { registry: null, findings: [] };
 
@@ -470,6 +567,9 @@ export async function analyzeProject(options = {}) {
     ...checkReqLifecycle(projectRoot, artifacts),
     ...checkTerminalReqArtifacts(projectRoot, artifacts),
     ...checkProviderGates(projectRoot, artifacts),
+    ...checkProviderStanceValues(projectRoot, artifacts),
+    ...checkL3TestMatrices(projectRoot, artifacts),
+    ...checkPlanDirectoryStatus(projectRoot, artifacts),
     ...registryResult.findings,
   ];
   const status = buildStatus(projectRoot, artifacts);
