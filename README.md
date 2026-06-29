@@ -36,7 +36,7 @@ Providers perform the work.
 | Surface | Purpose |
 |---|---|
 | `~/.catpaw/` | The installed runtime: policy, specs, commands, templates, roles, migrations, guides. |
-| `<project>/.catpaw/` | A project board: reqs, plans, research, reviews, tests, lessons, and active status. |
+| `<project>/.catpaw/` | A project board: milestones, reqs, plans, research, reviews, tests, lessons, and active status. |
 | Provider adapter | A thin global or project instruction that tells an agent to load CatPaw when relevant. |
 | Registry | Local machine state at `~/.catpaw/state/projects.json` for batch project upgrades and health checks. |
 
@@ -46,19 +46,25 @@ Core capabilities:
 - Canonical workflow control model for level, lifecycle stage, tracked state,
   artifact policy, role/provider routing, and verification.
 - Artifact board for cross-session project memory.
+- Optional Milestones for L2/L3 multi-FR phase objectives without turning every
+  task into project management ceremony.
 - Runtime commands for init, migration, upgrade, status, doctor, reconcile,
-  closeout, provider routing, adapter activation, planning, and review.
+  closeout, milestone routing, provider routing, adapter activation, planning,
+  and review.
 - Expert Council roles for product, architecture, engineering, design, QA,
   security, performance, release, debugging, and retrospectives.
 - Forced Provider Gate and Subagent Preference Gate for non-primary judgment
   when risk or uncertainty makes self-review weak.
+- Preferred subagent governance: `preferred` stance should record either
+  bounded current-tool subagent evidence or a compact skip reason.
 - Observable provider session guidance for long-running Claude Code, Codex,
   Gemini, or OpenCode reviews when stdout is silent but the session is alive.
 - Adapter activation guidance and doctor checks so projects can detect when
   `AGENTS.md` / `CLAUDE.md` does not load CatPaw.
 - Manifest-first build and verification scripts for runtime releases.
 - Source checkout inspector for project board health, provider stance drift,
-  L3 matrix requirements, closeout drift, registry stamps, and adapter gaps.
+  preferred subagent outcome drift, active milestone drift, L3 matrix
+  requirements, closeout drift, registry stamps, and adapter gaps.
 
 ## Quick Start
 
@@ -100,7 +106,7 @@ When CatPaw applies, the agent should say something like:
 ```text
 CatPaw dispatch: L2 — cross-module behavior change.
 State: planned. Artifacts: req+plan. Roles: Architecture Reviewer.
-Verification: record. Next: inspect current flow.
+Provider: preferred. Verification: record. Next: inspect current flow.
 ```
 
 ## Repository Layout
@@ -165,12 +171,13 @@ node scripts/catpaw-project.mjs doctor --project /path/to/project --json
 `catpaw-project.mjs` is read-only. It builds a lightweight project artifact
 graph from `.catpaw/`, reports active work, and flags closeout or registry stamp
 drift before any future reconcile or close command writes files. It also flags
-provider stance drift, missing L3 test matrices, active/archive plan status
-drift, and adapter activation gaps.
+milestone/FR drift, provider stance drift, preferred subagent outcome drift,
+missing L3 test matrices, active/archive plan status drift, and adapter
+activation gaps.
 
-Active work is presented as an `ID / Title / Status / Links` table so users can
-scan the current item and jump directly to Req, Plan, Tests, Review, or Research
-artifacts.
+Active milestones and active work are presented as compact tables so users can
+scan the current phase or item and jump directly to Milestone, Req, Plan, Tests,
+Review, or Research artifacts.
 
 ## Install / Upgrade
 

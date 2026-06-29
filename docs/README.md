@@ -44,7 +44,10 @@ docs/
     ├── 0010-source-runtime-package-split.md
     ├── 0011-provider-cli-dialogue.md
     ├── 0012-contract-first-quality-gates.md
-    └── 0013-lifecycle-role-orchestration.md
+    ├── 0013-lifecycle-role-orchestration.md
+    ├── 0014-interactive-ui-verification.md
+    ├── 0015-observable-provider-sessions.md
+    └── 0016-milestones-and-subagent-governance.md
 ```
 
 ## Writing Rule

@@ -35,7 +35,7 @@ Providers perform the work.
 | 位置 | 作用 |
 |---|---|
 | `~/.catpaw/` | 全局 runtime：policy、specs、commands、templates、roles、migrations、guides |
-| `<project>/.catpaw/` | 项目工作板：reqs、plans、research、reviews、tests、lessons、active index |
+| `<project>/.catpaw/` | 项目工作板：milestones、reqs、plans、research、reviews、tests、lessons、active index |
 | Provider adapter | 写进 Claude/Codex/Cursor/OpenCode 等工具的薄声明 |
 | `~/.catpaw/state/projects.json` | 本机项目工作板 registry，用于批量升级和健康检查 |
 
@@ -72,8 +72,18 @@ node scripts/build-runtime.mjs
 ```text
 CatPaw dispatch: L2 — cross-module behavior change.
 Artifacts: req+plan. Roles: Architecture Reviewer.
-Verification: record. Next: inspect current flow.
+Provider: preferred. Verification: record. Next: inspect current flow.
 ```
+
+## Milestone 与 Subagent
+
+- Milestone 是可选阶段 artifact，适合 L2/L3 中跨多个 FR 的连续目标；FR
+  仍然是最小可验证单元。
+- Milestone 路径为 `.catpaw/milestones/MS-001-<slug>.md`，用于聚合阶段目标、
+  scope、exit criteria、verification 和下一段建议。
+- Subagent Preference Gate 不只是“可以考虑”：当 stance 是 `preferred` 时，
+  artifact 应记录 `Provider outcome: used` 与 current-tool subagent 证据，或
+  `Provider outcome: skipped` 与 `Subagent skipped: <reason>`。
 
 ## 仓库结构
 
@@ -106,10 +116,12 @@ node scripts/catpaw-project.mjs doctor --project /path/to/project --json
 
 `catpaw-project.mjs` 不写入项目 `.catpaw/`。它会从 project artifact graph
 生成 active work 摘要，并在执行未来的 reconcile / close 写操作前报告 closeout
-或 registry stamp 漂移。
+或 registry stamp 漂移。它也会报告 milestone/FR 状态漂移、preferred
+subagent outcome 缺失、provider stance drift、L3 test matrix 缺失和 adapter
+activation 问题。
 
-Active work 统一展示成 `ID / Title / Status / Links` 表格，方便用户扫描当前
-事项，并直接跳转到 Req、Plan、Tests、Review 或 Research artifact。
+Active milestone 和 active work 会以紧凑表格展示，方便用户扫描当前阶段或事项，
+并直接跳转到 Milestone、Req、Plan、Tests、Review 或 Research artifact。
 
 ## 设计边界
 
