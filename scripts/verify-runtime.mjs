@@ -94,6 +94,9 @@ async function verifySourceTooling() {
     record(
       "source project graph inspector governance checks",
       text.includes("invalid-provider-stance") &&
+        text.includes("preferred-subagent-missing-outcome") &&
+        text.includes("milestone-missing-req") &&
+        text.includes("index-lists-terminal-milestone") &&
         text.includes("l3-req-missing-test-matrix") &&
         text.includes("active-plan-terminal-status") &&
         text.includes("archived-plan-active-status") &&
@@ -112,6 +115,9 @@ async function verifySourceTooling() {
     record(
       "source project graph inspector governance tests",
       testText.includes("doctor reports invalid provider stance values") &&
+        testText.includes("doctor warns when preferred subagent stance lacks outcome evidence") &&
+        testText.includes("status summarizes active milestones") &&
+        testText.includes("doctor reports milestone and req state drift") &&
         testText.includes("doctor reports L3 req without test matrix") &&
         testText.includes("doctor reports plan directory and status drift") &&
         testText.includes("doctor reports missing project adapter") &&
@@ -178,6 +184,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     classify: path.join(root, "commands", "classify.md"),
     initProject: path.join(root, "commands", "init-project.md"),
     installAdapter: path.join(root, "commands", "install-adapter.md"),
+    milestone: path.join(root, "commands", "milestone.md"),
     plan: path.join(root, "commands", "plan.md"),
     provider: path.join(root, "commands", "provider.md"),
     providerSession: path.join(root, "tools", "provider-session.sh"),
@@ -196,6 +203,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
     projectDirectory: path.join(root, "specs", "03-project-directory.md"),
     rolesSpec: path.join(root, "specs", "09-roles.md"),
     workflowControl: path.join(root, "specs", "13-workflow-control-model.md"),
+    milestoneTemplate: path.join(root, "templates", "milestone.md"),
     planTemplate: path.join(root, "templates", "plan.md"),
     reviewTemplate: path.join(root, "templates", "review-summary.md"),
     providerDialogueTemplate: path.join(root, "templates", "provider-dialogue.md"),
@@ -209,6 +217,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const classify = await readText(files.classify);
   const initProject = await readText(files.initProject);
   const installAdapter = await readText(files.installAdapter);
+  const milestone = await readText(files.milestone);
   const plan = await readText(files.plan);
   const provider = await readText(files.provider);
   const providerSession = await readText(files.providerSession);
@@ -227,6 +236,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
   const projectDirectory = await readText(files.projectDirectory);
   const rolesSpec = await readText(files.rolesSpec);
   const workflowControl = await readText(files.workflowControl);
+  const milestoneTemplate = await readText(files.milestoneTemplate);
   const planTemplate = await readText(files.planTemplate);
   const reviewTemplate = await readText(files.reviewTemplate);
   const providerDialogueTemplate = await readText(files.providerDialogueTemplate);
@@ -307,6 +317,7 @@ async function verifyProtocolInvariants(rootLabel, root) {
       workflowControl.includes("not a new required frontmatter schema") &&
       policy.includes("specs/13-workflow-control-model.md") &&
       policy.includes("Workflow state target when tracked") &&
+      policy.includes("Milestone fit") &&
       classify.includes("State target:") &&
       classify.includes("specs/13-workflow-control-model.md") &&
       close.includes("terminal workflow state `done` or") &&
@@ -314,6 +325,22 @@ async function verifyProtocolInvariants(rootLabel, root) {
       operatingRules.includes("not a new required\n  frontmatter schema") &&
       architectureSpec.includes("specs/13-workflow-control-model.md"),
     "specs/13-workflow-control-model.md + runtime-policy.md + classify/close + specs/08-operating-rules.md + specs/01-architecture.md",
+  );
+  record(
+    `${rootLabel} milestone phase orchestration`,
+    policy.includes("Milestone fit") &&
+      policy.includes("FR remains the smallest verifiable unit") &&
+      milestone.includes("catpaw:milestone") &&
+      milestone.includes(".catpaw/milestones/MS-001-<slug>.md") &&
+      milestone.includes("not a fifth workflow level") &&
+      projectDirectory.includes("milestones/") &&
+      projectDirectory.includes("Recommended Active Milestones shape") &&
+      initProject.includes("milestones/") &&
+      status.includes(".catpaw/milestones/*.md") &&
+      doctor.includes("Milestone consistency") &&
+      workflowControl.includes("Milestone artifact policy") &&
+      milestoneTemplate.includes("## Scope"),
+    "runtime-policy.md + commands/milestone.md + specs/templates/project commands",
   );
   record(
     `${rootLabel} frontend UI self-verification`,
@@ -356,19 +383,27 @@ async function verifyProtocolInvariants(rootLabel, root) {
     `${rootLabel} Subagent Preference Gate guidance`,
     policy.includes("Subagent Preference Gate") &&
       policy.includes("Prefer current-tool subagent") &&
+      policy.includes("Autonomous invocation rule") &&
       policy.includes("Subagent skipped: <why inline handling is sufficient>") &&
       provider.includes("Provider stance") &&
       provider.includes("Subagent Preference Gate") &&
+      provider.includes("Preferred subagent invocation is one bounded round by default") &&
+      provider.includes("Provider outcome: used") &&
       provider.includes("Subagent skipped: <why inline handling is sufficient>") &&
       classify.includes("provider stance as `preferred`") &&
+      classify.includes("Provider: <inline|preferred|forced>") &&
       plan.includes("provider stance as") &&
+      plan.includes("Provider outcome: used") &&
       plan.includes("`skipped` is an outcome, not a provider stance") &&
       plan.includes("Subagent skipped: <reason>") &&
       review.includes("Provider stance should be reported") &&
+      review.includes("Provider outcome: used") &&
       review.includes("reported separately from stance") &&
       operatingRules.includes("Subagent Preference Gate") &&
+      operatingRules.includes("one bounded read-only subagent check") &&
       rolesSpec.includes("Provider stance should be classified") &&
       rolesSpec.includes("Preferred subagent selection") &&
+      rolesSpec.includes("Provider outcome: used") &&
       globalAdapter.includes("Prefer current-tool subagent") &&
       projectAdapter.includes("Prefer current-tool subagent"),
     "runtime-policy.md + commands/provider.md + classify/plan/review + specs/08-operating-rules.md + specs/09-roles.md + adapter snippets",
@@ -408,8 +443,10 @@ async function verifyProtocolInvariants(rootLabel, root) {
   record(
     `${rootLabel} provider stance templates include subagent skip`,
     planTemplate.includes("Provider stance") &&
+      planTemplate.includes("Provider outcome") &&
       planTemplate.includes("Subagent skipped") &&
       reviewTemplate.includes("Provider stance") &&
+      reviewTemplate.includes("Provider outcome") &&
       reviewTemplate.includes("Subagent skipped"),
     "templates/plan.md + templates/review-summary.md",
   );

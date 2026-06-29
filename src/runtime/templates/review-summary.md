@@ -28,6 +28,7 @@ light | formal
 
 ## Provider stance
 - forced | preferred | inline
+- Provider outcome:
 - Subagent skipped:
 
 ## Contract / Semantic Checks

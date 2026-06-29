@@ -228,7 +228,10 @@ Preferred subagent selection:
 - Prefer current-tool subagent for consistency-sensitive multi-file changes,
   weak or unavailable tests, non-trivial UI/design/QA review, or broad
   completion review.
-- If a preference trigger is skipped, record `Subagent skipped: <reason>`.
+- A preference trigger defaults to one bounded read-only subagent check before
+  final plan, review, or completion when a native subagent is available.
+- For `preferred`, record `Provider outcome: used` with subagent findings, or
+  `Provider outcome: skipped` with `Subagent skipped: <reason>`.
 
 ### 6.4 Reporting Rules
 

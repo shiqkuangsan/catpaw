@@ -18,6 +18,8 @@ Only reconcile CatPaw project artifacts under `.catpaw/`.
 Low-risk derived updates may include:
 
 - Regenerating or trimming active entries in `.catpaw/index.md` from req status.
+- Regenerating or trimming Active Milestones rows in `.catpaw/index.md` from
+  milestone status.
 - Updating links from `plans/active/` to `plans/archive/` after a plan is archived.
 - Updating lightweight `Status:` fields in plan, review, and test artifacts when the req is terminal and evidence exists.
 - Removing stale active-dashboard references to done/cancelled reqs.
@@ -54,7 +56,9 @@ On `--apply` success, opportunistically update `lastSeenAt` and `lastSeenVia: re
 ## Guardrails
 
 - Do not mark a req done.
+- Do not mark a milestone done.
 - Do not close work.
+- Do not add or remove reqs from milestone scope.
 - Do not archive or delete plans.
 - Do not fabricate verification evidence.
 - Do not commit, push, create PRs, deploy, or perform destructive cleanup.

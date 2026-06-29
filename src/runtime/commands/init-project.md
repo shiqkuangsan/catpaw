@@ -11,6 +11,7 @@ Default tree:
 ```text
 .catpaw/
 ├── index.md
+├── milestones/
 ├── reqs/
 ├── plans/
 │   ├── active/
@@ -82,6 +83,10 @@ runtime: x.y.z
 
 | ID | Title | Status | Links |
 |---|---|---|---|
+
+## Active Milestones
+
+_No active milestones._
 
 ## Active Research
 

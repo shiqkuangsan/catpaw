@@ -55,6 +55,8 @@ Rules:
 ```text
 .catpaw/
 ├── index.md
+├── milestones/
+│   └── MS-001-<slug>.md
 ├── reqs/
 │   ├── FR-xxx.md
 │   ├── BUG-xxx.md
@@ -85,6 +87,7 @@ Rules:
 | Path | Meaning |
 |---|---|
 | `index.md` | Active CatPaw dashboard for the current project |
+| `milestones/` | Optional phase objectives that group multiple reqs |
 | `reqs/` | What to do: features, bugs, chores |
 | `plans/` | How to do it: implementation plans |
 | `research/` | What is true / why: mechanism notes, ADRs, tradeoff analysis |
@@ -95,6 +98,8 @@ Rules:
 Path semantics:
 
 - `reqs/` is an identity-stable store. Req files are artifact graph roots, so lifecycle state lives in frontmatter, not in `active/` or `done/` directories.
+- `milestones/` is also identity-stable. Milestone status lives in
+  frontmatter; do not create `milestones/active/` or `milestones/archive/`.
 - `plans/active/` and `plans/archive/` are state directories because plans are execution artifacts.
 - `reviews/<req-id>-<slug>/summary.md` is the normal review entrypoint.
 - `reviews/archive/` is for explicitly archived standalone or historical review material, not the default terminal state for req-bound summaries.
@@ -110,6 +115,7 @@ and open lessons whenever possible.
 
 Record:
 
+- Active Milestones;
 - Active Work;
 - Active Research;
 - Active Reviews;
@@ -123,9 +129,18 @@ Recommended Active Work shape:
 | FR-001 | Example title | active | [Req](reqs/FR-001-example.md) · [Plan](plans/active/FR-001-example.md) · [Tests](tests/matrices/FR-001-example.md) · [Review](reviews/FR-001-example/summary.md) |
 ```
 
+Recommended Active Milestones shape:
+
+```markdown
+| ID | Title | Status | Target | Links |
+|---|---|---|---|---|
+| MS-001 | Example phase | active | beta usable | [Milestone](milestones/MS-001-example.md) · [FR-001](reqs/FR-001-example.md) |
+```
+
 Rules:
 
 - Use one row per non-terminal req or active plan entry.
+- Use one row per non-terminal milestone when milestones are present.
 - Keep `Status` aligned with req frontmatter or the active plan status.
 - Use `Links` to group available artifact links in a compact order: Req, Plan,
   Tests, Review, Research.
@@ -144,6 +159,7 @@ Do not record:
 Completion rules:
 
 - completed task -> remove it from `index.md`;
+- completed milestone -> remove it from `index.md`;
 - req remains in `reqs/`, with lifecycle state expressed by frontmatter `status`, `updated`, and `closed`;
 - valuable plan -> move to `plans/archive/`;
 - disposable plan -> delete;
@@ -162,6 +178,7 @@ Version stamp:
 IDs increment separately by type:
 
 ```text
+MS-001, MS-002, ...
 FR-001, FR-002, ...
 BUG-001, BUG-002, ...
 CHORE-001, CHORE-002, ...
@@ -171,6 +188,7 @@ T-001, T-002, ...
 Bindings:
 
 - req is the primary ID;
+- milestone groups req IDs but does not become the primary ID for implementation;
 - plan / review / tests bind to the req ID;
 - research is topic-based and does not require a req ID.
 
@@ -178,6 +196,7 @@ Recommended filenames:
 
 ```text
 .catpaw/reqs/FR-001-auth-flow.md
+.catpaw/milestones/MS-001-auth-foundation.md
 .catpaw/plans/active/FR-001-auth-flow.md
 .catpaw/tests/matrices/FR-001-auth-flow.md
 .catpaw/reviews/FR-001-auth-flow/summary.md

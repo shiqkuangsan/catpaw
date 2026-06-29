@@ -11,6 +11,7 @@ below.
 ## Inputs
 
 - `.catpaw/index.md`
+- `.catpaw/milestones/*.md`
 - `.catpaw/reqs/*.md`
 - `.catpaw/plans/active/*.md`
 - `.catpaw/research/**/*.md`
@@ -21,6 +22,8 @@ below.
 ## Behavior
 
 - Build a lightweight active-work view from req frontmatter and active plans.
+- Build a lightweight active-milestone view from non-terminal milestone
+  frontmatter and milestone Scope tables.
 - Treat req files as the source of lifecycle truth.
 - Treat `.catpaw/index.md` as an active dashboard, not as durable history.
 - Report blockers, stale state, missing verification, and user-decision points.
@@ -31,6 +34,8 @@ below.
 - When running from a CatPaw source checkout, `node scripts/catpaw-project.mjs
   status --project <project-root>` may be used as read-only evidence for this
   command's status shape.
+- If active milestones exist, report phase outcome/progress before per-FR
+  active work.
 - For non-empty active work, prefer the compact index table shape:
   `| ID | Title | Status | Links |`, with `Links` grouping Req, Plan, Tests,
   Review, and Research links when present.
@@ -42,6 +47,7 @@ Use this shape:
 ```text
 Dispatch:
 Current status:
+Milestones:
 Progress:
 Blocked by:
 Changed artifacts:

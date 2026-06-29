@@ -109,6 +109,24 @@ Do not treat preferred subagent use as authorization. Provider findings remain
 advisory and must be summarized by the primary agent as accepted / rejected /
 conflict.
 
+Preferred subagent invocation is one bounded round by default. Prompt with:
+goal, scoped files/context, read-only constraint, exact question, expected
+output, and safety limits. Stop after one round unless the result reveals a
+forced gate, repeated failure, or explicit user request for more review.
+
+Expected output:
+
+```text
+Findings:
+Risks:
+Verification:
+Decision:
+```
+
+For `preferred`, final plan/review/completion evidence must show either
+`Provider outcome: used` with subagent findings, or `Provider outcome: skipped`
+with `Subagent skipped: <reason>`.
+
 ## Invocation Strategy
 
 Use the lightest provider invocation that still gives enough observability.

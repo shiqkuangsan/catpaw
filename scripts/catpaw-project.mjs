@@ -12,9 +12,11 @@ import { fileURLToPath } from "node:url";
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
 const ACTIVE_STATUSES = new Set(["active", "draft"]);
 const PROVIDER_STANCES = new Set(["inline", "preferred", "forced"]);
+const REQUIRED_MILESTONE_FIELDS = ["id", "status", "created", "updated", "closed"];
 const PROJECT_ADAPTER_FILES = ["AGENTS.md", "agents.md", "CLAUDE.md", "claude.md"];
 const NON_PRIMARY_PROVIDER_PATTERN =
   /\b(current-tool subagent|subagent|Laoer|laoer|老二|second opinion|second reviewer|Laosan|laosan|老三|third opinion|third reviewer|Claude Code|Codex|Gemini|cc|cx|gemini)\b/i;
+const SUBAGENT_PROVIDER_PATTERN = /\b(current-tool subagent|subagent)\b/i;
 
 async function pathExists(target) {
   try {
@@ -83,7 +85,7 @@ function firstHeading(text) {
 function titleFromText(text, fallback) {
   const heading = firstHeading(text);
   if (!heading) return fallback;
-  return heading.replace(/^(FR|BUG|CHORE)-\d+\s*:?\s*/i, "").trim() || fallback;
+  return heading.replace(/^(MS|FR|BUG|CHORE)-\d+\s*:?\s*/i, "").trim() || fallback;
 }
 
 function normalizeReq(record, filePath, text) {
@@ -117,6 +119,10 @@ function indexMentionsReq(indexText, req) {
   return indexText.includes(req.id) || indexText.includes(path.basename(req.filePath));
 }
 
+function indexMentionsArtifact(indexText, artifact) {
+  return indexText.includes(artifact.id) || indexText.includes(path.basename(artifact.filePath));
+}
+
 function artifactMatchesReq(artifact, reqId) {
   return artifact.req === reqId || path.basename(artifact.filePath).includes(reqId);
 }
@@ -148,6 +154,17 @@ function hasNonPrimaryProvider(text) {
   return NON_PRIMARY_PROVIDER_PATTERN.test(text);
 }
 
+function hasSubagentProvider(text) {
+  return SUBAGENT_PROVIDER_PATTERN.test(text);
+}
+
+function hasNonEmptySubagentSkip(text) {
+  const match = text.match(/^\s*(?:-\s*)?Subagent skipped:\s*(.+)$/im);
+  if (!match) return false;
+  const reason = match[1].trim();
+  return Boolean(reason) && !/^<.*>$/.test(reason);
+}
+
 function hasAcceptedProviderGap(text) {
   return /Provider gaps?/i.test(text) &&
     /(accepted by user|user accepted|explicitly accepted|accepted the provider gap)/i.test(text);
@@ -164,6 +181,10 @@ function providerStanceValues(text) {
     values.push(match[1].toLowerCase());
   }
   return values;
+}
+
+function milestoneReqIds(text) {
+  return [...new Set([...text.matchAll(/\b(?:FR|BUG|CHORE)-\d+\b/g)].map((match) => match[0]))];
 }
 
 function hasCatPawAdapter(text) {
@@ -184,6 +205,12 @@ async function readArtifacts(projectRoot, boardPath) {
   const indexPath = path.join(boardPath, "index.md");
   const indexText = (await pathExists(indexPath)) ? await readText(indexPath) : "";
   const indexFrontmatter = parseFrontmatter(indexText).data;
+
+  const milestones = [];
+  for (const filePath of await listMarkdownFiles(path.join(boardPath, "milestones"))) {
+    const text = await readText(filePath);
+    milestones.push(normalizeArtifact(parseFrontmatter(text).data, filePath, text));
+  }
 
   const reqs = [];
   for (const filePath of await listMarkdownFiles(path.join(boardPath, "reqs"))) {
@@ -219,6 +246,7 @@ async function readArtifacts(projectRoot, boardPath) {
     indexPath,
     indexText,
     indexRuntime: indexFrontmatter.runtime ?? null,
+    milestones,
     reqs,
     activePlans,
     archivedPlans,
@@ -228,6 +256,17 @@ async function readArtifacts(projectRoot, boardPath) {
 }
 
 function buildStatus(projectRoot, artifacts) {
+  const activeMilestones = artifacts.milestones
+    .filter((milestone) => !TERMINAL_STATUSES.has(milestone.status))
+    .map((milestone) => ({
+      id: milestone.id ?? path.basename(milestone.filePath, ".md"),
+      title: titleFromText(milestone.text, milestone.id ?? path.basename(milestone.filePath, ".md")),
+      status: milestone.status ?? "unknown",
+      target: milestone.target ?? null,
+      file: milestone.filePath,
+      reqIds: milestoneReqIds(milestone.text),
+      links: milestoneLinks(projectRoot, artifacts, milestone),
+    }));
   const activeReqs = artifacts.reqs
     .filter((req) => !req.terminal)
     .map((req) => ({
@@ -245,11 +284,14 @@ function buildStatus(projectRoot, artifacts) {
   }));
 
   let nextRecommendedAction = "none";
-  if (activeReqs.length || activePlans.length) {
+  if (activeMilestones.length) {
+    nextRecommendedAction = "continue active milestone";
+  } else if (activeReqs.length || activePlans.length) {
     nextRecommendedAction = "continue active work";
   }
 
   return {
+    activeMilestones,
     activeReqs,
     activePlans,
     nextRecommendedAction,
@@ -257,8 +299,166 @@ function buildStatus(projectRoot, artifacts) {
   };
 }
 
+function milestoneLinks(projectRoot, artifacts, milestone) {
+  const links = [markdownLink("Milestone", projectRoot, milestone.filePath)];
+  const reqsById = new Map(artifacts.reqs.map((req) => [req.id, req]));
+  for (const reqId of milestoneReqIds(milestone.text)) {
+    const req = reqsById.get(reqId);
+    if (req) links.push(markdownLink(reqId, projectRoot, req.filePath));
+  }
+  return links.join(" · ");
+}
+
 function findArtifactByReq(artifacts, reqId) {
   return artifacts.filter((artifact) => artifact.req === reqId);
+}
+
+function checkMilestones(projectRoot, artifacts) {
+  const findings = [];
+  const reqsById = new Map(artifacts.reqs.map((req) => [req.id, req]));
+  const activeMilestoneReqs = new Map();
+
+  for (const milestone of artifacts.milestones) {
+    const id = milestone.id ?? path.basename(milestone.filePath, ".md");
+    for (const field of REQUIRED_MILESTONE_FIELDS) {
+      if (Object.hasOwn(milestone, field)) continue;
+      findings.push(
+        finding(
+          "error",
+          "milestone-missing-frontmatter",
+          id,
+          "milestone",
+          relative(projectRoot, milestone.filePath),
+          `Milestone ${id} is missing frontmatter field ${field}.`,
+          "Add scalar milestone frontmatter from templates/milestone.md.",
+        ),
+      );
+    }
+
+    const terminal = TERMINAL_STATUSES.has(milestone.status);
+    if (terminal && !milestone.closed) {
+      findings.push(
+        finding(
+          "error",
+          "terminal-milestone-missing-closed",
+          id,
+          "milestone",
+          relative(projectRoot, milestone.filePath),
+          `Terminal milestone ${id} has status ${milestone.status} but no closed date.`,
+          "Set closed: YYYY-MM-DD or keep the milestone non-terminal.",
+        ),
+      );
+    }
+    if (!terminal && milestone.closed) {
+      findings.push(
+        finding(
+          "error",
+          "active-milestone-has-closed",
+          id,
+          "milestone",
+          relative(projectRoot, milestone.filePath),
+          `Non-terminal milestone ${id} has closed date ${milestone.closed}.`,
+          "Set closed: null until the milestone is terminal.",
+        ),
+      );
+    }
+    if (terminal && indexMentionsArtifact(artifacts.indexText, milestone)) {
+      findings.push(
+        finding(
+          "error",
+          "index-lists-terminal-milestone",
+          id,
+          "index",
+          relative(projectRoot, artifacts.indexPath),
+          `Index lists terminal milestone ${id} under active milestones.`,
+          "Run catpaw:reconcile --dry-run or remove the active dashboard entry.",
+        ),
+      );
+    }
+    if (!terminal && !indexMentionsArtifact(artifacts.indexText, milestone)) {
+      findings.push(
+        finding(
+          "warning",
+          "active-milestone-missing-index-entry",
+          id,
+          "index",
+          relative(projectRoot, artifacts.indexPath),
+          `Active milestone ${id} is not discoverable from the active dashboard.`,
+          "Add it to .catpaw/index.md Active Milestones or run catpaw:reconcile --dry-run.",
+        ),
+      );
+    }
+
+    const reqIds = milestoneReqIds(milestone.text);
+    for (const reqId of reqIds) {
+      const req = reqsById.get(reqId);
+      if (!req) {
+        findings.push(
+          finding(
+            "error",
+            "milestone-missing-req",
+            id,
+            "milestone",
+            relative(projectRoot, milestone.filePath),
+            `Milestone ${id} lists missing req ${reqId}.`,
+            "Create the req or remove the stale req reference from the milestone Scope table.",
+          ),
+        );
+        continue;
+      }
+
+      if (!terminal) {
+        activeMilestoneReqs.set(reqId, [...(activeMilestoneReqs.get(reqId) ?? []), id]);
+      }
+      if (terminal && !req.terminal && !/(deferred|cancelled|canceled)/i.test(milestone.text)) {
+        findings.push(
+          finding(
+            "warning",
+            "done-milestone-has-active-req",
+            id,
+            "milestone",
+            relative(projectRoot, milestone.filePath),
+            `Done milestone ${id} includes non-terminal req ${reqId}.`,
+            "Close, cancel, or explicitly defer the req before milestone closeout.",
+          ),
+        );
+      }
+    }
+
+    if (!terminal && reqIds.length > 0) {
+      const reqs = reqIds.map((reqId) => reqsById.get(reqId)).filter(Boolean);
+      if (reqs.length === reqIds.length && reqs.every((req) => req.terminal)) {
+        findings.push(
+          finding(
+            "info",
+            "active-milestone-close-candidate",
+            id,
+            "milestone",
+            relative(projectRoot, milestone.filePath),
+            `Active milestone ${id} has only terminal reqs.`,
+            "Consider catpaw:milestone close --dry-run after milestone verification.",
+          ),
+        );
+      }
+    }
+  }
+
+  for (const [reqId, milestoneIds] of activeMilestoneReqs) {
+    if (milestoneIds.length <= 1) continue;
+    findings.push(
+      finding(
+        "warning",
+        "req-in-multiple-active-milestones",
+        reqId,
+        "milestone",
+        relative(projectRoot, artifacts.indexPath),
+        `Req ${reqId} appears in multiple active milestones: ${milestoneIds.join(", ")}.`,
+        "Confirm this is intentional or remove duplicate milestone membership.",
+      ),
+    );
+  }
+
+  return findings;
 }
 
 function checkReqLifecycle(projectRoot, artifacts) {
@@ -433,6 +633,33 @@ function checkProviderStanceValues(projectRoot, artifacts) {
   return findings;
 }
 
+function checkPreferredSubagentEvidence(projectRoot, artifacts) {
+  const findings = [];
+  const providerArtifacts = [
+    ...artifacts.activePlans,
+    ...artifacts.archivedPlans,
+    ...artifacts.reviews,
+  ];
+
+  for (const artifact of providerArtifacts) {
+    if (!providerStanceValues(artifact.text).includes("preferred")) continue;
+    if (hasSubagentProvider(artifact.text) || hasNonEmptySubagentSkip(artifact.text)) continue;
+    findings.push(
+      finding(
+        "warning",
+        "preferred-subagent-missing-outcome",
+        artifact.req ?? "global",
+        artifact.filePath.includes(`${path.sep}reviews${path.sep}`) ? "review" : "plan",
+        relative(projectRoot, artifact.filePath),
+        "Provider stance is preferred but the artifact records no subagent evidence or skip reason.",
+        "Record Provider outcome: used with subagent findings, or Subagent skipped: <reason>.",
+      ),
+    );
+  }
+
+  return findings;
+}
+
 function checkL3TestMatrices(projectRoot, artifacts) {
   const findings = [];
 
@@ -582,6 +809,7 @@ export async function analyzeProject(options = {}) {
       boardPath,
       status: {
         activeReqs: [],
+        activeMilestones: [],
         activePlans: [],
         nextRecommendedAction: "initialize CatPaw or choose a project with .catpaw",
         needsUserDecision: true,
@@ -614,10 +842,12 @@ export async function analyzeProject(options = {}) {
     registryPath,
   );
   const findings = [
+    ...checkMilestones(projectRoot, artifacts),
     ...checkReqLifecycle(projectRoot, artifacts),
     ...checkTerminalReqArtifacts(projectRoot, artifacts),
     ...checkProviderGates(projectRoot, artifacts),
     ...checkProviderStanceValues(projectRoot, artifacts),
+    ...checkPreferredSubagentEvidence(projectRoot, artifacts),
     ...checkL3TestMatrices(projectRoot, artifacts),
     ...checkPlanDirectoryStatus(projectRoot, artifacts),
     ...(await checkProjectAdapters(projectRoot)),
@@ -642,14 +872,19 @@ export async function analyzeProject(options = {}) {
 
 export function renderStatus(result) {
   const activeWorkTable = renderActiveWorkTable(result.status.activeReqs);
+  const activeMilestoneTable = renderActiveMilestoneTable(result.status.activeMilestones);
 
   return [
     "Current status:",
     `- Project: ${result.projectRoot}`,
     `- Board: ${result.boardPath}`,
     `- Runtime stamp: ${result.runtime ?? "missing"}`,
+    `- Active milestones: ${result.status.activeMilestones.length}`,
     `- Active reqs: ${result.status.activeReqs.length}`,
     `- Active plans: ${result.status.activePlans.length}`,
+    "",
+    "Active Milestones:",
+    ...activeMilestoneTable,
     "",
     "Active Work:",
     ...activeWorkTable,
@@ -660,6 +895,20 @@ export function renderStatus(result) {
     `Next recommended action: ${result.status.nextRecommendedAction}`,
     `Needs user decision: ${result.status.needsUserDecision ? "yes" : "no"}`,
   ].join("\n");
+}
+
+function renderActiveMilestoneTable(activeMilestones) {
+  const header = [
+    "| ID | Title | Status | Target | Links |",
+    "|---|---|---|---|---|",
+  ];
+  if (!activeMilestones.length) return [...header, "| _None_ |  |  |  |"];
+  return [
+    ...header,
+    ...activeMilestones.map((milestone) =>
+      `| ${tableCell(milestone.id)} | ${tableCell(milestone.title)} | ${tableCell(milestone.status)} | ${tableCell(milestone.target ?? "")} | ${milestone.links} |`,
+    ),
+  ];
 }
 
 function tableCell(value) {

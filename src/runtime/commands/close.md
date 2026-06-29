@@ -7,11 +7,12 @@ Close CatPaw-tracked work after verification.
 Default to `--dry-run`.
 
 ```text
-catpaw:close <REQ-ID> --dry-run
-catpaw:close <REQ-ID> --apply
+catpaw:close <REQ-ID|MS-ID> --dry-run
+catpaw:close <REQ-ID|MS-ID> --apply
 ```
 
-Closing is a scoped artifact transaction rooted at one req ID. It should not perform global cleanup.
+Closing is a scoped artifact transaction rooted at one req or milestone ID. It
+should not perform global cleanup.
 
 Closeout moves tracked work to the terminal workflow state `done` or
 `cancelled`. See `specs/13-workflow-control-model.md` for the canonical
@@ -23,6 +24,8 @@ workflow state model and artifact policy.
 - Show a dry-run patch summary before writing files.
 - Mark req frontmatter as `status: done` or `status: cancelled`; set `updated` and `closed` to the close date.
 - Remove the req from `.catpaw/index.md` Active Work.
+- For milestone close, mark milestone frontmatter terminal, require included FR
+  status evidence, and remove the milestone from Active Milestones.
 - Keep `.catpaw/index.md` active-only; do not add completed/reference history entries by default.
 - Archive the active plan if it has architecture / decision / reuse value.
 - Delete purely procedural plans only when the user explicitly accepts that cleanup.
@@ -38,6 +41,7 @@ workflow state model and artifact policy.
 |---|---|---|---|
 | `.catpaw/index.md` active item | Remove | n/a | Work is closed |
 | Req | Keep in `.catpaw/reqs/` with terminal frontmatter | Always keep if it records accepted scope | n/a |
+| Milestone | Keep in `.catpaw/milestones/` with terminal frontmatter | Always keep if it records phase scope, verification, and next recommendation | n/a |
 | Plan | Delete | Archive only if it records decisions, tradeoffs, or reusable sequencing | Pure checklist with no future value |
 | Review | Skip | Keep req-bound summary at `reviews/<req-id>-<slug>/summary.md` if it contains risk calls, disagreements, or release evidence; use `reviews/archive/` only for explicitly archived standalone/historical material | Light review with no durable findings |
 | Tests | Skip | Keep matrix/evidence for L3 or reusable verification | Inline verification only |

@@ -139,6 +139,7 @@ test("status summarizes active CatPaw work without findings for a healthy active
     const result = await analyzeProject({ projectRoot: root });
 
     assert.equal(result.ok, true);
+    assert.equal(result.status.activeMilestones.length, 0);
     assert.equal(result.status.activeReqs.length, 1);
     assert.equal(result.status.activeReqs[0].id, "FR-001");
     assert.equal(result.status.activeReqs[0].title, "Demo");
@@ -147,12 +148,128 @@ test("status summarizes active CatPaw work without findings for a healthy active
     assert.deepEqual(result.findings, []);
 
     const rendered = renderStatus(result);
+    assert.match(rendered, /\| ID \| Title \| Status \| Target \| Links \|/);
     assert.match(rendered, /\| ID \| Title \| Status \| Links \|/);
     assert.match(rendered, /\| FR-001 \| Demo \| active \|/);
     assert.match(rendered, /\[Req\]\(.catpaw\/reqs\/FR-001-demo.md\)/);
     assert.match(rendered, /\[Plan\]\(.catpaw\/plans\/active\/FR-001-demo.md\)/);
     assert.match(rendered, /\[Tests\]\(.catpaw\/tests\/matrices\/FR-001-demo.md\)/);
     assert.match(rendered, /\[Review\]\(.catpaw\/reviews\/FR-001-demo\/summary.md\)/);
+  });
+});
+
+test("status summarizes active milestones", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await mkdirp(root, ".catpaw/milestones");
+    await write(
+      root,
+      ".catpaw/index.md",
+      `---
+runtime: 2.1.5
+---
+
+# CatPaw Index
+
+## Active Milestones
+
+| ID | Title | Status | Target | Links |
+|---|---|---|---|---|
+| MS-001 | Demo Phase | active | beta usable | [Milestone](milestones/MS-001-demo-phase.md) · [FR-001](reqs/FR-001-demo.md) |
+
+## Active Work
+- [FR-001 demo](reqs/FR-001-demo.md)
+`,
+    );
+    await write(
+      root,
+      ".catpaw/milestones/MS-001-demo-phase.md",
+      `---
+id: MS-001
+status: active
+created: 2026-05-27
+updated: 2026-05-27
+closed: null
+target: beta usable
+---
+
+# MS-001 Demo Phase
+
+## Scope
+
+| Req | Title | Status | Notes |
+|---|---|---|---|
+| FR-001 | Demo | active | current slice |
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.status.activeMilestones.length, 1);
+    assert.equal(result.status.activeMilestones[0].id, "MS-001");
+    assert.equal(result.status.activeMilestones[0].title, "Demo Phase");
+    assert.equal(result.status.nextRecommendedAction, "continue active milestone");
+    assert.deepEqual(result.findings, []);
+
+    const rendered = renderStatus(result);
+    assert.match(rendered, /Active Milestones:/);
+    assert.match(rendered, /\| MS-001 \| Demo Phase \| active \| beta usable \|/);
+    assert.match(rendered, /\[Milestone\]\(.catpaw\/milestones\/MS-001-demo-phase.md\)/);
+    assert.match(rendered, /\[FR-001\]\(.catpaw\/reqs\/FR-001-demo.md\)/);
+  });
+});
+
+test("doctor reports milestone and req state drift", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await mkdirp(root, ".catpaw/milestones");
+    await write(
+      root,
+      ".catpaw/index.md",
+      `---
+runtime: 2.1.5
+---
+
+# CatPaw Index
+
+## Active Milestones
+
+| ID | Title | Status | Target | Links |
+|---|---|---|---|---|
+| MS-001 | Demo Phase | done | beta usable | [Milestone](milestones/MS-001-demo-phase.md) |
+`,
+    );
+    await write(
+      root,
+      ".catpaw/milestones/MS-001-demo-phase.md",
+      `---
+id: MS-001
+status: done
+created: 2026-05-27
+updated: 2026-05-27
+closed: 2026-05-27
+target: beta usable
+---
+
+# MS-001 Demo Phase
+
+## Scope
+
+| Req | Title | Status | Notes |
+|---|---|---|---|
+| FR-001 | Demo | active | current slice |
+| FR-999 | Missing | active | stale |
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+    const codes = result.findings.map((finding) => finding.code);
+
+    assert.equal(result.ok, false);
+    assert.ok(codes.includes("index-lists-terminal-milestone"));
+    assert.ok(codes.includes("milestone-missing-req"));
+    assert.ok(codes.includes("done-milestone-has-active-req"));
   });
 });
 
@@ -382,6 +499,95 @@ closed: null
     assert.equal(result.ok, false);
     assert.equal(stance?.severity, "error");
     assert.match(stance?.message ?? "", /skipped/);
+  });
+});
+
+test("doctor warns when preferred subagent stance lacks outcome evidence", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await write(
+      root,
+      ".catpaw/plans/active/FR-001-demo.md",
+      `---
+id: PLAN-001
+req: FR-001
+status: active
+updated: 2026-05-27
+closed: null
+---
+
+# Plan
+
+## Notes
+- Provider stance: preferred
+`,
+    );
+
+    const result = await analyzeProject({ projectRoot: root });
+    const warning = result.findings.find(
+      (finding) => finding.code === "preferred-subagent-missing-outcome",
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(warning?.severity, "warning");
+    assert.match(warning?.message ?? "", /preferred/i);
+  });
+});
+
+test("doctor accepts preferred subagent stance with evidence or skip reason", async () => {
+  await withFixture(async (root) => {
+    await writeActiveBoard(root);
+    await write(
+      root,
+      ".catpaw/plans/active/FR-001-demo.md",
+      `---
+id: PLAN-001
+req: FR-001
+status: active
+updated: 2026-05-27
+closed: null
+---
+
+# Plan
+
+## Notes
+- Provider stance: preferred
+- Provider outcome: used
+- Engineering Reviewer via current-tool subagent
+`,
+    );
+
+    let result = await analyzeProject({ projectRoot: root });
+    assert.equal(
+      result.findings.find((finding) => finding.code === "preferred-subagent-missing-outcome"),
+      undefined,
+    );
+
+    await write(
+      root,
+      ".catpaw/plans/active/FR-001-demo.md",
+      `---
+id: PLAN-001
+req: FR-001
+status: active
+updated: 2026-05-27
+closed: null
+---
+
+# Plan
+
+## Notes
+- Provider stance: preferred
+- Provider outcome: skipped
+- Subagent skipped: inline handling is sufficient for this narrow fixture.
+`,
+    );
+
+    result = await analyzeProject({ projectRoot: root });
+    assert.equal(
+      result.findings.find((finding) => finding.code === "preferred-subagent-missing-outcome"),
+      undefined,
+    );
   });
 });
 

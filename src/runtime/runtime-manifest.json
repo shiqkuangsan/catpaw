@@ -1,6 +1,6 @@
 {
   "name": "catpaw-runtime",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "runtimePath": "~/.catpaw",
   "artifactSchemaVersion": 1,
   "released": "2026-06-07",
@@ -31,6 +31,7 @@
     "registry-doctor",
     "classify",
     "plan",
+    "milestone",
     "provider",
     "install-adapter",
     "review",

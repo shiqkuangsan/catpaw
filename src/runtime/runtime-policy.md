@@ -41,7 +41,7 @@ Global spec, local artifacts.
 - Do not copy full runtime specs, roles, commands, templates, or source evidence
   into project boards.
 - Project boards store reqs, plans, research, reviews, tests, lessons, and
-  active status.
+  active status. Optional milestones group related FRs into phase objectives.
 - Templates are instantiated only when creating concrete artifacts.
 
 Canonical package and project path detail:
@@ -60,6 +60,7 @@ When CatPaw applies, classify in this order:
 ```text
 Intent classification
 -> Workflow level classification: L0/L1/L2/L3
+-> Milestone fit: standalone FR or phase objective
 -> Lifecycle/subsystem decisions: research / plan / review / tests / lessons
 -> Workflow state target when tracked
 -> Lifecycle role routing
@@ -77,6 +78,13 @@ framed -> planned -> building -> reviewing -> verifying -> done / blocked / canc
 Use `specs/13-workflow-control-model.md` as the canonical decision table for
 workflow level, tracked state, artifact policy, role/provider routing, and
 verification.
+
+Milestone fit:
+
+- Use a milestone for L2/L3 continuous objectives that span multiple FRs or
+  where the user asks to continue a phase without stopping after each FR.
+- Do not make milestones mandatory for L0/L1 or single-FR work.
+- FR remains the smallest verifiable unit; milestone is a phase rollup.
 
 User-visible dispatch:
 
@@ -171,6 +179,19 @@ If skipped after a preference trigger, record:
 Subagent skipped: <why inline handling is sufficient>
 ```
 
+Autonomous invocation rule:
+
+- When a Subagent Preference Gate trigger applies and a native current-tool
+  subagent is available, run one bounded read-only subagent check before final
+  plan, review, or completion.
+- Skip only when the task is L0, narrow/local/well-tested, answer-only,
+  explicitly single-agent, cannot be bounded without secrets/private data, or
+  the subagent output is unlikely to change the decision.
+- For `preferred`, final evidence should show `Provider outcome: used` with
+  subagent findings, or `Provider outcome: skipped` with `Subagent skipped:
+  <reason>`.
+- Use one bounded subagent round per stage by default.
+
 ### Frontend / UI Self-Verification
 
 For frontend or UI-facing changes, attempt self-verification before handing the
@@ -227,8 +248,11 @@ Experience, QA, Security, Release, Performance, Debugging, Retrospective.
 CatPaw artifacts are reconciled through a small artifact graph:
 
 ```text
-req -> plan -> research -> tests -> reviews -> lessons/docs
+milestone -> req -> plan -> research -> tests -> reviews -> lessons/docs
 ```
+
+Milestone is optional. It groups multiple req roots; it does not replace reqs or
+change L0/L1/L2/L3 classification.
 
 Progress Handoff Contract:
 
@@ -335,6 +359,7 @@ Use these files for full semantics:
 | Need | Read |
 |---|---|
 | workflow level/state/artifacts | `specs/02-workflow-levels.md`, `specs/13-workflow-control-model.md`, `commands/classify.md`, `commands/plan.md` |
+| milestone phase orchestration | `commands/milestone.md`, `templates/milestone.md`, `specs/03-project-directory.md`, `specs/13-workflow-control-model.md` |
 | provider stance/gates/dialogue | `commands/provider.md`, `commands/review.md`, `specs/08-operating-rules.md`, `specs/09-roles.md` |
 | UI verification | `commands/classify.md`, `commands/plan.md`, `commands/review.md`, `roles/qa-strategist.md`, `roles/design-reviewer.md` |
 | status/doctor/reconcile/close | `commands/status.md`, `commands/doctor.md`, `commands/reconcile.md`, `commands/close.md` |

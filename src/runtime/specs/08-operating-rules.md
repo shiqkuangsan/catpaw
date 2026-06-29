@@ -157,6 +157,10 @@ Subagent Preference Gate:
   public docs/protocols, runtime policy/spec/commands/templates, unfamiliar
   modules, weak tests, consistency-sensitive multi-file changes, non-trivial
   UI/design/QA review, or broad completion review.
+- A preference trigger defaults to one bounded read-only subagent check before
+  final plan, review, or completion when a native subagent is available.
+- For `preferred`, evidence must show `Provider outcome: used` with subagent
+  findings, or `Provider outcome: skipped` with `Subagent skipped: <reason>`.
 - If skipped, keep stance `preferred` and record `Subagent skipped: <why inline
   handling is sufficient>`.
 - Forced Provider Gate has higher priority; if unavailable, record outcome

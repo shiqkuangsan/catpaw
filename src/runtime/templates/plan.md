@@ -41,6 +41,7 @@ One sentence to one short paragraph explaining the overall approach.
 - Review:
 - Provider gate:
 - Provider stance:
+- Provider outcome:
 - Subagent skipped:
 - Provider gap:
 

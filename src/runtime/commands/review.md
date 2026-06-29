@@ -78,6 +78,9 @@ Risk triggers:
   provider-native state first.
 - For preferred subagent triggers, skip only when inline review is sufficient
   and record `Subagent skipped: <reason>`.
+- For `preferred`, final review/completion evidence must show either
+  `Provider outcome: used` with subagent findings, or `Provider outcome:
+  skipped` with `Subagent skipped: <reason>`.
 - Generic provider orchestration for CLI calls, multi-round dialogue, debug, ask, implement, or summarize uses `catpaw:provider`.
 
 ## Interactive UI Evidence

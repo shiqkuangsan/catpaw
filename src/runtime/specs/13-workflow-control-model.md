@@ -6,6 +6,10 @@ This spec is the canonical decision table for CatPaw workflow control. It does
 not replace L0/L1/L2/L3 or lifecycle stages; it explains how they combine with
 artifact policy, roles, providers, and verification.
 
+Milestone is separate from workflow level and workflow state. It is an optional
+phase artifact for multi-FR objectives, not a new level and not a required
+frontmatter schema for reqs.
+
 ## 1. Control Vocabulary
 
 CatPaw has four related but separate routing concepts:
@@ -16,6 +20,7 @@ CatPaw has four related but separate routing concepts:
 | Lifecycle stage | Which work phase is active | `Think`, `Plan`, `Build`, `Review`, `Test`, `Ship`, `Reflect` |
 | Workflow state | Where a tracked task sits | `framed`, `planned`, `building`, `reviewing`, `verifying`, `done`, `blocked`, `cancelled` |
 | Provider stance | How non-primary help is selected | `inline`, `preferred`, `forced` |
+| Milestone fit | Whether work belongs to a phase objective | none / existing milestone / new milestone |
 
 Rules:
 
@@ -24,6 +29,8 @@ Rules:
   as `draft`, `active`, `done`, and `cancelled`.
 - Lifecycle stages are vocabulary, not mandatory pipeline steps.
 - Workflow levels remain the first dispatch weight decision.
+- Milestone status rolls up multiple reqs; it does not change any child req's
+  workflow level or state.
 
 ## 2. State Machine
 
@@ -66,6 +73,13 @@ decision quality and cross-session continuity.
 | L2 | req + plan + verification record in plan | formal review value, reusable QA evidence, provider disagreement, durable research | default test matrix unless verification is complex |
 | L3 | req + plan + test matrix + formal review summary | release/security/migration/incident evidence needs durable records | closing without provider/gate evidence |
 
+Milestone artifact policy:
+
+- Use `.catpaw/milestones/MS-001-<slug>.md` for L2/L3 phase objectives that
+  span multiple FRs or when the user asks for milestone/phase continuation.
+- Do not create milestones for one-off L0/L1 work unless explicitly requested.
+- Existing boards without milestones remain valid.
+
 Artifact decisions:
 
 | Trigger | Artifact action |
@@ -84,6 +98,7 @@ Artifact decisions:
 | Tiny local fix | L0 | building -> verifying -> done | none | none | inline | inline check |
 | Small multi-step local work | L1 | building -> verifying -> done | none by default | none or one inline lens | inline or preferred | inline check |
 | Medium-risk docs/protocol/runtime change | L2 | framed -> planned -> building -> verifying -> done | req + plan | Architecture / DX or QA lens | preferred unless narrow | verifier/tests/doctor |
+| Multi-FR phase objective | L2/L3 by child risk | framed -> planned -> building -> verifying -> done | milestone + child req/plan artifacts | phase roles plus child req roles | preferred or forced by child risk | milestone exit criteria + child verification |
 | Behavior-sensitive L2 | L2 | planned -> reviewing -> verifying | req + plan with contracts | Architecture + QA/Engineering | forced non-primary semantic review | boundary tests |
 | L3 release/security/migration/external action | L3 | planned -> reviewing -> verifying -> done | req + plan + tests + review | Release plus risk roles | forced | formal review + matrix + release checks |
 | Blocked by credentials/provider/external state | Current level | blocked | update plan or handoff | role depends on blocker | gap/unavailable as outcome | record remaining gap |

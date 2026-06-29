@@ -10,6 +10,7 @@ invariants so prose and templates do not drift.
 
 | Artifact | Canonical template | Notes |
 |---|---|---|
+| Milestone | `templates/milestone.md` | Optional phase artifact for multi-FR L2/L3 objectives. |
 | Req | `templates/req.md` | Base req; BUG / CHORE extensions remain as template comments. |
 | Plan | `templates/plan.md` | Base L2 plan; L3 extensions remain as comments. |
 | Provider dialogue | `templates/provider-dialogue.md` | Durable multi-round provider discussions with decision value. |
@@ -17,7 +18,26 @@ invariants so prose and templates do not drift.
 | Test matrix | `templates/test-matrix.md` | L3 or reusable/high-risk verification matrix. |
 | Lessons | `templates/lesson.md` | Short corrective lessons, not full retrospectives. |
 
-## 2. Req Rules
+## 2. Milestone Rules
+
+Milestones are optional phase artifacts. They group related reqs; they do not
+replace reqs and are not a new workflow level.
+
+Milestone frontmatter:
+
+| Field | Required | Values | Notes |
+|---|---:|---|---|
+| `id` | yes | `MS-001` | Keep aligned with filename and H1. |
+| `status` | yes | `draft` / `active` / `blocked` / `done` / `cancelled` | Reuse normal artifact status vocabulary. |
+| `created` | yes | `YYYY-MM-DD` | Creation date. |
+| `updated` | yes | `YYYY-MM-DD` | Last meaningful status or content update. |
+| `closed` | yes | `YYYY-MM-DD` / `null` | Use `null` for non-terminal milestones. |
+| `target` | yes | short text / `null` | Optional phase target or release boundary. |
+
+Membership belongs in the body `Scope` table, not in req frontmatter, to avoid
+two sources of truth.
+
+## 3. Req Rules
 
 Req frontmatter:
 
@@ -40,7 +60,7 @@ Req body must keep:
 - For `type: bug`: Symptoms, Expected, Actual, Suspected Cause.
 - For `type: chore`: Scope, Constraints.
 
-## 3. Plan Rules
+## 4. Plan Rules
 
 One plan template serves both L2 and L3:
 
@@ -60,7 +80,7 @@ fixed | mitigated | deferred | not addressed
 
 Do not present mitigation as correctness.
 
-## 4. Artifact Graph Metadata
+## 5. Artifact Graph Metadata
 
 Plan, review, and test matrix artifacts should carry lightweight frontmatter so
 `doctor`, `reconcile`, and `close` can validate the artifact graph.
@@ -75,7 +95,7 @@ Plan, review, and test matrix artifacts should carry lightweight frontmatter so
 | `updated` | plan / review / test matrix | yes | Last meaningful status or content update. |
 | `closed` | plan / review / test matrix | yes | `null` for non-terminal artifacts; close date for terminal artifacts. |
 
-## 5. Review Rules
+## 6. Review Rules
 
 - `summary.md` is always the review entrypoint.
 - Formal review writes `.catpaw/reviews/<req-id>-<slug>/summary.md`.
@@ -96,7 +116,7 @@ Recommended review directory:
 └── release.md          # optional
 ```
 
-## 6. Test Matrix Rules
+## 7. Test Matrix Rules
 
 A test matrix is risk-focused verification, not a full QA plan.
 
@@ -109,7 +129,7 @@ A test matrix is risk-focused verification, not a full QA plan.
 - Multi-platform work must cover cross-platform areas.
 - Evidence should summarize commands/manual checks and durable links or artifact paths. Do not paste large logs.
 
-## 7. Lessons Rules
+## 8. Lessons Rules
 
 `lessons.md` stores short corrective lessons:
 

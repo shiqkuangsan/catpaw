@@ -15,6 +15,7 @@ Intent classification
 → Workflow state target when tracked
 → Lifecycle role routing
 → Artifact decisions
+→ Provider stance
 → Verification level
 ```
 
@@ -67,7 +68,7 @@ line; for explicit `catpaw:classify` requests, include the structured fields.
 Compact form:
 
 ```text
-CatPaw dispatch: L2 — <short reason>. State: <planned|building|...>. Artifacts: <none|req+plan|req+plan+tests+reviews>. Roles: <none|role set>. Verification: <inline|record|matrix>. Next: <action>.
+CatPaw dispatch: L2 — <short reason>. State: <planned|building|...>. Artifacts: <none|req+plan|req+plan+tests+reviews>. Roles: <none|role set>. Provider: <inline|preferred|forced>. Verification: <inline|record|matrix>. Next: <action>.
 ```
 
 Structured form:

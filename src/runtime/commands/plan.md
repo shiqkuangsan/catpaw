@@ -21,6 +21,10 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
   `preferred`; if the preferred subagent is not used, keep the stance as
   `preferred` and record provider outcome with `Subagent skipped: <reason>`.
   `skipped` is an outcome, not a provider stance.
+- For `preferred`, final plan evidence must show either `Provider outcome:
+  used` with subagent findings, or `Provider outcome: skipped` with `Subagent
+  skipped: <reason>`.
+  Short form: `Provider outcome: used` or `Provider outcome: skipped`.
 - For frontend or UI-facing work, name the intended self-verification surface in
   the plan: existing tests, Browser / browser-use / in-app browser, Playwright,
   Chrome DevTools, Computer Use, or a blocked/unavailable reason. Record why
@@ -31,6 +35,8 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - Do not implement before the plan is approved when the user is in plan-only / research-first mode.
 - Keep plan steps small and verifiable.
 - Do not create duplicate active plans for the same req.
+- If a new req belongs to an active milestone, link it from the milestone Scope
+  table instead of adding milestone frontmatter to the req.
 - New req files must use the frontmatter defined in `templates/req.md`.
 - Set `closed: null` for non-terminal reqs.
 
@@ -89,6 +95,7 @@ Role gate:
 ## Artifact Paths
 
 - Req: `.catpaw/reqs/FR-001-<slug>.md`, `.catpaw/reqs/BUG-001-<slug>.md`, or `.catpaw/reqs/CHORE-001-<slug>.md`.
+- Milestone: `.catpaw/milestones/MS-001-<slug>.md`.
 - Active plan: `.catpaw/plans/active/<req-id>-<slug>.md`.
 - L3 test matrix: `.catpaw/tests/matrices/<req-id>-<slug>.md`.
 - Review summary when needed: `.catpaw/reviews/<req-id>-<slug>/summary.md`.

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.1.5 - 2026-06-29
+
+- Add built-in Milestone guidance as an optional phase artifact for L2/L3
+  multi-FR continuous objectives.
+- Add `catpaw:milestone` command guidance and a milestone artifact template.
+- Extend project status/doctor tooling to read active milestones and detect
+  milestone/FR state drift.
+- Strengthen Subagent Preference Gate so preferred stance needs provider
+  evidence or an explicit skip reason, with doctor coverage.
+
+Migration note (2.1.4 -> 2.1.5):
+
+```text
+Runtime upgrade: recommended for agents that should use Milestone mode or stronger autonomous subagent routing.
+Project impact: no required project artifact schema migration; existing artifacts remain valid. New boards may include .catpaw/milestones/.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: group existing related FRs into .catpaw/milestones/MS-001-<slug>.md when a phase objective spans multiple FRs.
+Verification: source/dist/installed VERSION = 2.1.5 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.5.md is required; this release changes runtime guidance and project inspector checks, not required project artifact schema.
+```
+
 ## 2.1.4 - 2026-06-29
 
 - Add repository slimming guardrails to `scripts/verify-runtime.mjs`, including

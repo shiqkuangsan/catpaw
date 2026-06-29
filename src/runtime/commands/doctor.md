@@ -13,8 +13,11 @@ below.
 Use req IDs as graph roots:
 
 ```text
-req -> plan -> research -> tests -> reviews -> lessons/docs
+milestone -> req -> plan -> research -> tests -> reviews -> lessons/docs
 ```
+
+Milestones are optional grouping roots. Existing boards without
+`.catpaw/milestones/` are valid.
 
 ## Checks
 
@@ -23,8 +26,18 @@ req -> plan -> research -> tests -> reviews -> lessons/docs
   - Non-terminal reqs must have `closed: null`.
   - `updated` should reflect the last meaningful status/content change.
 - Index consistency:
+  - Done or cancelled milestones should not remain under Active Milestones.
   - Done or cancelled reqs should not remain under Active Work.
   - Active reqs should be discoverable from the dashboard or active plans.
+- Milestone consistency:
+  - Milestone frontmatter should include `id`, `status`, `created`, `updated`,
+    and `closed`.
+  - Terminal milestones must have `closed: YYYY-MM-DD`; non-terminal milestones
+    must have `closed: null`.
+  - Req IDs listed in a milestone Scope table should exist under `.catpaw/reqs/`.
+  - A done milestone should not contain non-terminal reqs unless they are
+    explicitly deferred or cancelled in the closeout.
+  - A req listed in multiple active milestones is a warning, not an error.
 - Plan consistency:
   - Active reqs may point to `plans/active/`.
   - Done/cancelled reqs should not require an active plan unless intentionally left open.
@@ -73,8 +86,9 @@ Suggested:
 When running from a CatPaw source checkout,
 `node scripts/catpaw-project.mjs doctor --project <project-root> --json` may be
 used as read-only evidence for status, closeout drift, provider stance drift,
-L3 test matrix requirements, plan directory/status drift, adapter activation,
-and registry stamp findings. The helper does not write project `.catpaw/` files.
+L3 test matrix requirements, plan directory/status drift, milestone/FR drift,
+adapter activation, and registry stamp findings. The helper does not write
+project `.catpaw/` files.
 
 ## Severity
 
