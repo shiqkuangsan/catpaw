@@ -36,6 +36,11 @@ function record(name, ok, detail) {
   checks.push({ name, ok, detail });
 }
 
+function lineCount(text) {
+  if (!text) return 0;
+  return text.split(/\r?\n/).length;
+}
+
 function assertInside(parent, child) {
   const relative = path.relative(parent, child);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
@@ -464,6 +469,88 @@ async function verifyProtocolInvariants(rootLabel, root) {
   );
 }
 
+async function verifySlimmingGuardrails(rootLabel, root) {
+  const targets = [
+    ["runtime-policy.md", 380],
+    ["commands/provider.md", 430],
+    ["specs/08-operating-rules.md", 270],
+    ["specs/09-roles.md", 310],
+    ["CHANGELOG.md", 280],
+  ];
+
+  for (const [relativePath, maxLines] of targets) {
+    const target = path.join(root, relativePath);
+    if (!(await pathExists(target))) continue;
+    const lines = lineCount(await readText(target));
+    record(
+      `${rootLabel} slimming line budget ${relativePath}`,
+      lines <= maxLines,
+      `${lines}/${maxLines}`,
+    );
+  }
+
+  const rolesDir = path.join(root, "roles");
+  if (await pathExists(rolesDir)) {
+    let roleLines = 0;
+    for (const fileName of await readdir(rolesDir)) {
+      if (!fileName.endsWith(".md")) continue;
+      roleLines += lineCount(await readText(path.join(rolesDir, fileName)));
+    }
+    record(
+      `${rootLabel} slimming line budget roles/`,
+      roleLines <= 660,
+      `${roleLines}/660`,
+    );
+  }
+
+  const policy = await readText(path.join(root, "runtime-policy.md"));
+  const provider = await readText(path.join(root, "commands", "provider.md"));
+  const workflow = await readText(path.join(root, "specs", "13-workflow-control-model.md"));
+  const operatingRules = await readText(path.join(root, "specs", "08-operating-rules.md"));
+  const roles = await readText(path.join(root, "specs", "09-roles.md"));
+
+  record(
+    `${rootLabel} slimming preserves core workflow vocabulary`,
+    ["L0", "L1", "L2", "L3"].every((level) =>
+      policy.includes(level) && workflow.includes(level),
+    ),
+    "runtime-policy.md + specs/13-workflow-control-model.md",
+  );
+  record(
+    `${rootLabel} slimming preserves provider gates`,
+    provider.includes("Forced Provider Gate") &&
+      provider.includes("Subagent Preference Gate") &&
+      provider.includes("Capability fallback ladder") &&
+      operatingRules.includes("Provider Availability"),
+    "commands/provider.md + specs/08-operating-rules.md",
+  );
+  record(
+    `${rootLabel} slimming preserves stance/outcome terms`,
+    ["`inline`", "`preferred`", "`forced`"].every((term) =>
+      provider.includes(term) && operatingRules.includes(term),
+    ) &&
+      ["`used`", "`skipped`", "`unavailable`", "`gap`"].every((term) =>
+        operatingRules.includes(term),
+      ),
+    "commands/provider.md + specs/08-operating-rules.md",
+  );
+  record(
+    `${rootLabel} slimming preserves role routing`,
+    policy.includes("Lifecycle role routing") &&
+      roles.includes("Lifecycle Role Orchestration") &&
+      roles.includes("Provider Selection"),
+    "runtime-policy.md + specs/09-roles.md",
+  );
+  record(
+    `${rootLabel} slimming preserves safety gates`,
+    policy.includes("External actions require explicit user confirmation") &&
+      operatingRules.includes("External actions require explicit user confirmation") &&
+      provider.includes("Do not send secrets") &&
+      operatingRules.includes("Observable mode does not authorize writes"),
+    "runtime-policy.md + commands/provider.md + specs/08-operating-rules.md",
+  );
+}
+
 function frontmatterRuntime(text) {
   if (!text.startsWith("---\n")) return null;
   const end = text.indexOf("\n---", 4);
@@ -551,6 +638,9 @@ async function main() {
   await verifyProtocolInvariants("source", sourceRoot);
   await verifyProtocolInvariants("dist", distRoot);
   await verifyProtocolInvariants("installed", installedRoot);
+  await verifySlimmingGuardrails("source", sourceRoot);
+  await verifySlimmingGuardrails("dist", distRoot);
+  await verifySlimmingGuardrails("installed", installedRoot);
 
   const installedVersion = (await pathExists(path.join(installedRoot, "VERSION")))
     ? (await readText(path.join(installedRoot, "VERSION"))).trim()
