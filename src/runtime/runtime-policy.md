@@ -1,5 +1,4 @@
 # Runtime Policy
-
 > Status: draft · Last updated: 2026-06-29 (2.1.4: compact always-on core)
 
 This is the always-on CatPaw core card. It should stay small. Full protocol
@@ -30,11 +29,7 @@ Layer boundaries:
 
 ## 2. Runtime And Artifacts
 
-Rule:
-
-```text
-Global spec, local artifacts.
-```
+Rule: `Global spec, local artifacts.`
 
 - Runtime package: `~/.catpaw/`.
 - Project board: `<project>/.catpaw/`.
@@ -44,14 +39,10 @@ Global spec, local artifacts.
   active status. Optional milestones group related FRs into phase objectives.
 - Templates are instantiated only when creating concrete artifacts.
 
-Canonical package and project path detail:
-
-- `specs/03-project-directory.md`
-- `specs/11-runtime-package.md`
-- `commands/init-project.md`
-- `commands/migrate-project.md`
-- `commands/upgrade-runtime.md`
-- `commands/upgrade-project.md`
+Canonical path detail: `specs/03-project-directory.md`,
+`specs/11-runtime-package.md`, `commands/init-project.md`,
+`commands/migrate-project.md`, `commands/upgrade-runtime.md`,
+`commands/upgrade-project.md`.
 
 ## 3. Start-of-task Dispatch
 
@@ -138,6 +129,18 @@ Behavior-sensitive examples: search/ranking/filtering, cache, async lifecycle,
 pagination/order, DB migration/indexes, persistence formats, performance fast
 paths, serialization, API contracts.
 
+For complex bugs, architecture choices, or behavior-sensitive changes, state
+the root problem and binding constraints before choosing a fix.
+
+### Adversarial Review
+
+For medium/high-risk review, deliberately challenge false assumptions, simpler
+alternatives, hostile or weird inputs, boundary states, missing evidence, and
+production failure modes.
+
+Use it for L3, behavior-sensitive L2, repeated failures, sensitive paths, broad
+diffs, or milestone closeout. Keep L0/L1 light.
+
 ### Forced Provider Gate
 
 Forced Provider Gate requires non-primary judgment or an explicit provider gap;
@@ -171,6 +174,7 @@ Prefer current-tool subagent for:
 - Consistency-sensitive runtime/template/docs changes.
 - Weak or unavailable tests.
 - Non-trivial UI/design/QA review.
+- Adversarial review when a medium-risk diff needs independent challenge.
 - Broad completion review.
 
 If skipped after a preference trigger, record:

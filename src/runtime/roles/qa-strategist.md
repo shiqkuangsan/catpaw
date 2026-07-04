@@ -11,6 +11,8 @@ matrices for complex work. Prefer small high-signal checks over ceremony.
 
 - Golden path and critical edge cases.
 - Contract regression and implementation boundary cases.
+- Adversarial cases: malformed, oversized, duplicated, stale, future-dated, or
+  reordered data that could break real workflows.
 - Manual vs automated verification split.
 - Environment, browser, device, and platform coverage.
 - Interactive UI verification surface selection.
@@ -21,7 +23,8 @@ matrices for complex work. Prefer small high-signal checks over ceremony.
 Look for untestable acceptance criteria, implementation-detail-only tests,
 happy-path-only coverage, missing new branch thresholds/fallback/cache/query/
 migration boundaries, UI changes not exercised in a browser, stale test output,
-and L3 work without a concrete matrix.
+L3 work without a concrete matrix, and review plans that never try to break the
+new behavior with hostile or weird inputs.
 
 ## Interactive UI Verification
 

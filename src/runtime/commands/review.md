@@ -8,6 +8,10 @@ Run an Expert Council review for the current task, plan, implementation, or rele
 - Use lifecycle role orchestration before falling back to generic role selection.
 - L2 usually uses 1-2 roles.
 - L3 may use multiple roles and must preserve disagreements.
+- Review mode may be `none`, `light`, `adversarial`, or `formal`.
+- Use `adversarial` when the goal is to actively challenge assumptions,
+  contracts, boundary cases, simpler alternatives, hostile/weird inputs, or
+  missing evidence before completion.
 - `summary.md` is the review entrypoint.
 - Role files are optional unless formal review or reusable findings justify them.
 - Providers are execution details; roles are expert perspectives.
@@ -114,6 +118,19 @@ Use for search/query/ranking, cache, async lifecycle, pagination/order consisten
 - Which risks are fixed, mitigated, deferred, or not addressed?
 - Is any reviewer finding accepted only after local verification?
 
+## Adversarial Checks
+
+Use for L3, behavior-sensitive L2, repeated failures, security/performance
+paths, broad diffs, milestone closeout, or explicit requests to challenge a
+solution.
+
+- What assumption would break this solution if it were false?
+- What hostile, oversized, malformed, stale, future-dated, reordered, or
+  duplicated input could expose a flaw?
+- Is there a smaller or more direct solution that preserves the same contract?
+- What evidence would convince a skeptical reviewer that the risk is closed?
+- Which risk remains only mitigated or deferred?
+
 ## Artifact Rule
 
 - Light review may be reported inline without writing files.
@@ -126,12 +143,13 @@ Use for search/query/ranking, cache, async lifecycle, pagination/order consisten
 Write or report review summary:
 
 ```text
-Mode: none | light | formal
+Mode: none | light | adversarial | formal
 Roles:
 Providers:
 Provider gaps:
 Provider stance:
 Subagent skipped:
+Adversarial checks:
 Accepted findings:
 Rejected findings:
 Contract / semantic checks:

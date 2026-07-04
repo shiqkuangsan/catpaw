@@ -227,7 +227,7 @@ Preferred subagent selection:
   modules.
 - Prefer current-tool subagent for consistency-sensitive multi-file changes,
   weak or unavailable tests, non-trivial UI/design/QA review, or broad
-  completion review.
+  adversarial review, or broad completion review.
 - A preference trigger defaults to one bounded read-only subagent check before
   final plan, review, or completion when a native subagent is available.
 - For `preferred`, record `Provider outcome: used` with subagent findings, or
@@ -239,6 +239,9 @@ Preferred subagent selection:
 - Plans should record role intent in `Notes.Review` for L2 and `Council` for L3.
 - Review summaries must list role + provider pairs, accepted/rejected findings,
   conflicts, provider gaps, and final decision.
+- Adversarial review summaries should record challenged assumptions, hostile or
+  weird inputs, boundary states, simpler alternatives, and missing evidence when
+  those checks affect the decision.
 - Test matrices should record QA / Security / Performance / Design roles only when their evidence changes verification strategy.
 - Reflect should write lessons only when reusable; do not create role-specific retrospective files by default.
 

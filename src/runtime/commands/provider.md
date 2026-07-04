@@ -97,6 +97,8 @@ not meet a forced gate:
   adapter snippets, templates, or docs.
 - Weak, missing, or unavailable tests where QA verification gaps matter.
 - Non-trivial UI changes needing design or QA perspective.
+- Adversarial review for medium-risk diffs where an independent challenge pass
+  can test assumptions, weird inputs, boundary states, or simpler alternatives.
 - Completion review when a broad diff makes self-review likely weak.
 
 If skipped after a preference trigger, record:
@@ -113,6 +115,11 @@ Preferred subagent invocation is one bounded round by default. Prompt with:
 goal, scoped files/context, read-only constraint, exact question, expected
 output, and safety limits. Stop after one round unless the result reveals a
 forced gate, repeated failure, or explicit user request for more review.
+
+Adversarial review can use current-tool subagent, Laoer / second opinion, or
+Laosan / third opinion according to risk. Do not fan out to multiple providers
+by default; escalate only for L3, forced gates, repeated failures, provider
+disagreement, or explicit user request.
 
 Expected output:
 

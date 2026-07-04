@@ -409,6 +409,24 @@ async function verifyProtocolInvariants(rootLabel, root) {
     "runtime-policy.md + commands/provider.md + classify/plan/review + specs/08-operating-rules.md + specs/09-roles.md + adapter snippets",
   );
   record(
+    `${rootLabel} adversarial review guidance`,
+    policy.includes("Adversarial Review") &&
+      policy.includes("root problem and binding constraints") &&
+      plan.includes("root problem and binding constraints") &&
+      review.includes("Mode: none | light | adversarial | formal") &&
+      review.includes("Adversarial Checks") &&
+      provider.includes("Adversarial review") &&
+      operatingRules.includes("Adversarial Review") &&
+      rolesSpec.includes("Adversarial review summaries") &&
+      planTemplate.includes("root problem and binding constraints") &&
+      reviewTemplate.includes("Adversarial Checks") &&
+      qaStrategist.includes("Adversarial cases") &&
+      (await readText(path.join(root, "roles", "security-reviewer.md"))).includes("adversarial tests") &&
+      (await readText(path.join(root, "roles", "performance-reviewer.md"))).includes("Adversarial workloads") &&
+      (await readText(path.join(root, "roles", "debugging-advisor.md"))).includes("Challenge\nthe first plausible answer"),
+    "runtime-policy.md + plan/review/provider + roles + templates",
+  );
+  record(
     `${rootLabel} provider stance enum`,
     provider.includes("`forced`:") &&
       provider.includes("`preferred`:") &&

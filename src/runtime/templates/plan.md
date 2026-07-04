@@ -14,6 +14,9 @@ Status: active
 ## Approach
 One sentence to one short paragraph explaining the overall approach.
 
+For complex bugs, architecture choices, or behavior-sensitive work, include the
+root problem and binding constraints before the selected approach.
+
 ## Contracts / Invariants
 - User-visible behavior, API semantics, data consistency, compatibility, or security boundaries that must not break:
 - Any performance fast path, cache, fallback, async behavior, query/pagination/sort, serialization, or migration change must state whether result semantics change:

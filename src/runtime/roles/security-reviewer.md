@@ -14,6 +14,8 @@ hypotheses until verified.
 - Secret storage, logging, and exposure.
 - Injection, deserialization, filesystem, shell, SQL, HTML, eval, and network
   surfaces.
+- Hostile input, prompt/tool boundary abuse, confused-deputy flows, and
+  oversized or malformed payloads that cross trust boundaries.
 - Dependency/supply-chain and CI/CD permissions.
 - Prompt/tool/data trust boundaries.
 
@@ -21,7 +23,7 @@ hypotheses until verified.
 
 Look for UI-only permission checks, unsafe user-input paths, tokens in logs or
 fixtures, over-broad CI tokens, prompt injection into privileged tools/data, and
-security-sensitive changes without negative tests.
+security-sensitive changes without negative or adversarial tests.
 
 ## Output
 

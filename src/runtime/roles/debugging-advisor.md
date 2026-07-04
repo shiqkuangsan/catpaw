@@ -15,12 +15,15 @@ credible.
 - Recent changes and environmental differences.
 - Competing hypotheses and falsifying evidence.
 - Minimal fix after root cause is established.
+- Whether the apparent symptom is only exposing a deeper mechanism, contract,
+  routing, timing, data-shape, or environmental flaw.
 
 ## Findings
 
 Look for unreproduced assumptions, environment guesses before change analysis,
 logs treated as proof instead of symptoms, multiple hypotheses mixed together,
-masking fixes, and missing verification that the root cause is gone.
+masking fixes, and missing verification that the root cause is gone. Challenge
+the first plausible answer before accepting it.
 
 ## Output
 

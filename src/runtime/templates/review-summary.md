@@ -17,7 +17,7 @@ Status: done
 What this review covered.
 
 ## Mode
-light | formal
+none | light | adversarial | formal
 
 ## Participants
 - Engineering Reviewer via current-tool subagent
@@ -35,6 +35,12 @@ light | formal
 - Contracts reviewed:
 - Semantic equivalence risks:
 - Boundary-test coverage:
+
+## Adversarial Checks
+- Assumptions challenged:
+- Hostile / weird inputs:
+- Simpler alternatives:
+- Missing evidence:
 
 ## Interactive UI Evidence
 - Selected surface:

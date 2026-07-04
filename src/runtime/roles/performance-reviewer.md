@@ -16,6 +16,8 @@ and regression risk. Optimize only where user or system impact is plausible.
 - Regression detection and observability.
 - Semantic equivalence of optimizations, fast paths, caches, indexes, and
   fallback paths.
+- Adversarial workloads such as oversized inputs, retry loops, cache stampedes,
+  expensive fallback paths, and pathological ordering/pagination cases.
 
 ## Findings
 
@@ -23,7 +25,8 @@ Look for performance claims without measurement, new work on known hot paths
 without before/after evidence, large dependency/bundle changes, synchronous
 work on interaction-critical paths, inefficient queries/loops/serialization,
 metrics that miss the user bottleneck, and speedups that change results,
-ordering, filtering, freshness, or visibility.
+ordering, filtering, freshness, or visibility. Challenge claims with worst-case
+or weird-case workloads when the path is plausibly hot.
 
 ## Output
 

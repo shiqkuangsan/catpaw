@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.6 - 2026-07-03
+- Add lightweight adversarial review mode for high-risk review and closeout.
+- Add root-problem framing for complex bug/architecture work without creating a
+  mandatory prompt ritual.
+- Extend provider/subagent routing, focused role cards, plan/review templates,
+  and verifier guardrails for bounded adversarial checks.
+Migration note (2.1.5 -> 2.1.6):
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use adversarial review guidance.
+Project impact: no required project artifact schema migration; existing artifacts remain valid.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: use adversarial review for high-risk closeout, repeated failures, and broad completion review.
+Verification: source/dist/installed VERSION = 2.1.6 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.6.md is required; this release changes runtime guidance and templates, not required project artifact schema.
+```
+
 ## 2.1.5 - 2026-06-29
 
 - Add built-in Milestone guidance as an optional phase artifact for L2/L3

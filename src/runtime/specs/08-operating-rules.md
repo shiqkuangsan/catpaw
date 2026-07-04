@@ -83,6 +83,22 @@ Rules:
 - Treat fast paths as possible semantic changes until equivalence is proven or
   the behavior change is accepted.
 - If no contract can be defined, pause into research.
+- For complex bugs, architecture decisions, or behavior-sensitive changes,
+  briefly state the root problem and binding constraints before choosing a fix.
+
+## 4.5 Adversarial Review
+
+Use adversarial review when cooperative validation is too weak: L3,
+behavior-sensitive L2, repeated failures, security/performance-sensitive paths,
+broad diffs, milestone closeout, or explicit challenge requests.
+
+Rules:
+
+- Challenge assumptions, contracts, simpler alternatives, hostile/weird inputs,
+  boundary states, and missing evidence.
+- Prefer one bounded provider or subagent challenge pass when the Provider Gate
+  says `preferred` or `forced`; do not fan out by default.
+- Keep L0/L1 light unless normal risk triggers escalate them.
 
 ## 5. Frontend / UI Interactive Verification
 
@@ -156,7 +172,7 @@ Subagent Preference Gate:
 - Prefer current-tool subagent for L1 work touching 3+ files, shared helpers,
   public docs/protocols, runtime policy/spec/commands/templates, unfamiliar
   modules, weak tests, consistency-sensitive multi-file changes, non-trivial
-  UI/design/QA review, or broad completion review.
+  UI/design/QA review, adversarial review, or broad completion review.
 - A preference trigger defaults to one bounded read-only subagent check before
   final plan, review, or completion when a native subagent is available.
 - For `preferred`, evidence must show `Provider outcome: used` with subagent

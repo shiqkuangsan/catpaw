@@ -15,6 +15,9 @@ Create CatPaw req / plan artifacts for L2 or L3 work.
 - For L3, create req + plan with Risk Gates and Council sections, plus test matrix skeleton.
 - For L2/L3, choose lifecycle roles from the active stage and risk triggers before implementation.
 - For behavior-sensitive L2/L3 work, require `Contracts / Invariants`, boundary verification, and a risk ledger before implementation.
+- For complex bugs, architecture decisions, or behavior-sensitive work, briefly
+  state the root problem and binding constraints before selecting the approach.
+  This is a framing aid, not a mandatory field for every plan.
 - For forced provider triggers, name the required non-primary provider path,
   fallback, and any provider gap before implementation.
 - For Subagent Preference Gate triggers, record provider stance as
