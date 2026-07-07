@@ -79,7 +79,9 @@ Risk triggers:
   evidence, record the reason, fall back to current-tool subagent, and mark any
   remaining provider gap. No stdout from a live provider process/session is not
   sufficient evidence of unavailability; inspect status, recent output, or
-  provider-native state first.
+  provider-native state first. Initialization chatter, repo status, or
+  "Ready for your next task" style output without review/debug findings counts
+  as no usable output.
 - For preferred subagent triggers, skip only when inline review is sufficient
   and record `Subagent skipped: <reason>`.
 - For `preferred`, final review/completion evidence must show either

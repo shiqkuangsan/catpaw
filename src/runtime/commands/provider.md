@@ -177,17 +177,61 @@ broad filesystem permissions.
 
 ### Claude Code (`cc`)
 
-Single-turn, no tools:
+Smoke test:
 
 ```bash
-claude -p --no-session-persistence --tools "" "<prompt>"
+printf '%s\n' 'Reply exactly: CC_SMOKE_OK' \
+  | claude -p \
+      --no-session-persistence \
+      --safe-mode \
+      --permission-mode plan \
+      --disallowedTools Edit,Write,NotebookEdit
 ```
 
-Read-only workspace discussion:
+Quick ask may pass a simple prompt argument, but do not use this as the default
+for complex review/debug. If Claude returns unrelated initialization output,
+repo status, "Ready for your next task", or no usable answer, switch to stdin +
+safe-mode and record the unusable output.
 
 ```bash
-claude -p --no-session-persistence --permission-mode plan "<prompt>"
+claude -p --no-session-persistence --safe-mode --tools "" "<prompt>"
 ```
+
+Read-only review/debug default:
+
+```bash
+printf '%s\n' "$PROMPT" \
+  | claude -p \
+      --no-session-persistence \
+      --safe-mode \
+      --permission-mode plan \
+      --disallowedTools Edit,Write,NotebookEdit
+```
+
+Multi-directory / worktree review:
+
+```bash
+printf '%s\n' "$PROMPT" \
+  | claude -p \
+      --no-session-persistence \
+      --safe-mode \
+      --permission-mode plan \
+      --disallowedTools Edit,Write,NotebookEdit \
+      --add-dir /abs/path/worktree-a /abs/path/worktree-b /abs/path/worktree-c
+```
+
+`--add-dir` is variadic. Do not append the prompt after `--add-dir`; pass the
+prompt through stdin so directories and task text cannot be confused.
+
+`--safe-mode` disables CLAUDE.md, skills, plugins, hooks, MCP servers, custom
+commands/agents, and other customizations. Provider prompts must therefore be
+self-contained: include task background, constraints, relevant paths, allowed
+mode, output format, forbidden actions, and acceptance focus.
+
+Read-only review/debug should deny write tools by default with
+`--disallowedTools Edit,Write,NotebookEdit`. Use stronger allowlists only when
+needed, but do not treat any tool configuration as authorization for commit,
+push, PR, deploy, destructive operations, or external side effects.
 
 Provider-native continuation may use `--continue`, `--resume`, or
 `--session-id`, but CatPaw must not depend on provider memory alone.

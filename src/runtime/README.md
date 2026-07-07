@@ -2,7 +2,7 @@
 
 CatPaw is a personal AI collaboration runtime: an always-on thin policy, canonical specs, explicit commands, safety-oriented project artifacts, and Expert Council review roles.
 
-Current runtime version: `2.1.6`.
+Current runtime version: `2.1.7`.
 
 ## Quick Start
 

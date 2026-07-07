@@ -14,7 +14,7 @@ providers when risk requires it, and close the loop with verification.
 
 Repository: https://github.com/shiqkuangsan/catpaw
 
-Current runtime version: `2.1.6`.
+Current runtime version: `2.1.7`.
 
 Status: early public runtime. The protocol is usable, intentionally small, and
 still evolving.

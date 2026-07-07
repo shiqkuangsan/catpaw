@@ -310,6 +310,22 @@ async function verifyProtocolInvariants(rootLabel, root) {
     "commands/provider.md + commands/review.md + specs/08-operating-rules.md + tools/provider-session.sh + templates/provider-dialogue.md",
   );
   record(
+    `${rootLabel} Claude Code safe-mode provider CLI`,
+    provider.includes("CC_SMOKE_OK") &&
+      provider.includes("stdin +\nsafe-mode") &&
+      provider.includes("--safe-mode") &&
+      provider.includes("--permission-mode plan") &&
+      provider.includes("--disallowedTools Edit,Write,NotebookEdit") &&
+      provider.includes("--add-dir /abs/path/worktree-a") &&
+      provider.includes("`--add-dir` is variadic") &&
+      provider.includes("Do not append the prompt after `--add-dir`") &&
+      provider.includes("Provider prompts must therefore be\nself-contained") &&
+      review.includes("counts\n  as no usable output") &&
+      operatingRules.includes("no usable output") &&
+      !provider.includes('claude -p --no-session-persistence --permission-mode plan "<prompt>"'),
+    "commands/provider.md + commands/review.md + specs/08-operating-rules.md",
+  );
+  record(
     `${rootLabel} workflow control model`,
     workflowControl.includes("Workflow Control Model") &&
       workflowControl.includes("Canonical Decision Table") &&
@@ -527,10 +543,10 @@ async function verifyProtocolInvariants(rootLabel, root) {
 async function verifySlimmingGuardrails(rootLabel, root) {
   const targets = [
     ["runtime-policy.md", 380],
-    ["commands/provider.md", 430],
+    ["commands/provider.md", 470],
     ["specs/08-operating-rules.md", 270],
     ["specs/09-roles.md", 310],
-    ["CHANGELOG.md", 280],
+    ["CHANGELOG.md", 300],
   ];
 
   for (const [relativePath, maxLines] of targets) {

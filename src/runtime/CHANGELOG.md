@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.1.7 - 2026-07-07
+- Update Claude Code provider review/debug defaults to stdin pipe +
+  `--safe-mode` + `--permission-mode plan` with write tools denied.
+- Document `--add-dir` as variadic and require prompts through stdin for
+  multi-directory/worktree review.
+- Clarify safe-mode's context cost, no-usable-output fallback semantics, and
+  verifier guardrails for Claude Code CLI guidance.
+Migration note (2.1.6 -> 2.1.7):
+```text
+Runtime upgrade: optional; run catpaw:upgrade-runtime if agents should use safer Claude Code provider review/debug invocation.
+Project impact: no required project artifact schema migration; existing artifacts remain valid.
+Required actions: build runtime, sync ~/.catpaw, run node scripts/verify-runtime.mjs and node --test.
+Optional actions: refresh provider adapters only if they quote Claude Code invocation examples directly.
+Verification: source/dist/installed VERSION = 2.1.7 after runtime sync; verify-runtime result should be PASS after installed runtime sync.
+Rollback / non-goals: no migrations/2.1.7.md is required; this release changes runtime provider guidance, not project artifact schema.
+```
+
 ## 2.1.6 - 2026-07-03
 - Add lightweight adversarial review mode for high-risk review and closeout.
 - Add root-problem framing for complex bug/architecture work without creating a

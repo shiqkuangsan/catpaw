@@ -193,6 +193,8 @@ Rules:
 
 - No stdout while a provider process or session is still alive is not enough to
   mark the provider `unavailable`.
+- Initialization chatter, repo status, or "Ready for your next task" style
+  output without task findings is `no usable output`, not a successful review.
 - Before recording `unavailable`, `timeout`, or provider `gap`, inspect an
   available progress signal: process state, session status, recent pane output,
   provider-native state, or explicit waiting-for-input text.
