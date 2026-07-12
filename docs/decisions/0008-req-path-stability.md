@@ -1,6 +1,6 @@
 # ADR-0008: Req Paths Are Identity-Stable
 
-Status: Accepted
+Status: Superseded by ADR-0019
 
 ## Context
 

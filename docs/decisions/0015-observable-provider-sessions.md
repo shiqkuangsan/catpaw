@@ -1,6 +1,6 @@
 # ADR-0015: Observable Provider Sessions
 
-Status: Accepted
+Status: Accepted; implementation and provider scope amended by ADR-0019
 
 ## Context
 

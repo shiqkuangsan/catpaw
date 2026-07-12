@@ -1,6 +1,6 @@
 # ADR-0004: Per-Machine Global Project Registry
 
-Status: Accepted; amended by ADR-0007
+Status: Accepted; registry shape amended by ADR-0019
 
 ## Context
 

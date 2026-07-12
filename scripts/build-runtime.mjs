@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import {
+  chmod,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,90 +18,142 @@ const repoRoot = path.resolve(
 );
 const sourceRoot = path.join(repoRoot, "src", "runtime");
 const distRoot = path.join(repoRoot, "dist", "runtime");
-const manifestPath = path.join(sourceRoot, "runtime-manifest.json");
 
-async function pathExists(target) {
-  try {
-    await stat(target);
-    return true;
-  } catch (error) {
-    if (error?.code === "ENOENT") return false;
-    throw error;
-  }
-}
-
-function assertInside(parent, child) {
+function inside(parent, child) {
   const relative = path.relative(parent, child);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error(`Refusing to write outside ${parent}: ${child}`);
-  }
+  return relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative);
 }
 
-function assertSafeManifestPath(entry) {
-  if (!entry || entry.startsWith("/") || entry.includes("..")) {
+function canonicalPath(entry) {
+  if (
+    typeof entry !== "string" ||
+    entry === "" ||
+    entry.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(entry)
+  ) {
     throw new Error(`Unsafe runtime-manifest canonicalFiles entry: ${entry}`);
   }
+  const directory = entry.endsWith("/");
+  const value = directory ? entry.slice(0, -1) : entry;
+  if (
+    value === "" ||
+    path.posix.isAbsolute(value) ||
+    path.posix.normalize(value) !== value ||
+    value.split("/").includes("..")
+  ) {
+    throw new Error(`Unsafe runtime-manifest canonicalFiles entry: ${entry}`);
+  }
+  return { entry, value, directory };
 }
 
-async function copyCanonicalEntry(entry) {
-  assertSafeManifestPath(entry);
+async function kind(target) {
+  const stats = await lstat(target);
+  if (stats.isDirectory()) return "directory";
+  if (stats.isFile()) return "file";
+  if (stats.isSymbolicLink()) return "symlink";
+  return "special";
+}
 
-  const sourcePath = path.join(sourceRoot, entry);
-  const distPath = path.join(distRoot, entry);
-  assertInside(sourceRoot, sourcePath);
-  assertInside(distRoot, distPath);
+async function assertRegularTree(root, relativePath) {
+  const target = path.join(root, relativePath);
+  const targetKind = await kind(target);
+  if (targetKind === "file") return;
+  if (targetKind !== "directory") {
+    throw new Error(`Unsupported runtime package entry: ${relativePath} (${targetKind})`);
+  }
+  const entries = await readdir(target, { withFileTypes: true });
+  for (const entry of entries) {
+    await assertRegularTree(root, path.join(relativePath, entry.name));
+  }
+}
 
-  if (!(await pathExists(sourcePath))) {
-    throw new Error(`Missing canonical runtime source: ${entry}`);
+async function validateManifest(manifest) {
+  if (
+    manifest?.name !== "catpaw-runtime" ||
+    typeof manifest.version !== "string" ||
+    !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
+    !Number.isInteger(manifest.boardSchemaVersion) ||
+    !Array.isArray(manifest.canonicalFiles) ||
+    typeof manifest.cli?.entrypoint !== "string" ||
+    !Array.isArray(manifest.cli?.commands)
+  ) {
+    throw new Error("runtime-manifest.json has an invalid package contract.");
+  }
+  const entries = manifest.canonicalFiles.map(canonicalPath);
+  if (new Set(entries.map((item) => item.value)).size !== entries.length) {
+    throw new Error("runtime-manifest canonicalFiles entries must be unique.");
+  }
+  const version = (await readFile(path.join(sourceRoot, "VERSION"), "utf8")).trim();
+  if (version !== manifest.version) {
+    throw new Error(`VERSION ${version} does not match manifest ${manifest.version}.`);
   }
 
+  const declaredTopLevel = new Set(entries.map((item) => item.value.split("/")[0]));
+  const actualTopLevel = (await readdir(sourceRoot)).sort();
+  const undeclared = actualTopLevel.filter((item) => !declaredTopLevel.has(item));
+  if (undeclared.length > 0) {
+    throw new Error(`Runtime source has undeclared top-level entries: ${undeclared.join(", ")}`);
+  }
+
+  for (const item of entries) {
+    const target = path.join(sourceRoot, item.value);
+    if (!inside(sourceRoot, target)) throw new Error(`Path escapes source root: ${item.entry}`);
+    const targetKind = await kind(target);
+    if (item.directory ? targetKind !== "directory" : targetKind !== "file") {
+      throw new Error(`Canonical entry type mismatch: ${item.entry} (${targetKind})`);
+    }
+    await assertRegularTree(sourceRoot, item.value);
+  }
+
+  const entrypoint = canonicalPath(manifest.cli.entrypoint).value;
+  const entrypointPath = path.join(sourceRoot, entrypoint);
+  if (!inside(sourceRoot, entrypointPath) || await kind(entrypointPath) !== "file") {
+    throw new Error(`Missing CLI entrypoint: ${manifest.cli.entrypoint}`);
+  }
+  if (!entries.some((item) =>
+    item.value === entrypoint ||
+    (item.directory && entrypoint.startsWith(`${item.value}/`))
+  )) {
+    throw new Error(`CLI entrypoint is not canonical: ${manifest.cli.entrypoint}`);
+  }
+  return entries;
+}
+
+async function copyEntry(item) {
+  const sourcePath = path.join(sourceRoot, item.value);
+  const distPath = path.join(distRoot, item.value);
+  if (!inside(distRoot, distPath)) throw new Error(`Path escapes dist root: ${item.entry}`);
   await mkdir(path.dirname(distPath), { recursive: true });
   await cp(sourcePath, distPath, {
-    recursive: true,
+    recursive: item.directory,
     force: true,
     errorOnExist: false,
   });
 }
 
-async function verifyBuiltPackage(manifest) {
-  for (const entry of manifest.canonicalFiles) {
-    const builtPath = path.join(distRoot, entry);
-    assertInside(distRoot, builtPath);
-    if (!(await pathExists(builtPath))) {
-      throw new Error(`Missing built runtime package entry: ${entry}`);
-    }
-  }
-
-  for (const commandName of manifest.commands ?? []) {
-    const commandPath = path.join(distRoot, "commands", `${commandName}.md`);
-    assertInside(distRoot, commandPath);
-    if (!(await pathExists(commandPath))) {
-      throw new Error(`Missing command declared in manifest: ${commandName}`);
-    }
-  }
-}
-
 async function main() {
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  if (!Array.isArray(manifest.canonicalFiles)) {
-    throw new Error("runtime-manifest.json must define canonicalFiles[]");
-  }
+  const manifest = JSON.parse(
+    await readFile(path.join(sourceRoot, "runtime-manifest.json"), "utf8"),
+  );
+  const entries = await validateManifest(manifest);
 
   await rm(distRoot, { recursive: true, force: true });
   await mkdir(distRoot, { recursive: true });
+  for (const entry of entries) await copyEntry(entry);
 
-  for (const entry of manifest.canonicalFiles) {
-    await copyCanonicalEntry(entry);
-  }
-
-  await verifyBuiltPackage(manifest);
+  const distEntrypoint = path.join(distRoot, manifest.cli.entrypoint);
+  await chmod(distEntrypoint, 0o755);
+  for (const entry of entries) await assertRegularTree(distRoot, entry.value);
 
   console.log(`Built CatPaw runtime ${manifest.version} at ${distRoot}`);
-  console.log(`Copied ${manifest.canonicalFiles.length} canonical entries.`);
-  console.log(`Verified ${manifest.commands?.length ?? 0} commands.`);
+  console.log(`Board schema: ${manifest.boardSchemaVersion}`);
+  console.log(`Copied ${entries.length} canonical entries.`);
+  console.log(`CLI: ${manifest.cli.entrypoint} (${manifest.cli.commands.length} command groups).`);
 }
 
 main().catch((error) => {
-  console.error(error.message);
+  console.error(error.stack ?? error.message);
   process.exitCode = 1;
 });

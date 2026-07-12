@@ -1,6 +1,6 @@
 # ADR-0017: Adversarial Review Guidance
 
-Status: Accepted
+Status: Accepted; integrated into ADR-0019 Independent Checks
 
 ## Context
 

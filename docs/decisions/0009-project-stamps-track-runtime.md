@@ -1,6 +1,6 @@
 # ADR-0009: Project Stamps Track Installed Runtime
 
-Status: Accepted
+Status: Superseded by ADR-0019
 
 ## Context
 

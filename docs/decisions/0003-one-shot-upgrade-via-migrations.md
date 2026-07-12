@@ -1,6 +1,6 @@
 # ADR-0003: One-Shot Project Upgrade via `migrations/` Replay
 
-Status: Accepted; amended by ADR-0007 and ADR-0009
+Status: Superseded by ADR-0019
 
 ## Context
 

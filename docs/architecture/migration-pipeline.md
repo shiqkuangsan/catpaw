@@ -1,57 +1,96 @@
-# Migration Pipeline
+# Board Migration Pipeline
 
-Project boards stay current by replaying schema deltas from the board's stamp to the installed runtime in one pass. Users do not walk versions manually.
-
-## The Three Pieces
+CatPaw 3 converts an existing **schema 1** project board into **schema 2** as an
+explicit project operation. Runtime activation and board migration are separate
+authorization scopes.
 
 ```text
-.catpaw/index.md          ~/.catpaw/migrations/       ~/.catpaw/state/projects.json
-runtime: x.y.z     +     ordered deltas        +     local board index
+schema 1 board
+  -> inventory and dry-run
+  -> resolve blockers
+  -> stage schema 2 candidate
+  -> validate graph and files
+  -> backup complete preimage
+  -> publish atomically
+  -> verify and become idempotent
 ```
 
-- The board stamp says which runtime last processed the board.
-- Migration files describe project-side schema changes introduced by specific runtime versions.
-- The registry lets runtime-level commands find known boards for surveys and optional batch apply.
+Building or activating the runtime does not automatically migrate any board.
 
-## Target Semantics
+## Target Shape
 
-The target is always the installed runtime version in `~/.catpaw/VERSION`.
+The converged schema 2 board contains:
 
-Migration files decide whether files need schema rewrites; they do not decide whether a board is current. A runtime-only release can therefore produce a stamp-only project upgrade.
+```text
+.catpaw/
+├── index.md
+├── milestones/
+├── work/
+├── plans/
+└── evidence/
+```
 
-## Replay Model
+Legacy requirement records become Work Items, active plans bind to Work,
+phase groupings become Milestones, and durable research/review/test/reflection
+facts become typed Evidence. Unknown or binary files are preserved unless the
+user explicitly chooses another disposition.
 
-`upgrade-project` reads the board stamp, enumerates existing migrations in `(stamp, installed-runtime]`, merges their operations, collects user decisions once, and produces one dry-run summary. On apply, it writes the converged result, advances the board stamp to the installed runtime, and upserts the registry entry.
+## Dry-run
 
-The important property is idempotence: every migration operation must be safe to see again. Re-running an already-applied upgrade should become a no-op.
+```text
+catpaw board migrate --project /abs/project
+```
 
-## Runtime Upgrade Orchestration
+The planner inventories the complete board, parses metadata and links, detects
+collisions or ambiguous facts, and emits the exact source-to-target operations.
+It does not infer status, mode, lifecycle stage, dates, binding, or independence
+from directory placement, prose position, Git history, or file time.
 
-`upgrade-runtime` is the horizontal entrypoint. After syncing and verifying the installed runtime, it reads the registry and surveys registered boards against the installed runtime target.
+Ambiguous facts become a batched blocker list. Dry-run writes no backup, stage,
+board file, adapter, or registry entry.
 
-Project writes still belong to `upgrade-project --apply`; `upgrade-runtime --apply-projects` is an orchestrator path, not an independent board writer.
+## Stage And Validate
 
-## When Replay Stops
+After blockers are resolved and `--apply` is explicitly approved, the engine
+builds a complete candidate in a sibling stage. It then validates:
 
-One-shot replay stops before writing when the tool cannot produce a safe converged state: unresolved user decisions, declared major-version incompatibility, invalid migration semantics, missing installed runtime, or blocked board conditions.
+- schema 2 metadata against
+  [`board-v2.json`](../../src/runtime/schemas/board-v2.json);
+- expected paths and file types;
+- Work-to-Plan and Work-to-Evidence bindings;
+- Milestone Scope references;
+- local links and duplicate identities;
+- Gated completion requirements and accepted gaps.
 
-## Why This Design
+A failed stage leaves the live board untouched and creates no success claim.
 
-The alternative is per-version manual upgrades. That does not fit how people actually upgrade, repeats the same read/write cycle, and scatters user decisions across multiple runs.
+## Backup And Publish
 
-The migration registry localizes each release's schema delta while preserving a single user-facing upgrade operation.
+Only a validated stage may proceed. Before publication, CatPaw stores the
+complete live preimage under the configured CatPaw backup root, rechecks that
+the live board still matches the planned preimage, and publishes the staged
+tree atomically.
 
-## Operational Sources
+If the preimage changed, publication stops and the plan must be recomputed. A
+successful migration can then update the registry through its separate,
+explicit contract. It never batch-migrates other registered projects.
 
-- `src/runtime/commands/upgrade-project.md`
-- `src/runtime/commands/upgrade-runtime.md`
-- `src/runtime/commands/release-runtime.md`
-- `src/runtime/migrations/README.md`
+## Verification And Idempotence
+
+After publish, board doctor validates the live graph and reports any remaining
+gap. Running the same migration again against a valid schema 2 board must be an
+exact no-op. Backup cleanup, legacy-tree deletion, adapter edits, and unrelated
+project cleanup are not implied.
+
+## Recovery
+
+Failure reports include the stage, findings, and backup path when a backup was
+created. Rollback or cleanup remains an explicit operation; CatPaw does not
+silently replace a live board with an older copy.
 
 ## Related
 
-- [ADR-0001](../decisions/0001-version-stamp-on-index.md)
-- [ADR-0003](../decisions/0003-one-shot-upgrade-via-migrations.md)
-- [ADR-0004](../decisions/0004-global-project-registry.md)
-- [ADR-0007](../decisions/0007-runtime-upgrade-project-orchestration.md)
-- [ADR-0009](../decisions/0009-project-stamps-track-runtime.md)
+- [Runtime maintenance guidance](../../src/runtime/guidance/maintenance.md)
+- [Schema 2 migration note](../../src/runtime/migrations/schema-2.md)
+- [Sync and References](sync-and-references.md)
+- [ADR-0019](../decisions/0019-catpaw-3-hybrid-runtime.md)

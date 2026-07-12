@@ -1,61 +1,56 @@
-# Migrations
+# Board Migrations
 
-This directory holds the project artifact schema delta registry for CatPaw runtime releases.
+CatPaw 3 migrations move a project Work Board between explicit **board schema
+versions**. Runtime release versions and board schema versions are separate：a
+runtime-only release does not rewrite or restamp project artifacts。
 
-## Purpose
+## Current Authority
 
-`catpaw:upgrade-project` reads `.catpaw/index.md` frontmatter `runtime:` stamp, then replays every migration file in `(stamp, installed-runtime]` order to converge a project board in a single dry-run/apply cycle.
+- [schema-2.md](schema-2.md) describes the schema 1 -> schema 2 transition；
+- `catpaw board migrate --project <path>` produces its deterministic dry-run；
+- `lib/migrate-v1-v2.mjs` owns mapping logic；
+- `lib/commands/migrate.mjs` owns apply orchestration；
+- [board-v2.json](../schemas/board-v2.json) and executable tests own the target
+  machine contract。
 
-Runtime-only releases without a migration file still advance the project board stamp to the installed runtime; they simply have no schema rewrite operations.
+Markdown explains the transition；the CLI, schema, and tests enforce it。Do not
+invent migration operations by interpreting prose alone。
 
-This is the mechanism that lets users jump multiple versions in one shot without per-version manual upgrades.
+## Safety Contract
 
-## When a migration file is required
+Every supported board migration follows one transaction：
 
-Add `migrations/<version>.md` for any release that changes:
-
-- Required or expected frontmatter on req / plan / review / test-matrix / index files.
-- Project artifact directory layout (paths, names).
-- Required content sections in any artifact template.
-- Any user-visible behavior that needs existing project boards to be touched.
-
-If a release has no project-side delta, omit the file. Do not create empty placeholders.
-
-## File shape
-
-```markdown
-# Migration: <version>
-
-Runtime upgrade: <prev> -> <version>
-Project impact: <none | additive | breaking>
-
-## Operations
-
-- add: <path>: <field>: <default or rule>
-- rename: <path>: <old> -> <new>
-- move: <old-path> -> <new-path>
-- drop: <path>: <field>
-- rewrite: <path>: <description>
-
-## User Decisions
-
-- <decision-id>: <prompt>; choices: <list>
-
-## Notes
-
-<short rationale>
+```text
+inventory -> dry-run -> resolve blockers -> stage -> validate -> backup -> publish
 ```
 
-## Replay rules
+- dry-run is the default and writes nothing；
+- ambiguous metadata, links, identities, or targets block the whole plan；
+- stage contains a complete candidate board and must pass schema/graph checks；
+- backup stores the complete live preimage only after staged validation；
+- publish rechecks the live preimage and replaces it atomically；
+- a second run against the target schema is an exact no-op。
 
-- Operations across migration files are applied in version order, oldest first.
-- Within a single migration file, semantic order is `add` then `rename` then `move` then `drop` then `rewrite`.
-- Operations must be idempotent: re-running the same migration on an already-migrated board should be a no-op.
-- A `rename` after an earlier `add` collapses to writing the new name directly when replayed from the original `from` stamp.
-- A `drop` after an earlier `add` collapses to a no-op when replayed from the original `from` stamp.
-- User decisions from all replayed migrations are batched into one dry-run output.
+Runtime activation, adapter merge, registry mutation, migration of another
+board, rollback, and backup cleanup are separate authorization scopes。
 
-## Related
+## Adding A Future Schema
 
-- `commands/upgrade-project.md` — the consumer.
-- `commands/release-runtime.md` — the gate that enforces a migration file when needed.
+When a released change requires a new board schema version：
+
+1. update the schema contract and manifest `boardSchemaVersion`；
+2. add a version-to-version migration module using the shared patch engine；
+3. add a concise `schema-<n>.md` transition note；
+4. test deterministic preview, blockers, staged validation, complete backup,
+   publication failure, link/file preservation, and idempotence；
+5. update install, public, and maintainer documentation without activating or
+   batch-migrating real projects。
+
+Do not add an empty migration for a runtime-only guidance or implementation
+release。Do not couple board mutation to installed runtime activation。
+
+## Historical Files
+
+`1.1.0.md`, `1.2.0.md`, and `1.3.0.md` are historical records from the schema 1
+release-era replay model。CatPaw 3 keeps them for provenance and old-board
+analysis；its CLI does not replay them as current operating instructions。

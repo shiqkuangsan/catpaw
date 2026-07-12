@@ -1,6 +1,6 @@
 # ADR-0001: Project Board Version Stamp Lives in `index.md`
 
-Status: Accepted; amended by ADR-0007 and ADR-0009
+Status: Superseded by ADR-0019
 
 ## Context
 

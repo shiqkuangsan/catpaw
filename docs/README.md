@@ -1,65 +1,94 @@
 # CatPaw Maintainer Docs
 
-Maintainer-facing design notes for the CatPaw source repository. These docs explain why the runtime is shaped this way; they are not the runtime contract.
+These documents explain the architecture and decisions behind CatPaw 3.0.0
+Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
+contract.
 
 ## Authority Boundary
 
-| Surface | Audience | Authority |
-|---|---|---|
-| `src/runtime/specs/` | Users + agents | Protocol definitions: what CatPaw is |
-| `src/runtime/commands/` | Users + agents | Runbook semantics: what agents should do |
-| `src/runtime/migrations/` | `upgrade-project` | Per-version project schema deltas |
-| `src/runtime/templates/` | Artifact authors | Current artifact shape |
-| `docs/` | Maintainers | Rationale, mental models, decision history |
+Current behavior has one owner per concern:
 
-Rule of thumb:
+| Concern | Runtime authority |
+|---|---|
+| Always-on routing and safety | [`runtime-policy.md`](../src/runtime/runtime-policy.md) |
+| Lifecycle and modes | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
+| Independent judgment | [`guidance/independent-checks.md`](../src/runtime/guidance/independent-checks.md) |
+| Multi-Work phases | [`guidance/milestones.md`](../src/runtime/guidance/milestones.md) |
+| Runtime and local-state maintenance | [`guidance/maintenance.md`](../src/runtime/guidance/maintenance.md) |
+| External Agent operation | [`providers/README.md`](../src/runtime/providers/README.md) |
+| Board metadata | [`schemas/board-v2.json`](../src/runtime/schemas/board-v2.json) |
+| Deterministic operations | [`bin/catpaw.mjs`](../src/runtime/bin/catpaw.mjs) |
 
-- "What should an agent follow?" -> `src/runtime/specs/` or `src/runtime/commands/`.
-- "Why is the system designed this way?" -> `docs/`.
+Use `docs/` for the answer to "why is this designed this way?" Use the runtime
+authority for "what should an agent or CLI do now?"
+
+## Architecture Map
+
+- [Three Runtime Surfaces](architecture/three-layer-model.md) explains
+  Always-on Rules, On-demand Guidance, and Executable Tools.
+- [Sync and References](architecture/sync-and-references.md) explains the
+  `source -> dist -> installed -> project board` chain.
+- [Migration Pipeline](architecture/migration-pipeline.md) explains explicit,
+  staged board conversion from schema 1 to schema 2.
+- [Glossary](glossary.md) defines the compact CatPaw 3 vocabulary.
+
+## Document Lifecycle
+
+`docs/` keeps durable maintainer rationale only:
+
+| Surface | Retention rule |
+|---|---|
+| `architecture/` | Current explanatory models that clarify runtime boundaries |
+| `decisions/` | Accepted, amended, and superseded ADR history |
+| `glossary.md` | Current maintainer vocabulary |
+
+Temporary design and implementation plans, execution checklists, review
+handoffs, and session notes do not belong in `docs/`. While active, they belong
+in the project Work Board or local task context. After completion, retain only
+the durable outcome in an ADR, architecture note, runtime authority, or test;
+delete the process document instead of creating an `archive/` graveyard.
 
 ## Distribution Boundary
 
-`docs/` is source-only. It is not listed in `src/runtime/runtime-manifest.json` `canonicalFiles`, is not copied to `~/.catpaw/`, and does not require runtime version bumps or migration files. See [ADR-0005](decisions/0005-docs-not-distributed.md).
+`docs/` is source-only. It is outside the canonical package list in
+[`runtime-manifest.json`](../src/runtime/runtime-manifest.json), is never copied
+to `~/.catpaw/`, and never activates an installed runtime or project board.
+This preserves the decisions in
+[ADR-0005](decisions/0005-docs-not-distributed.md) and
+[ADR-0010](decisions/0010-source-runtime-package-split.md).
 
-## Structure
+## Decision History
 
-```text
-docs/
-├── README.md
-├── glossary.md
-├── architecture/
-│   ├── three-layer-model.md
-│   ├── sync-and-references.md
-│   └── migration-pipeline.md
-└── decisions/
-    ├── 0001-version-stamp-on-index.md
-    ├── 0002-canonical-files-exclude-state.md
-    ├── 0003-one-shot-upgrade-via-migrations.md
-    ├── 0004-global-project-registry.md
-    ├── 0005-docs-not-distributed.md
-    ├── 0006-user-visible-dispatch.md
-    ├── 0007-runtime-upgrade-project-orchestration.md
-    ├── 0008-req-path-stability.md
-    ├── 0009-project-stamps-track-runtime.md
-    ├── 0010-source-runtime-package-split.md
-    ├── 0011-provider-cli-dialogue.md
-    ├── 0012-contract-first-quality-gates.md
-    ├── 0013-lifecycle-role-orchestration.md
-    ├── 0014-interactive-ui-verification.md
-    ├── 0015-observable-provider-sessions.md
-    └── 0016-milestones-and-subagent-governance.md
-```
+ADRs are durable records, not automatically current operating instructions.
+Earlier ADRs remain useful evidence for storage, packaging, registry, migration,
+and safety choices even when CatPaw 3 supersedes some of their workflow terms.
 
-## Writing Rule
+The `Status` line is authoritative for an ADR's current standing:
 
-Keep `docs/` explanatory, not normative:
+- `Accepted` means the decision remains current.
+- `Accepted; ... amended by ADR-0019` means the principle remains but CatPaw 3
+  owns its current vocabulary or implementation.
+- `Superseded by ADR-0019` means historical rationale only.
 
-- Architecture notes should describe the model, boundary, and failure mode being avoided.
-- ADRs should record the decision and the rejected pressure, not repeat full command behavior.
-- Runtime behavior belongs in `src/runtime/specs/` and `src/runtime/commands/`.
-- Release notes belong in `src/runtime/CHANGELOG.md`.
-- Schema deltas belong in `src/runtime/migrations/`.
+ADR bodies and references describe the source tree at decision time and may
+name removed v2 paths. They never override the current authority map above.
 
-## ADR Format
+The current architectural decision is
+[ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md).
+It preserves the source/runtime/storage separation while replacing the wider
+legacy workflow and role vocabulary with a smaller model.
 
-Use compact ADRs: Status, Context, Decision, Consequences, References. Number files sequentially as `decisions/NNNN-short-title.md`. Status values: `Proposed`, `Accepted`, or `Superseded by ADR-NNNN`.
+## Writing Rules
+
+- Keep architecture notes explanatory and runtime authorities normative.
+- Do not retain completed task plans or duplicate runtime instructions in
+  `docs/`.
+- Prefer one canonical decision table or schema over repeated prose.
+- Record a significant decision as
+  `decisions/NNNN-short-title.md` with Status, Context, Decision, Consequences,
+  and References.
+- Do not claim that source, dist, installed runtime, or project boards changed
+  merely because another surface changed.
+- Release notes belong in
+  [`src/runtime/CHANGELOG.md`](../src/runtime/CHANGELOG.md); machine contracts
+  belong in schema or executable tests.

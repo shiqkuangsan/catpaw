@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": 2,
+  "artifacts": {
+    "board": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema"],
+      "properties": {
+        "schema": {
+          "type": "integer",
+          "enum": [2]
+        }
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "created", "updated", "closed", "target"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^MS-[0-9]{3,}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "blocked", "done", "cancelled"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "closed": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "target": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "workItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "mode", "status", "stage", "created", "updated", "closed"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(?:FR|BUG|CHORE)-[0-9]{3,}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["feature", "bug", "chore"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["tracked", "gated"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "blocked", "done", "cancelled"]
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["think", "plan", "build", "review", "test", "ship", "reflect"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "closed": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work", "updated"],
+      "properties": {
+        "work": {
+          "type": "string",
+          "pattern": "^(?:FR|BUG|CHORE)-[0-9]{3,}$"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "work", "stage", "created", "updated"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["research", "review", "test", "provider", "reflection"]
+        },
+        "work": {
+          "type": ["string", "null"],
+          "pattern": "^(?:FR|BUG|CHORE)-[0-9]{3,}$"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["think", "plan", "build", "review", "test", "ship", "reflect"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        },
+        "independent": {
+          "type": "boolean"
+        },
+        "agent": {
+          "type": ["string", "null"]
+        },
+        "lens": {
+          "type": ["string", "null"],
+          "enum": [
+            "value-scope",
+            "system-contracts",
+            "experience",
+            "security",
+            "performance",
+            null
+          ]
+        }
+      }
+    }
+  },
+  "constraints": {
+    "closedStatus": {
+      "artifactKinds": ["milestone", "workItem"],
+      "statusField": "status",
+      "closedField": "closed",
+      "terminalStatuses": ["done", "cancelled"]
+    },
+    "workTypeByIdPrefix": {
+      "artifactKind": "workItem",
+      "idField": "id",
+      "typeField": "type",
+      "mapping": {
+        "FR": "feature",
+        "BUG": "bug",
+        "CHORE": "chore"
+      }
+    }
+  }
+}

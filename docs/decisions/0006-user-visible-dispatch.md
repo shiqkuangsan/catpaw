@@ -1,6 +1,6 @@
 # ADR-0006: User-visible Workflow Dispatch
 
-Status: Accepted
+Status: Accepted; mode vocabulary amended by ADR-0019
 
 ## Context
 

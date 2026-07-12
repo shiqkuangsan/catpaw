@@ -1,59 +1,94 @@
-# Sync and References
+# Sync And References
 
-This note explains how the three layers move and how agents find the current runtime contract.
-
-## Source -> Global Runtime
-
-Source changes do nothing by themselves. A maintainer must classify the change, build or resolve a runtime package root, then run the explicit runtime upgrade flow.
-
-The manifest boundary matters here: `upgrade-runtime` syncs only `canonicalFiles`. Source-only surfaces such as `docs/`, `scripts/`, root bootstrap files, generated output, and local state are outside that list.
-
-## Global Runtime -> Project Board
-
-Project boards receive no runtime files. They are processed by commands that read the installed runtime and write only board artifacts or board metadata.
-
-Three entrypoints can stamp or register a board:
-
-- `init-project` creates a new board.
-- `migrate-project` converts legacy project artifacts into a board.
-- `upgrade-project --apply` replays migrations and advances the board stamp.
-
-All three preserve the same boundary: runtime is referenced, not copied.
-
-## Provider Reference Chain
-
-Provider configuration should stay thin:
+CatPaw separates behavior responsibility from storage and activation. Runtime
+state moves through four explicit surfaces:
 
 ```text
-provider adapter
-  -> ~/.catpaw/runtime-policy.md
-     -> ~/.catpaw/commands/<command>.md
-        -> ~/.catpaw/specs/ + templates/ + migrations/ + roles/
+source -> dist -> installed -> project board
 ```
 
-The adapter points to CatPaw; it does not embed CatPaw. This keeps provider setup stable while the runtime evolves.
+No arrow is automatic, and a successful earlier step does not prove a later
+surface changed.
 
-## Horizontal Registry
+## Source -> Dist
 
-`~/.catpaw/state/projects.json` is the per-machine index of known boards. It lets global commands survey boards without scanning the filesystem every time.
+Authored runtime files live under `src/runtime/`. The build reads
+[`runtime-manifest.json`](../../src/runtime/runtime-manifest.json), validates its
+canonical entries, and generates `dist/runtime/`.
 
-The registry can be read for status and upgrade surveys, refreshed when a registered board is touched, pruned when paths disappear, or edited by unregister commands. It must not become a source repo artifact, a sync target, or a place to store artifact contents.
+The manifest is both an allowlist and a completeness contract: declared files
+must exist, and generated package files must be covered by a canonical entry.
+Source-only docs, tests, and maintainer scripts stay outside the package.
 
-## Gate Design
+## Dist -> Installed
 
-The sync chain deliberately treats external and destructive actions as user-gated operations, not workflow defaults. This keeps orchestration separate from authorization: commands may prepare, survey, or recommend, but binding rules for commit, push, PR, deploy, destructive cleanup, destructive git operations, and project-board writes live in runtime policy and command runbooks.
+The installed runtime lives at `~/.catpaw/`. Activation compares dist and the
+installed manifest, previews exact managed changes, preserves local state and
+unknown files, stages a complete candidate, validates it, and only then
+publishes approved changes.
 
-## Three Easy Confusions
+When source/dist are 3.0.0 and the installed runtime is older, the correct
+state is `pending activation`. It is neither a broken source build nor a
+completed installation.
 
-1. **Stamp vs migration version**: a board stamp records the installed runtime that processed it; migrations only describe schema deltas.
-2. **`canonicalFiles` vs commands**: `canonicalFiles` is the package sync list; `commands/` is one installed runtime surface.
-3. **`state/` vs source repo**: registry state is local machine fact and never belongs in source history.
+## Installed -> Project Board
+
+A project board is local project data under `<project>/.catpaw/`. Installation
+does not copy runtime files into it. Board creation and schema migration are
+independent actions performed through the installed or explicitly selected
+CLI, with dry-run before `--apply`.
+
+The board stores only:
+
+```text
+index.md
+milestones/
+work/
+plans/
+evidence/
+```
+
+Installing CatPaw does not automatically create, apply, or migrate a project
+board.
+
+## Thin Reference Chain
+
+Host configuration remains intentionally small:
+
+```text
+host adapter
+  -> installed runtime policy
+     -> on-demand guidance or executable CLI
+        -> project board artifacts
+```
+
+An adapter is a managed reference, not a runtime copy. Global and project
+adapter merges are separately previewed and authorized. OpenCode may read such
+a project rule as a host, but CatPaw directly invokes only the `cc` and `cx`
+external Agents.
+
+## Local Registry
+
+`~/.catpaw/state/projects.json` is an advisory per-machine index keyed by
+absolute board path. It supports explicit checks and maintenance without
+scanning the filesystem, but it never owns project contents. Registry mutation
+cannot delete, migrate, or otherwise modify a board.
+
+## Failure Modes Prevented
+
+| Confusion | Correct interpretation |
+|---|---|
+| Source changed | Dist, installed runtime, and boards are unchanged |
+| Dist built successfully | A package is ready; activation may still be pending |
+| Runtime installed | Existing boards remain at their current schema |
+| Adapter merged | The host can find CatPaw; no board write is implied |
+| Board registered | Registry has an observation; ownership stays with the project |
 
 ## Related
 
-- [three-layer-model.md](three-layer-model.md)
-- [migration-pipeline.md](migration-pipeline.md)
-- [ADR-0001](../decisions/0001-version-stamp-on-index.md)
-- [ADR-0004](../decisions/0004-global-project-registry.md)
-- [ADR-0007](../decisions/0007-runtime-upgrade-project-orchestration.md)
-- [ADR-0009](../decisions/0009-project-stamps-track-runtime.md)
+- [Three Runtime Surfaces](three-layer-model.md)
+- [Migration Pipeline](migration-pipeline.md)
+- [ADR-0002](../decisions/0002-canonical-files-exclude-state.md)
+- [ADR-0005](../decisions/0005-docs-not-distributed.md)
+- [ADR-0010](../decisions/0010-source-runtime-package-split.md)
+- [ADR-0019](../decisions/0019-catpaw-3-hybrid-runtime.md)

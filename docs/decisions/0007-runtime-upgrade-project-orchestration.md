@@ -1,6 +1,6 @@
 # ADR-0007: Runtime Upgrade Orchestrates Project Boards
 
-Status: Accepted; amended by ADR-0009
+Status: Superseded by ADR-0019
 
 ## Context
 

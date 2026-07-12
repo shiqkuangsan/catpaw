@@ -2,145 +2,157 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw 是一个面向 AI 编程协作的软件项目工作流 runtime。它不绑定某个 IDE
-或模型，而是给 agent 一套轻量协议：判断任务等级、显式告诉用户路由结果、
-把重要事项沉淀到项目 `.catpaw/` 工作板、在风险较高时调用专家角色，并在
-完成前做验证和收尾。
+CatPaw 是一个面向 coding agent 的轻量 workflow runtime。它保留一条稳定的开发
+lifecycle，选择最轻且安全的执行模式，只持久化有长期价值的项目事实，并用可执行
+检查保证机械一致性。
+
+```text
+Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
+```
+
+Source runtime 版本：`3.0.0`。项目工作板使用 **board schema 2**。
+
+Activation 状态：**pending activation**。在 installed runtime 被显式升级并验证前，
+这份 source release 不会生效。Building source 可以生成 `dist/runtime/`。
+Building source does not automatically install, apply, or migrate CatPaw。本次
+3.0 source 重构不会执行全局 apply。
 
 仓库地址：https://github.com/shiqkuangsan/catpaw
 
-当前 runtime 版本：`2.1.7`。
+## 核心模型
 
-当前状态：早期公开 runtime，可用，但仍保持小而演进中的设计。
+### Modes
 
-## CatPaw 解决什么问题
+| Mode | 适用场景 | 默认持久化 |
+|---|---|---|
+| `Direct` | 范围窄、局部、可逆、低风险 | 默认不建 artifact，但仍需验证和汇报 |
+| `Tracked` | 多步骤、跨文件、改变共享行为或需要跨会话连续推进 | Work Item + Plan，按需补 Evidence |
+| `Gated` | 安全、发布、迁移、外部系统、破坏性操作或高影响 contract | Work Item + Plan + 必需的 Independent Check 与 Evidence |
 
-AI 编程常见的问题不是“不会写代码”，而是：
+CatPaw 从 lightest safe mode 开始；范围或风险上升时升级。Mode 从不自动授权外部
+操作或破坏性操作。
 
-- 跨会话后上下文断掉；
-- plan、review、test、done 状态散落在对话里；
-- agent 不明确告诉用户为什么走轻量流程或重流程；
-- 任务做完时 req、plan、index、review、test 状态没有同步；
-- commit、push、deploy、destructive 操作缺少明确 gate。
+### Work Board
 
-CatPaw 把这些协作约定变成可复用的 runtime。
+项目状态位于 `<project>/.catpaw/`：
 
 ```text
-CatPaw decides what workflow to run.
-superpowers defines how to execute well.
-Expert Council provides judgment.
-Providers perform the work.
+.catpaw/
+├── index.md
+├── milestones/
+├── work/
+├── plans/
+└── evidence/
 ```
 
-## 核心组成
+Schema 2 只有五类 artifact：
 
-| 位置 | 作用 |
+| Artifact | 作用 |
 |---|---|
-| `~/.catpaw/` | 全局 runtime：policy、specs、commands、templates、roles、migrations、guides |
-| `<project>/.catpaw/` | 项目工作板：milestones、reqs、plans、research、reviews、tests、lessons、active index |
-| Provider adapter | 写进 Claude/Codex/Cursor/OpenCode 等工具的薄声明 |
-| `~/.catpaw/state/projects.json` | 本机项目工作板 registry，用于批量升级和健康检查 |
+| Index | 当前 dashboard 与 schema 标记 |
+| Milestone | 聚合多个 Work Item 的可选阶段目标 |
+| Work Item | 最小可验证、可独立收口的持久工作单元 |
+| Plan | 与 Work 绑定的 contract、步骤、验收与验证入口 |
+| typed Evidence | `research`、`review`、`test`、`provider` 或 `reflection` 事实 |
 
-## 快速开始
+Direct 工作通常只留在对话中；Tracked/Gated 在持续协作确有价值时才写入工作板。
 
-你可以直接对 coding agent 说：
+### Judgment
+
+CatPaw 将判断拆成三个不同问题：
+
+- **Lens**：需要补什么专业视角；
+- **Agent**：由谁执行或提供判断；
+- **Independent Check**：何时推荐或必须获得非 primary 视角。
+
+五张 Lens 卡是 Value & Scope、System & Contracts、Experience、Security 和
+Performance。工程、review、测试、发布、调试与复盘属于 lifecycle method，不再
+另建一套角色层级。
+
+CatPaw 直接管理的 external Agents 只有 `cc`（Claude Code）与 `cx`（Codex）。
+OpenCode 可以作为读取 CatPaw 规则的 host，但不是直接调用目标。边界明确的独立
+检查优先使用 current-tool subagent。
+
+## Hybrid Runtime
+
+Runtime 内部有三个行为表面：
+
+| Surface | 职责 |
+|---|---|
+| Always-on Rules | 紧凑的路由、安全、进度与授权规则 |
+| On-demand Guidance | Workflow、Milestone、Independent Check、Lens 与 Agent recipe |
+| Executable Tools | Board graph、schema 校验、dry-run patch、迁移和可观察 Agent session |
+
+存储与 activation 链是另一条轴线：
 
 ```text
-Install CatPaw from https://github.com/shiqkuangsan/catpaw and enable it in this project.
+source -> dist -> installed -> project board
 ```
 
-如果使用本地 checkout：
+Agent 负责语境判断，CLI 负责确定性记录与校验，用户负责授权写入和外部影响。设计
+依据见 [Hybrid Runtime ADR](docs/decisions/0019-catpaw-3-hybrid-runtime.md)。
+
+## 从 Source 开始
 
 ```bash
 git clone https://github.com/shiqkuangsan/catpaw.git
 cd catpaw
 node scripts/build-runtime.mjs
+node scripts/verify-runtime.mjs
 ```
 
-然后让 agent 从根目录的 `AI-INSTALL.md` 开始执行。完整 runtime 安装说明在
-`src/runtime/AI-INSTALL.md`。
+Build 根据 [`src/runtime/runtime-manifest.json`](src/runtime/runtime-manifest.json)
+生成 `dist/runtime/`。Verify 会检查 source/dist、在临时工作板执行 CLI smoke，并把
+较旧的 installed runtime 报告为 `pending activation`，不会伪装成已安装。
 
-## 工作等级
+获得明确授权后，再从 [`AI-INSTALL.md`](AI-INSTALL.md) 开始安装或升级。Runtime
+安装、adapter activation 与每个 project board migration 是三个独立操作。
 
-| Level | 适用场景 | 默认沉淀 |
-|---|---|---|
-| `L0` | typo、小文档、明确局部修复 | 不写 CatPaw 文件，直接执行、验证、报告 |
-| `L1` | 普通单模块任务 | 默认不落盘，轻量 plan + inline verification |
-| `L2` | 跨模块、不确定、架构/API/持久化/性能/复杂 UI | 写 req + plan + verification record |
-| `L3` | 安全、迁移、发版、CI/CD、破坏性操作、大重构、事故、PR 终审 | 写 req + plan + test matrix + formal review |
+## CLI
 
-当 CatPaw 参与路由时，agent 应先告诉用户类似：
+生成或安装后的 runtime 提供：
 
 ```text
-CatPaw dispatch: L2 — cross-module behavior change.
-Artifacts: req+plan. Roles: Architecture Reviewer.
-Provider: preferred. Verification: record. Next: inspect current flow.
+catpaw board init|status|doctor|migrate
+catpaw work start|close
+catpaw milestone start|add|close
+catpaw evidence add
+catpaw agent check|open|send|status|read|close
 ```
 
-## Milestone 与 Subagent
+这里的 `catpaw` 是 executable entrypoint 的简写：source checkout 使用
+`src/runtime/bin/catpaw.mjs`，安装后使用 `~/.catpaw/bin/catpaw.mjs`。CatPaw 不会
+自动向 `PATH` 添加命令；用户自管的 alias 或 symlink 是另一个显式选择。
 
-- Milestone 是可选阶段 artifact，适合 L2/L3 中跨多个 FR 的连续目标；FR
-  仍然是最小可验证单元。
-- Milestone 路径为 `.catpaw/milestones/MS-001-<slug>.md`，用于聚合阶段目标、
-  scope、exit criteria、verification 和下一段建议。
-- Subagent Preference Gate 不只是“可以考虑”：当 stance 是 `preferred` 时，
-  artifact 应记录 `Provider outcome: used` 与 current-tool subagent 证据，或
-  `Provider outcome: skipped` 与 `Subagent skipped: <reason>`。
+Board mutation 默认 dry-run，只有显式 `--apply` 才写入。Agent session status 只
+报告 open/closed、changed/stable 与明确 waiting text，不推断任务完成。
 
 ## 仓库结构
 
 ```text
 catpaw/
-├── src/runtime/   # runtime package source
-├── scripts/       # build and verification tooling
-├── docs/          # maintainer-only design notes and ADRs
-└── dist/runtime/  # generated runtime package, ignored by git
+├── src/runtime/   # 版本化 runtime source
+├── scripts/       # 构建与验证工具
+├── tests/         # 可执行 contract
+├── docs/          # Maintainer 设计依据与 ADR
+└── dist/runtime/  # 生成包，Git 忽略
 ```
 
-## 构建与验证
+Runtime 用户遵循 [`src/runtime/runtime-policy.md`](src/runtime/runtime-policy.md)。
+Maintainer 从 [`docs/README.md`](docs/README.md) 开始；贡献说明见
+[`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
-```bash
-node scripts/build-runtime.mjs
-node scripts/verify-runtime.mjs
-```
+## 安全边界
 
-`build-runtime.mjs` 根据 `src/runtime/runtime-manifest.json` 生成
-`dist/runtime/`。`verify-runtime.mjs` 会检查 source、dist、已安装 runtime
-和 registry 中的项目工作板 stamp。
+- Runtime 只安装到 `~/.catpaw/`；项目工作板只存项目 artifact。
+- Host adapter 只保留 CatPaw 薄引用，不复制完整 runtime。
+- Agent output 与 CLI result 是 evidence，不是授权。
+- Commit、push、PR、deploy、破坏性操作、secret access、权限扩张与其它外部影响
+  仍需用户明确授权。
 
-从 source checkout 只读检查项目 board：
-
-```bash
-node scripts/catpaw-project.mjs status --project /path/to/project
-node scripts/catpaw-project.mjs doctor --project /path/to/project
-node scripts/catpaw-project.mjs doctor --project /path/to/project --json
-```
-
-`catpaw-project.mjs` 不写入项目 `.catpaw/`。它会从 project artifact graph
-生成 active work 摘要，并在执行未来的 reconcile / close 写操作前报告 closeout
-或 registry stamp 漂移。它也会报告 milestone/FR 状态漂移、preferred
-subagent outcome 缺失、provider stance drift、L3 test matrix 缺失和 adapter
-activation 问题。
-
-Active milestone 和 active work 会以紧凑表格展示，方便用户扫描当前阶段或事项，
-并直接跳转到 Milestone、Req、Plan、Tests、Review 或 Research artifact。
-
-## 设计边界
-
-- Global spec, local artifacts：全局 runtime 只放一份；项目 `.catpaw/`
-  只存该项目的工作产物。
-- CatPaw 可以借鉴 superpowers 的执行方法论，但由 CatPaw 决定 artifact 路径
-  和 safety gate。
-- Expert Council 只是 advisory layer，不自动授权 commit、push、PR、deploy
-  或 destructive 操作。
-- gstack 和 Superpowers 是设计灵感来源，不是 CatPaw runtime 依赖。
-
-## 开源说明
-
-CatPaw 不隶属于 Meituan CatPaw、gstack、Superpowers 或任何模型/编辑器厂商。
-来源与 attribution 见 [NOTICE.md](NOTICE.md) 和
-`src/runtime/source-evidence/`。
+CatPaw 不隶属于任何模型厂商或同名产品。Attribution 见
+[`NOTICE.md`](NOTICE.md)。
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

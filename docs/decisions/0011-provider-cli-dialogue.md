@@ -1,6 +1,6 @@
 # ADR-0011: Provider CLI Dialogue
 
-Status: Accepted
+Status: Superseded by ADR-0019
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-0014: Interactive UI Verification Surfaces
 
-Status: Accepted
+Status: Superseded by ADR-0019
 Date: 2026-05-25
 
 ## Context

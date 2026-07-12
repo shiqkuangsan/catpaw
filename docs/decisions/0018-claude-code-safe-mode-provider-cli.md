@@ -1,6 +1,6 @@
 # ADR-0018: Claude Code Safe-Mode Provider CLI
 
-Status: Accepted
+Status: Accepted; callable provider scope amended by ADR-0019
 
 ## Context
 

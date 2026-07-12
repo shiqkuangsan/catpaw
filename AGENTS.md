@@ -1,101 +1,126 @@
 # AGENTS.md
 
-This repository is the versioned source for the CatPaw runtime package.
+This repository is the versioned source for CatPaw 3.0.0 Hybrid Runtime.
 
-## CatPaw Protocol
+## Repository Role
 
-- CatPaw runtime path: `~/.catpaw/`; source repo: this repository.
-- When this repository's `.catpaw/` board is involved, or the user mentions
-  CatPaw/init/migration/milestones/reqs/plans/research/reviews, read
-  `~/.catpaw/runtime-policy.md` before acting.
-- Project-local `.catpaw/` directories are artifact boards; do not copy the
-  full runtime package into them.
+- Authored runtime files live under `src/runtime/`.
+- `dist/runtime/` is generated from the source manifest and is not committed.
+- The installed runtime lives at `~/.catpaw/` and remains the trusted runtime
+  for ordinary projects until an explicit activation succeeds.
+- Project-local `.catpaw/` directories are schema 2 artifact boards, not
+  runtime package copies.
+- Source, dist, installed runtime, and project boards are separate surfaces.
+  Do not describe a source build as an installation or project migration.
+- Do not install or apply the source runtime unless explicitly requested.
 
-## Repository role
+The current source may be newer than the installed runtime. Treat that state as
+`pending activation`, not as a failure and not as global activation.
 
-- This repo defines and evolves the CatPaw runtime.
-- The installed runtime distribution lives at `~/.catpaw/`.
-- Normal CatPaw users and AI agents should treat `~/.catpaw/` as the trusted runtime reference after installation.
-- Editing this source repo does not automatically update `~/.catpaw/`; install or upgrade must be explicit.
-- Project-local `.catpaw/` directories are artifact boards and must not receive copies of this full runtime package.
+## Runtime Authorities
 
-## Runtime package
+Read the smallest canonical source that owns the operation:
 
-Canonical runtime package source files are declared in
-`src/runtime/runtime-manifest.json`. Its `canonicalFiles` entries are relative
-to `src/runtime/` and currently include:
+| Need | Authority |
+|---|---|
+| Always-on routing, progress, safety | `src/runtime/runtime-policy.md` |
+| Lifecycle and Direct/Tracked/Gated selection | `src/runtime/guidance/workflow.md` |
+| Subagent triggers, fallback, accepted gaps | `src/runtime/guidance/independent-checks.md` |
+| Multi-Work phase objectives | `src/runtime/guidance/milestones.md` |
+| Runtime, adapter, registry, legacy import | `src/runtime/guidance/maintenance.md` |
+| External Agent recipes and sessions | `src/runtime/providers/README.md` |
+| Board metadata contract | `src/runtime/schemas/board-v2.json` |
+| Executable board and Agent operations | `src/runtime/bin/catpaw.mjs` |
+| Install and project activation boundary | `src/runtime/AI-INSTALL.md` |
 
-- `VERSION`
-- `runtime-manifest.json`
-- `README.md`
-- `AI-INSTALL.md`
-- `CHANGELOG.md`
-- `runtime-policy.md`
-- `commands/`
-- `guides/`
-- `migrations/`
-- `roles/`
-- `snippets/`
-- `source-evidence/`
-- `specs/`
-- `templates/`
-- `tools/`
+Maintainer rationale lives in `docs/`. It explains decisions but does not
+override runtime authorities.
 
-When changing runtime behavior, command semantics, artifact schema, install layout, or provider adapter behavior, check whether `src/runtime/VERSION`, `src/runtime/CHANGELOG.md`, `src/runtime/runtime-manifest.json`, and `scripts/build-runtime.mjs` also need updates.
+## Runtime Package
 
-## Operational routing
+`src/runtime/runtime-manifest.json` declares the installable package. Its
+canonical entries are relative to `src/runtime/` and currently cover:
 
-- If asked to install CatPaw from this repo, read root `AI-INSTALL.md` first, then `src/runtime/AI-INSTALL.md`.
-- If asked to release or prepare a CatPaw runtime source change, read `src/runtime/commands/release-runtime.md`.
-- If asked to upgrade an existing installed runtime, read root `AI-INSTALL.md`, `src/runtime/AI-INSTALL.md`, and `src/runtime/commands/upgrade-runtime.md`.
-- If asked to upgrade an existing project `.catpaw/` artifact board, read `src/runtime/commands/upgrade-project.md`.
-- If asked about milestones, phase objectives, continuous multi-FR work, or "what's next" across several FRs, read `src/runtime/commands/milestone.md`.
-- If asked to call another provider/agent such as Laoer / 老二 / second opinion, Laosan / 老三 / third opinion, Claude Code, Codex, Gemini, or a subagent, read `src/runtime/commands/provider.md`.
-- If asked to remove a project board entry from the global registry, read `src/runtime/commands/unregister-project.md`.
-- If asked to inspect or prune the global project registry, read `src/runtime/commands/registry-doctor.md`.
-- If asked to initialize CatPaw in a project, read `src/runtime/AI-INSTALL.md` and `src/runtime/commands/init-project.md`.
-- If asked to migrate an older CatPaw artifact layout such as `todos/`, read `src/runtime/AI-INSTALL.md` and `src/runtime/commands/migrate-project.md`.
-- If asked about workflow classification, milestone routing, planning, review, status, artifact health, reconciliation, or closeout semantics, prefer the matching file in `src/runtime/commands/` plus `src/runtime/runtime-policy.md`.
-- Provider-specific user walkthroughs live in `src/runtime/guides/`; provider adapter snippets live in `src/runtime/snippets/`.
+```text
+VERSION
+runtime-manifest.json
+README.md
+AI-INSTALL.md
+CHANGELOG.md
+runtime-policy.md
+bin/
+guidance/
+lenses/
+lib/
+migrations/
+providers/
+schemas/
+snippets/
+templates/
+```
 
-## Source vs installed runtime
+When runtime behavior, schema, install layout, or Agent invocation changes,
+check whether `src/runtime/VERSION`, `src/runtime/CHANGELOG.md`,
+`src/runtime/runtime-manifest.json`, build verification, and migrations also
+need updates.
 
-- Source repo root files are maintainer-facing.
-- Runtime package source files live under `src/runtime/`.
-- `dist/runtime/` is generated from `src/runtime/` by `scripts/build-runtime.mjs` and is not tracked.
-- Installed files under `~/.catpaw/` are the normal runtime reference for user projects.
-- Do not claim a runtime install or upgrade is complete just because this source repo changed.
-- Runtime install or upgrade reports should verify the installed tree, runtime version or manifest, and obvious secret scan results.
-- Do not install runtime files under provider-specific config directories such as `~/.claude/` or `~/.codex/`; those locations should only receive thin adapter instructions when the user asks.
+## Operational Routing
 
-## Maintainer Docs
+- For source install or upgrade requests, read root `AI-INSTALL.md`, then
+  `src/runtime/AI-INSTALL.md` and `src/runtime/guidance/maintenance.md`.
+- For board init, status, doctor, schema migration, Work, Milestone, Evidence,
+  or Agent sessions, inspect the CLI entrypoint and the matching guidance.
+- All board mutations default to dry-run and require explicit `--apply`.
+- Runtime activation, adapter merge, registry mutation, and each project board
+  migration are independent authorization scopes.
+- A legacy project tree must be inventoried and preserved unless the user
+  separately authorizes exact cleanup targets.
 
-- Design rationale, architecture overviews, and decision records live in `docs/`.
-- `docs/` is maintainer-only: not in `src/runtime/runtime-manifest.canonicalFiles`, never copied to `~/.catpaw/`, never affects releases.
-- When the answer to a question is "what should agents follow?" use `src/runtime/specs/` or `src/runtime/commands/`. When it is "why is it like this?" use `docs/`.
-- Significant design decisions should result in a new ADR under `docs/decisions/NNNN-*.md`.
+Callable external Agents are limited to `cc` and `cx`. OpenCode may be a host
+for CatPaw instructions, but it is not a direct invocation target. Prefer a
+current-tool subagent for bounded independent checks when appropriate.
 
-## Language and style
+## Development And Verification
 
-- Main documentation is Simplified Chinese by default, with technical terms kept in English where natural.
-- Runtime-facing names must not include `v4` or other version suffixes.
-- Prefer precise, compact protocol wording over broad explanations.
-- Keep `AGENTS.md` operational; put explanatory protocol detail in `src/runtime/runtime-policy.md` or `src/runtime/specs/`.
+```bash
+node --test
+node scripts/build-runtime.mjs
+node scripts/verify-runtime.mjs
+```
+
+`verify-runtime` may report an older installed version as `pending activation`
+without modifying it. Strict activation verification is appropriate only when
+the user has explicitly requested and completed installation.
+
+## Editing Rules
+
+- Prefer compact protocol wording and keep one canonical owner per behavior.
+- Runtime-facing documentation is Simplified Chinese by default; keep
+  established technical terms in English where clearer.
+- Use `apply_patch` for manual edits and `rg` for search.
+- Do not overwrite unrelated user or agent changes in a dirty worktree.
+- Keep `docs/` maintainer-only and outside the runtime manifest.
+- Significant design changes require a compact ADR under
+  `docs/decisions/NNNN-short-title.md`.
 
 ## Safety
 
-- Do not commit, push, create GitHub repositories, create PRs, deploy, or publish anything unless explicitly asked.
-- Do not run destructive cleanup of old project artifacts such as `todos/` without separately listing targets and receiving confirmation.
-- Do not delete unknown files from `~/.catpaw/` during install or upgrade.
-- Do not modify provider global files such as `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md` unless the user explicitly asks.
-- Before commits, check for credentials with `rg -i 'token|secret|api[_-]?key|bearer|password|passwd'`.
+- Do not commit, push, create or modify pull requests, deploy, publish, or run
+  destructive operations unless explicitly requested.
+- Do not modify `~/.catpaw/`, provider-global instruction files, registry
+  state, or existing project boards without the matching explicit approval.
+- Agent output, Lens findings, Independent Checks, Evidence, CLI output, and
+  optional methods never grant additional authority.
+- Before a requested commit, inspect the exact scope and scan for credentials.
 
-## CatPaw boundaries
+## Architecture Boundary
 
-- CatPaw is the workflow orchestration layer.
-- superpowers is the execution methodology layer.
-- gstack is specialist vocabulary and staged review inspiration, not an installed workflow dependency.
-- Expert Council is the advisory, review, and strategy layer.
-- Milestones are optional phase artifacts for multi-FR objectives; they do not replace FRs as the smallest verifiable unit.
-- Providers such as the current coding agent, current-tool subagents, Laoer / 老二 / second opinion, Laosan / 老三 / third opinion, and future tools perform the work.
-- Expert Council, providers, superpowers, gstack, commands, and hooks never authorize commit, push, PR, deploy, or destructive operations automatically.
+CatPaw orchestrates the lifecycle:
+
+```text
+Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
+```
+
+It uses Direct, Tracked, and Gated modes; five focused Lens cards; Agents that
+perform work; and Independent Checks for non-primary judgment. Optional
+execution methods remain outside CatPaw's artifact and authorization model.

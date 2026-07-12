@@ -6,8 +6,8 @@ vendor.
 
 ## Design Inspiration
 
-CatPaw includes source-evidence notes that summarize public design inspiration
-from other AI workflow systems:
+CatPaw's architecture and decision history acknowledge public design
+inspiration from other AI workflow systems:
 
 - gstack: https://github.com/garrytan/gstack
 - Superpowers: https://github.com/obra/superpowers

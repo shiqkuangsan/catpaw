@@ -2,239 +2,167 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw is an AI workflow runtime for software projects. It gives coding agents
-a small operating protocol for workflow routing, project artifact boards,
-provider gates, adapter activation, and executable governance.
+CatPaw is a lightweight workflow runtime for coding agents. It keeps one
+development lifecycle, selects the lightest safe operating mode, records only
+durable project facts, and uses executable checks for mechanical consistency.
 
-It is deliberately not an IDE, model provider, prompt pack, or task runner.
-CatPaw is the coordination layer between a user, their AI agents, and each
-project's durable work records. It keeps collaboration visible: classify the
-work, name the state, write artifacts only when they add value, involve other
-providers when risk requires it, and close the loop with verification.
+```text
+Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
+```
+
+Source runtime version: `3.0.0`. Project boards use **board schema 2**.
+
+Activation status: **pending activation**. This source release is not active
+until an installed runtime is explicitly upgraded and verified. Building source
+can generate `dist/runtime/`, but does not automatically install, apply, or
+migrate CatPaw.
 
 Repository: https://github.com/shiqkuangsan/catpaw
 
-Current runtime version: `2.1.7`.
+## Core Model
 
-Status: early public runtime. The protocol is usable, intentionally small, and
-still evolving.
+### Modes
 
-## Why It Exists
+| Mode | Use when | Durable records |
+|---|---|---|
+| `Direct` | Work is narrow, local, reversible, and low risk | None by default; still verify and report |
+| `Tracked` | Work spans steps or files, changes shared behavior, or needs continuity | Work Item + Plan, with Evidence when useful |
+| `Gated` | Work affects security, release, migration, external systems, destructive operations, or high-impact contracts | Work Item + Plan + required Independent Check and Evidence |
 
-AI coding sessions fail in familiar ways: decisions disappear between sessions,
-plans drift from implementation, reviews happen too late, and "done" often means
-"the agent stopped talking." CatPaw turns that implicit collaboration into a
-small set of visible contracts.
+CatPaw starts with the lightest safe mode and upgrades it when scope or risk
+grows. A mode never grants permission for an external or destructive action.
+
+### Work Board
+
+Project state lives in `<project>/.catpaw/`:
 
 ```text
-CatPaw decides what workflow to run.
-superpowers defines how to execute well.
-Expert Council provides judgment.
-Providers perform the work.
+.catpaw/
+├── index.md
+├── milestones/
+├── work/
+├── plans/
+└── evidence/
 ```
 
-## What You Get
+Schema 2 has five artifact kinds:
 
-| Surface | Purpose |
+| Artifact | Purpose |
 |---|---|
-| `~/.catpaw/` | The installed runtime: policy, specs, commands, templates, roles, migrations, guides. |
-| `<project>/.catpaw/` | A project board: milestones, reqs, plans, research, reviews, tests, lessons, and active status. |
-| Provider adapter | A thin global or project instruction that tells an agent to load CatPaw when relevant. |
-| Registry | Local machine state at `~/.catpaw/state/projects.json` for batch project upgrades and health checks. |
+| Index | Current board dashboard and schema marker |
+| Milestone | Optional phase objective spanning several Work Items |
+| Work Item | Smallest durable, independently verifiable unit of work |
+| Plan | Work-bound contracts, steps, acceptance, and verification |
+| typed Evidence | `research`, `review`, `test`, `provider`, or `reflection` facts |
 
-Core capabilities:
+Direct work normally stays in the conversation. Tracked and Gated work use the
+board when durable coordination adds value.
 
-- User-visible workflow classification: `L0` / `L1` / `L2` / `L3`.
-- Canonical workflow control model for level, lifecycle stage, tracked state,
-  artifact policy, role/provider routing, and verification.
-- Artifact board for cross-session project memory.
-- Optional Milestones for L2/L3 multi-FR phase objectives without turning every
-  task into project management ceremony.
-- Runtime commands for init, migration, upgrade, status, doctor, reconcile,
-  closeout, milestone routing, provider routing, adapter activation, planning,
-  and review.
-- Expert Council roles for product, architecture, engineering, design, QA,
-  security, performance, release, debugging, and retrospectives.
-- Forced Provider Gate and Subagent Preference Gate for non-primary judgment
-  when risk or uncertainty makes self-review weak.
-- Preferred subagent governance: `preferred` stance should record either
-  bounded current-tool subagent evidence or a compact skip reason.
-- Observable provider session guidance for long-running Claude Code, Codex,
-  Gemini, or OpenCode reviews when stdout is silent but the session is alive.
-- Adapter activation guidance and doctor checks so projects can detect when
-  `AGENTS.md` / `CLAUDE.md` does not load CatPaw.
-- Manifest-first build and verification scripts for runtime releases.
-- Source checkout inspector for project board health, provider stance drift,
-  preferred subagent outcome drift, active milestone drift, L3 matrix
-  requirements, closeout drift, registry stamps, and adapter gaps.
+### Judgment
 
-## Quick Start
+CatPaw separates three concerns:
 
-Ask your coding agent:
+- **Lens**: what professional perspective is needed.
+- **Agent**: who performs work or supplies judgment.
+- **Independent Check**: when a non-primary view is recommended or required.
 
-```text
-Install CatPaw from https://github.com/shiqkuangsan/catpaw and enable it in this project.
-```
+The five Lens cards are Value & Scope, System & Contracts, Experience,
+Security, and Performance. Engineering, review, testing, shipping, debugging,
+and reflection remain lifecycle methods instead of a second role hierarchy.
 
-That means two separate actions:
+The only directly callable external Agents managed by CatPaw are `cc` (Claude
+Code) and `cx` (Codex). OpenCode may host CatPaw instructions, but it is not a
+direct invocation target. Current-tool subagents remain the preferred
+low-cost option for bounded independent work.
+
+## Hybrid Runtime
+
+The runtime has three behavior surfaces:
+
+| Surface | Responsibility |
+|---|---|
+| Always-on Rules | Compact routing, safety, progress, and authority rules |
+| On-demand Guidance | Workflow, Milestones, Independent Checks, Lens cards, and Agent recipes |
+| Executable Tools | Board graph, schema validation, dry-run patches, migration, and observable Agent sessions |
+
+Its storage and activation chain is separate:
 
 ```text
-1. Install or upgrade the global runtime at ~/.catpaw/.
-2. Activate CatPaw for the project or provider via AGENTS.md / CLAUDE.md adapter guidance.
+source -> dist -> installed -> project board
 ```
 
-For a local checkout:
+Agents make contextual decisions, the CLI records and verifies deterministic
+state, and users authorize writes or external effects. See the
+[Hybrid Runtime decision](docs/decisions/0019-catpaw-3-hybrid-runtime.md).
+
+## Quick Start From Source
 
 ```bash
 git clone https://github.com/shiqkuangsan/catpaw.git
 cd catpaw
 node scripts/build-runtime.mjs
+node scripts/verify-runtime.mjs
 ```
 
-Then point the agent at root `AI-INSTALL.md`. The full runtime guide lives at
-`src/runtime/AI-INSTALL.md`.
+The build creates `dist/runtime/` from
+[`src/runtime/runtime-manifest.json`](src/runtime/runtime-manifest.json).
+Verification checks source and dist, exercises the CLI on a temporary board,
+and reports an older installed runtime as `pending activation` by default.
 
-## How CatPaw Routes Work
+To install or upgrade after explicit approval, start with
+[`AI-INSTALL.md`](AI-INSTALL.md). Runtime installation, adapter activation, and
+each project board migration are separate actions. This 3.0 source refactor
+does not perform a global apply.
 
-| Level | Use when | Default artifact behavior |
-|---|---|---|
-| `L0` | Tiny, clear, local change | No CatPaw files. Execute, verify, report. |
-| `L1` | Standard single-module work | Usually no files. Use a light plan and inline verification. |
-| `L2` | Cross-module, uncertain, architectural, API, persistence, performance, or complex UI work | Write req + plan + verification record. Use focused review when needed. |
-| `L3` | Security, migration, release, CI/CD, destructive ops, large refactor, incident, PR final review | Write req + plan + test matrix + formal review. Require explicit gates. |
+## CLI
 
-When CatPaw applies, the agent should say something like:
+The generated or installed runtime exposes:
 
 ```text
-CatPaw dispatch: L2 — cross-module behavior change.
-State: planned. Artifacts: req+plan. Roles: Architecture Reviewer.
-Provider: preferred. Verification: record. Next: inspect current flow.
+catpaw board init|status|doctor|migrate
+catpaw work start|close
+catpaw milestone start|add|close
+catpaw evidence add
+catpaw agent check|open|send|status|read|close
 ```
+
+Here `catpaw` is shorthand for the executable entrypoint: use
+`src/runtime/bin/catpaw.mjs` in a source checkout or
+`~/.catpaw/bin/catpaw.mjs` after installation. CatPaw does not add a command to
+`PATH`; a user-managed alias or symlink is a separate, explicit choice.
+
+Board mutations default to dry-run and require explicit `--apply`. Agent
+session status reports observable facts such as open/closed, changed/stable,
+and explicit waiting text; it does not infer completion.
 
 ## Repository Layout
 
-The source checkout is shaped like a normal project:
-
 ```text
 catpaw/
-├── src/runtime/   # Authored runtime package source
-├── scripts/       # Source-repo build and verification tooling
-├── docs/          # Maintainer-only design notes and ADRs
-└── dist/runtime/  # Generated runtime package, ignored by git
+├── src/runtime/   # Versioned runtime source
+├── scripts/       # Build and verification tooling
+├── tests/         # Executable contracts
+├── docs/          # Maintainer rationale and decisions
+└── dist/runtime/  # Generated package, ignored by git
 ```
 
-The installed runtime still lives at `~/.catpaw/`. Project-local CatPaw boards
-still live at `<project>/.catpaw/`.
+Runtime users follow [`src/runtime/runtime-policy.md`](src/runtime/runtime-policy.md).
+Maintainers can start with [`docs/README.md`](docs/README.md). Contributors
+should read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-## Runtime Source
+## Safety Boundaries
 
-Runtime-facing files are authored under `src/runtime/`:
+- Runtime files install only under `~/.catpaw/`; project boards contain only
+  project artifacts.
+- Thin host adapters reference CatPaw without copying the runtime.
+- Agent output and CLI results are evidence, not authorization.
+- Commit, push, pull request, deploy, destructive operations, secret access,
+  permission expansion, and other external effects still require explicit
+  user authorization.
 
-- `src/runtime/VERSION`
-- `src/runtime/runtime-manifest.json`
-- `src/runtime/AI-INSTALL.md`
-- `src/runtime/runtime-policy.md`
-- `src/runtime/commands/`
-- `src/runtime/specs/`
-- `src/runtime/templates/`
-- `src/runtime/roles/`
-- `src/runtime/snippets/`
-- `src/runtime/guides/`
-- `src/runtime/migrations/`
-- `src/runtime/source-evidence/`
-
-The manifest's `canonicalFiles` paths are relative to `src/runtime/`, not to
-the repository root.
-
-## Build And Verify
-
-Generate the installable runtime package:
-
-```bash
-node scripts/build-runtime.mjs
-node scripts/verify-runtime.mjs
-```
-
-`build-runtime.mjs` writes `dist/runtime/` from
-`src/runtime/runtime-manifest.json` and verifies that every declared command
-file exists.
-`verify-runtime.mjs` checks the source package, generated package, installed
-runtime when present, protocol invariants, adapter activation guidance,
-executable governance checks, and registered project board stamps.
-
-Inspect a project board from the source checkout:
-
-```bash
-node scripts/catpaw-project.mjs status --project /path/to/project
-node scripts/catpaw-project.mjs doctor --project /path/to/project
-node scripts/catpaw-project.mjs doctor --project /path/to/project --json
-```
-
-`catpaw-project.mjs` is read-only. It builds a lightweight project artifact
-graph from `.catpaw/`, reports active work, and flags closeout or registry stamp
-drift before any future reconcile or close command writes files. It also flags
-milestone/FR drift, provider stance drift, preferred subagent outcome drift,
-missing L3 test matrices, active/archive plan status drift, and adapter
-activation gaps.
-
-Active milestones and active work are presented as compact tables so users can
-scan the current phase or item and jump directly to Milestone, Req, Plan, Tests,
-Review, or Research artifacts.
-
-## Install / Upgrade
-
-For AI-assisted install or upgrade from this source checkout, start with:
-
-```text
-AI-INSTALL.md
-```
-
-That file is a source-repo bootstrap. The full runtime install guide lives at:
-
-```text
-src/runtime/AI-INSTALL.md
-```
-
-Do not copy repository-root `docs/`, `scripts/`, `.git/`, or future resource
-directories into `~/.catpaw/`.
-
-Runtime install does not silently modify provider instruction files. Use
-`catpaw:install-adapter` when you want to add or update thin CatPaw references
-in global or project `AGENTS.md` / `CLAUDE.md` files. Adapter updates use a
-managed marker block and should be reviewed before apply.
-
-## Design Boundaries
-
-- Global spec, local artifacts: runtime files live once under `~/.catpaw/`;
-  project boards contain project work records only.
-- CatPaw may route to superpowers-style execution methods, but CatPaw owns the
-  artifact paths and safety gates.
-- Expert Council roles are advisory. They never authorize commits, pushes, PRs,
-  deploys, or destructive operations automatically.
-- gstack and Superpowers are design inspirations, not bundled runtime
-  dependencies.
-
-## Relationship To Other Projects
-
-CatPaw was influenced by public AI workflow systems such as gstack and
-Superpowers, but it does not vendor them or require them at runtime. See
-`NOTICE.md` and `src/runtime/source-evidence/` for attribution and design
-evidence.
-
-CatPaw is not affiliated with Meituan CatPaw, gstack, or Superpowers.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). In short:
-
-```bash
-node scripts/build-runtime.mjs
-node scripts/verify-runtime.mjs
-```
-
-Runtime behavior changes should update the relevant command/spec/template files,
-`src/runtime/CHANGELOG.md`, and the runtime version when appropriate.
+CatPaw is not affiliated with any model vendor or similarly named product. See
+[`NOTICE.md`](NOTICE.md) for attribution.
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [`LICENSE`](LICENSE).

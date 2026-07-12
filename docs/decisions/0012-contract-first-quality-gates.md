@@ -1,6 +1,6 @@
 # ADR-0012: Contract-First Quality Gates
 
-Status: Accepted
+Status: Accepted; mode and artifact vocabulary amended by ADR-0019
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-0016: Milestones And Subagent Governance
 
-Status: Accepted
+Status: Accepted; artifact and Agent vocabulary amended by ADR-0019
 
 ## Context
 

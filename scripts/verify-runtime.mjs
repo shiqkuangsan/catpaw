@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 
-import { readFile, readdir, stat } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+} from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,727 +19,431 @@ const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
-const sourceRoot = path.join(repoRoot, "src", "runtime");
-const distRoot = path.join(repoRoot, "dist", "runtime");
-const installedRoot = path.join(process.env.HOME ?? "", ".catpaw");
+const roots = {
+  source: path.resolve(
+    process.env.CATPAW_SOURCE_ROOT ?? path.join(repoRoot, "src", "runtime"),
+  ),
+  dist: path.resolve(
+    process.env.CATPAW_DIST_ROOT ?? path.join(repoRoot, "dist", "runtime"),
+  ),
+  installed: path.resolve(
+    process.env.CATPAW_HOME ?? path.join(os.homedir(), ".catpaw"),
+  ),
+};
+const ACTIVE_DOC_ROOTS = [
+  "runtime-policy.md",
+  "README.md",
+  "AI-INSTALL.md",
+  "guidance",
+  "lenses",
+  "providers",
+  "snippets",
+  "templates",
+];
 
-const checks = [];
+function parseArgs(argv) {
+  const options = { json: false, strictActivation: false };
+  for (const argument of argv) {
+    if (argument === "--json") options.json = true;
+    else if (argument === "--strict-activation") options.strictActivation = true;
+    else {
+      const error = new Error(`unknown argument: ${argument}`);
+      error.exitCode = 2;
+      throw error;
+    }
+  }
+  return options;
+}
 
-async function pathExists(target) {
+async function exists(target) {
   try {
     await stat(target);
     return true;
   } catch (error) {
-    if (error?.code === "ENOENT") return false;
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return false;
     throw error;
   }
 }
 
-async function readText(target) {
-  return readFile(target, "utf8");
+function safeManifestEntry(entry) {
+  if (
+    typeof entry !== "string" ||
+    entry === "" ||
+    entry.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(entry)
+  ) return null;
+  const directory = entry.endsWith("/");
+  const value = directory ? entry.slice(0, -1) : entry;
+  if (
+    value === "" ||
+    path.posix.isAbsolute(value) ||
+    path.posix.normalize(value) !== value ||
+    value.split("/").includes("..")
+  ) return null;
+  return { value, directory };
 }
 
-async function readJson(target) {
-  return JSON.parse(await readText(target));
-}
-
-function record(name, ok, detail) {
-  checks.push({ name, ok, detail });
-}
-
-function lineCount(text) {
-  if (!text) return 0;
-  return text.split(/\r?\n/).length;
-}
-
-function assertInside(parent, child) {
-  const relative = path.relative(parent, child);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error(`Path escapes ${parent}: ${child}`);
+async function listFiles(root) {
+  const files = new Map();
+  const directories = new Set([""]);
+  async function visit(relativePath = "") {
+    const entries = await readdir(path.join(root, relativePath), {
+      withFileTypes: true,
+    });
+    entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
+    for (const entry of entries) {
+      const child = path.join(relativePath, entry.name);
+      const slashPath = child.split(path.sep).join("/");
+      const target = path.join(root, child);
+      const stats = await lstat(target);
+      if (stats.isDirectory()) {
+        directories.add(slashPath);
+        await visit(child);
+      } else if (stats.isFile()) {
+        files.set(
+          slashPath,
+          createHash("sha256").update(await readFile(target)).digest("hex"),
+        );
+      } else {
+        throw new Error(`Unsupported package entry: ${slashPath}`);
+      }
+    }
   }
+  await visit();
+  return { files, directories };
 }
 
-function assertSafeManifestPath(entry) {
-  if (!entry || entry.startsWith("/") || entry.includes("..")) {
-    throw new Error(`Unsafe manifest path: ${entry}`);
+function packageDigest(files) {
+  const hash = createHash("sha256");
+  for (const [relativePath, digest] of [...files].sort(([left], [right]) =>
+    left.localeCompare(right, "en")
+  )) {
+    hash.update(`${relativePath}\0${digest}\0`);
   }
+  return hash.digest("hex");
 }
 
-async function verifyPackageRoot(label, root, manifest) {
-  if (!(await pathExists(root))) {
-    record(`${label} root`, false, root);
-    return;
+function mapsEqual(left, right) {
+  if (left.size !== right.size) return false;
+  for (const [key, value] of left) {
+    if (right.get(key) !== value) return false;
   }
-  record(`${label} root`, true, root);
-
-  for (const entry of manifest.canonicalFiles) {
-    assertSafeManifestPath(entry);
-    const target = path.join(root, entry);
-    assertInside(root, target);
-    record(`${label} canonical ${entry}`, await pathExists(target), entry);
-  }
-
-  for (const commandName of manifest.commands ?? []) {
-    const target = path.join(root, "commands", `${commandName}.md`);
-    assertInside(root, target);
-    record(`${label} command ${commandName}`, await pathExists(target), commandName);
-  }
+  return true;
 }
 
-async function verifySourceTooling() {
-  const projectInspector = path.join(repoRoot, "scripts", "catpaw-project.mjs");
-  const projectInspectorTest = path.join(repoRoot, "tests", "catpaw-project.test.mjs");
-
-  record(
-    "source project graph inspector exists",
-    await pathExists(projectInspector),
-    "scripts/catpaw-project.mjs",
+function covered(relativePath, entries) {
+  return entries.some((entry) =>
+    entry.directory
+      ? relativePath.startsWith(`${entry.value}/`)
+      : relativePath === entry.value
   );
-  if (await pathExists(projectInspector)) {
-    const text = await readText(projectInspector);
-    record(
-      "source project graph inspector exports analyzeProject",
-      text.includes("export async function analyzeProject"),
-      "scripts/catpaw-project.mjs",
-    );
-    record(
-      "source project graph inspector governance checks",
-      text.includes("invalid-provider-stance") &&
-        text.includes("preferred-subagent-missing-outcome") &&
-        text.includes("milestone-missing-req") &&
-        text.includes("index-lists-terminal-milestone") &&
-        text.includes("l3-req-missing-test-matrix") &&
-        text.includes("active-plan-terminal-status") &&
-        text.includes("archived-plan-active-status") &&
-        text.includes("project-adapter-missing") &&
-        text.includes("project-adapter-stale"),
-      "scripts/catpaw-project.mjs",
-    );
+}
+
+async function packageSnapshot(label, root, manifest, record) {
+  if (!(await exists(root))) {
+    record(`${label} package root`, false, root);
+    return null;
   }
-  record(
-    "source project graph inspector tests exist",
-    await pathExists(projectInspectorTest),
-    "tests/catpaw-project.test.mjs",
+  const entries = manifest.canonicalFiles.map(safeManifestEntry);
+  const safe = entries.every(Boolean) &&
+    new Set(entries.filter(Boolean).map((entry) => entry.value)).size === entries.length;
+  record(`${label} manifest paths`, safe, `${entries.length} canonical entries`);
+  if (!safe) return null;
+
+  const snapshot = await listFiles(root);
+  const missing = [];
+  for (const entry of entries) {
+    if (entry.directory) {
+      if (!snapshot.directories.has(entry.value)) missing.push(`${entry.value}/`);
+    } else if (!snapshot.files.has(entry.value)) {
+      missing.push(entry.value);
+    }
+  }
+  const undeclared = [...snapshot.files.keys()].filter(
+    (relativePath) => !covered(relativePath, entries),
   );
-  if (await pathExists(projectInspectorTest)) {
-    const testText = await readText(projectInspectorTest);
+  record(
+    `${label} canonical coverage`,
+    missing.length === 0 && undeclared.length === 0,
+    `missing=${missing.length}, undeclared=${undeclared.length}`,
+  );
+  return {
+    ...snapshot,
+    hash: packageDigest(snapshot.files),
+    missing,
+    undeclared,
+  };
+}
+
+async function markdownFiles(root, relativePath) {
+  const target = path.join(root, relativePath);
+  const stats = await lstat(target);
+  if (stats.isFile()) return relativePath.endsWith(".md") ? [relativePath] : [];
+  const files = [];
+  const entries = await readdir(target, { withFileTypes: true });
+  for (const entry of entries.sort((left, right) =>
+    left.name.localeCompare(right.name, "en")
+  )) {
+    const child = path.posix.join(relativePath, entry.name);
+    if (entry.isDirectory()) files.push(...(await markdownFiles(root, child)));
+    else if (entry.isFile() && entry.name.endsWith(".md")) files.push(child);
+  }
+  return files;
+}
+
+async function brokenActiveLinks(root) {
+  const files = [];
+  for (const activeRoot of ACTIVE_DOC_ROOTS) {
+    const target = path.join(root, activeRoot);
+    if (await exists(target)) files.push(...(await markdownFiles(root, activeRoot)));
+  }
+  const broken = [];
+  for (const file of files) {
+    const text = await readFile(path.join(root, file), "utf8");
+    for (const match of text.matchAll(/\[[^\]\n]+]\(([^)]+)\)/g)) {
+      const target = match[1].split(/[?#]/, 1)[0];
+      if (
+        target === "" ||
+        target.includes("{{") ||
+        target.startsWith("/") ||
+        /^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)
+      ) continue;
+      const resolved = path.resolve(root, path.dirname(file), target);
+      if (!(await exists(resolved))) broken.push(`${file} -> ${match[1]}`);
+    }
+  }
+  return broken;
+}
+
+function subprocess(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    env: { ...process.env, ...(options.env ?? {}) },
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result.error) return { ok: false, detail: result.error.message };
+  return {
+    ok: result.status === 0,
+    detail: (result.stderr || result.stdout || `exit ${result.status}`).trim(),
+    stdout: result.stdout,
+  };
+}
+
+async function verifyCliBehavior(label, root, manifest, record) {
+  const sandbox = await mkdtemp(path.join(os.tmpdir(), `catpaw-${label}-smoke-`));
+  try {
+    const project = path.join(sandbox, "project");
+    await mkdir(project);
+    const cli = path.join(root, manifest.cli.entrypoint);
+    const env = { CATPAW_HOME: path.join(sandbox, "home") };
+    const initialized = subprocess(process.execPath, [
+      cli,
+      "board",
+      "init",
+      "--project",
+      project,
+      "--apply",
+      "--json",
+    ], { env });
+    let initReport = null;
+    try {
+      initReport = initialized.stdout ? JSON.parse(initialized.stdout) : null;
+    } catch {
+      // The check below reports the malformed output.
+    }
+    const status = initialized.ok
+      ? subprocess(process.execPath, [
+          cli,
+          "board",
+          "status",
+          "--project",
+          project,
+          "--json",
+        ], { env })
+      : { ok: false, detail: "init failed", stdout: "" };
+    let statusReport = null;
+    try {
+      statusReport = status.stdout ? JSON.parse(status.stdout) : null;
+    } catch {
+      // The check below reports the malformed output.
+    }
+    const ok = initialized.ok &&
+      initReport?.schema === manifest.boardSchemaVersion &&
+      ["applied", "noop"].includes(initReport?.status) &&
+      status.ok &&
+      statusReport?.schema === manifest.boardSchemaVersion &&
+      !statusReport.findings?.some((item) => item.severity === "error");
     record(
-      "source project graph inspector governance tests",
-      testText.includes("doctor reports invalid provider stance values") &&
-        testText.includes("doctor warns when preferred subagent stance lacks outcome evidence") &&
-        testText.includes("status summarizes active milestones") &&
-        testText.includes("doctor reports milestone and req state drift") &&
-        testText.includes("doctor reports L3 req without test matrix") &&
-        testText.includes("doctor reports plan directory and status drift") &&
-        testText.includes("doctor reports missing project adapter") &&
-        testText.includes("doctor reports stale project adapter"),
-      "tests/catpaw-project.test.mjs",
+      `${label} CLI behavior`,
+      ok,
+      ok ? "board init/status schema 2 smoke" : initialized.detail || status.detail,
     );
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
   }
 }
 
-async function verifyVersions(sourceManifest) {
-  const sourceVersion = (await readText(path.join(sourceRoot, "VERSION"))).trim();
-  const runtimeReadme = await readText(path.join(sourceRoot, "README.md"));
+async function installedReport(sourceVersion, sourceManifest, sourceSnapshot, options, record) {
+  const versionPath = path.join(roots.installed, "VERSION");
+  if (!(await exists(versionPath))) {
+    const status = "not-installed";
+    record(
+      "installed activation",
+      !options.strictActivation,
+      `${status}; expected ${sourceVersion}`,
+    );
+    return { root: roots.installed, version: null, status, matchesSource: false };
+  }
+  const version = (await readFile(versionPath, "utf8")).trim();
+  if (version !== sourceVersion) {
+    const status = "pending-activation";
+    record(
+      "installed activation",
+      !options.strictActivation,
+      `${version} -> ${sourceVersion} pending activation`,
+    );
+    return { root: roots.installed, version, status, matchesSource: false };
+  }
+  const snapshot = await packageSnapshot(
+    "installed",
+    roots.installed,
+    sourceManifest,
+    record,
+  );
+  const matchesSource = snapshot !== null && mapsEqual(snapshot.files, sourceSnapshot.files);
+  const status = matchesSource ? "current" : "drift";
+  record("installed activation", matchesSource, status);
+  return { root: roots.installed, version, status, matchesSource };
+}
+
+async function verify(options) {
+  const checks = [];
+  const record = (name, ok, detail) => checks.push({ name, ok, detail });
+  const sourceManifest = JSON.parse(
+    await readFile(path.join(roots.source, "runtime-manifest.json"), "utf8"),
+  );
+  const sourceVersion = (await readFile(path.join(roots.source, "VERSION"), "utf8")).trim();
   record(
-    "source VERSION matches manifest",
+    "source version contract",
     sourceVersion === sourceManifest.version,
     `${sourceVersion} / ${sourceManifest.version}`,
   );
-  record(
-    "source README version is current",
-    runtimeReadme.includes(`Current runtime version: \`${sourceVersion}\`.`),
-    sourceVersion,
+  const schema = JSON.parse(
+    await readFile(path.join(roots.source, "schemas", "board-v2.json"), "utf8"),
   );
   record(
-    "source changelog has version entry",
-    (await readText(path.join(sourceRoot, "CHANGELOG.md"))).includes(`## ${sourceVersion} -`),
-    sourceVersion,
+    "board schema contract",
+    sourceManifest.boardSchemaVersion === 2 &&
+      schema.schemaVersion === sourceManifest.boardSchemaVersion,
+    `${sourceManifest.boardSchemaVersion} / ${schema.schemaVersion}`,
   );
 
-  if (await pathExists(path.join(distRoot, "VERSION"))) {
-    const distVersion = (await readText(path.join(distRoot, "VERSION"))).trim();
-    const distManifest = await readJson(path.join(distRoot, "runtime-manifest.json"));
-    record("dist VERSION matches source", distVersion === sourceVersion, distVersion);
-    record(
-      "dist manifest matches source",
-      distManifest.version === sourceManifest.version,
-      distManifest.version,
-    );
-  }
+  const sourceSnapshot = await packageSnapshot(
+    "source",
+    roots.source,
+    sourceManifest,
+    record,
+  );
+  const sourceLinks = await brokenActiveLinks(roots.source);
+  record("source active links", sourceLinks.length === 0, `${sourceLinks.length} broken`);
+  const sourceCli = path.join(roots.source, sourceManifest.cli.entrypoint);
+  const sourceExecutable = await exists(sourceCli) &&
+    ((await stat(sourceCli)).mode & 0o111) !== 0;
+  record("source CLI executable", sourceExecutable, sourceManifest.cli.entrypoint);
+  await verifyCliBehavior("source", roots.source, sourceManifest, record);
 
-  if (await pathExists(path.join(installedRoot, "VERSION"))) {
-    const installedVersion = (await readText(path.join(installedRoot, "VERSION"))).trim();
-    const installedManifest = await readJson(
-      path.join(installedRoot, "runtime-manifest.json"),
-    );
-    record(
-      "installed VERSION matches source",
-      installedVersion === sourceVersion,
-      installedVersion,
-    );
-    record(
-      "installed manifest matches source",
-      installedManifest.version === sourceManifest.version,
-      installedManifest.version,
-    );
-  } else {
-    record("installed runtime exists", false, installedRoot);
+  const distManifestPath = path.join(roots.dist, "runtime-manifest.json");
+  let distManifest = null;
+  if (await exists(distManifestPath)) {
+    distManifest = JSON.parse(await readFile(distManifestPath, "utf8"));
   }
-}
+  record(
+    "dist manifest contract",
+    distManifest?.version === sourceManifest.version &&
+      distManifest?.boardSchemaVersion === sourceManifest.boardSchemaVersion,
+    distManifest?.version ?? "missing",
+  );
+  const distSnapshot = distManifest
+    ? await packageSnapshot("dist", roots.dist, sourceManifest, record)
+    : null;
+  const matchesSource = sourceSnapshot !== null &&
+    distSnapshot !== null &&
+    mapsEqual(sourceSnapshot.files, distSnapshot.files);
+  record("source/dist hashes", matchesSource, matchesSource ? sourceSnapshot.hash : "drift");
+  const distLinks = distManifest ? await brokenActiveLinks(roots.dist) : ["missing dist"];
+  record("dist active links", distLinks.length === 0, `${distLinks.length} broken`);
+  if (distManifest) await verifyCliBehavior("dist", roots.dist, sourceManifest, record);
 
-async function verifyProtocolInvariants(rootLabel, root) {
-  const files = {
-    policy: path.join(root, "runtime-policy.md"),
-    aiInstall: path.join(root, "AI-INSTALL.md"),
-    classify: path.join(root, "commands", "classify.md"),
-    initProject: path.join(root, "commands", "init-project.md"),
-    installAdapter: path.join(root, "commands", "install-adapter.md"),
-    milestone: path.join(root, "commands", "milestone.md"),
-    plan: path.join(root, "commands", "plan.md"),
-    provider: path.join(root, "commands", "provider.md"),
-    providerSession: path.join(root, "tools", "provider-session.sh"),
-    review: path.join(root, "commands", "review.md"),
-    close: path.join(root, "commands", "close.md"),
-    status: path.join(root, "commands", "status.md"),
-    doctor: path.join(root, "commands", "doctor.md"),
-    registryDoctor: path.join(root, "commands", "registry-doctor.md"),
-    globalAdapter: path.join(root, "snippets", "global-adapter.md"),
-    projectAdapter: path.join(root, "snippets", "project-adapter.md"),
-    qaStrategist: path.join(root, "roles", "qa-strategist.md"),
-    designReviewer: path.join(root, "roles", "design-reviewer.md"),
-    architectureSpec: path.join(root, "specs", "01-architecture.md"),
-    subsystemsSpec: path.join(root, "specs", "06-subsystems.md"),
-    operatingRules: path.join(root, "specs", "08-operating-rules.md"),
-    projectDirectory: path.join(root, "specs", "03-project-directory.md"),
-    rolesSpec: path.join(root, "specs", "09-roles.md"),
-    workflowControl: path.join(root, "specs", "13-workflow-control-model.md"),
-    milestoneTemplate: path.join(root, "templates", "milestone.md"),
-    planTemplate: path.join(root, "templates", "plan.md"),
-    reviewTemplate: path.join(root, "templates", "review-summary.md"),
-    providerDialogueTemplate: path.join(root, "templates", "provider-dialogue.md"),
-    testMatrix: path.join(root, "templates", "test-matrix.md"),
+  const installed = await installedReport(
+    sourceVersion,
+    sourceManifest,
+    sourceSnapshot,
+    options,
+    record,
+  );
+  const failed = checks.filter((item) => !item.ok);
+  return {
+    status: failed.length === 0 ? "pass" : "fail",
+    strictActivation: options.strictActivation,
+    source: {
+      root: roots.source,
+      version: sourceVersion,
+      boardSchemaVersion: sourceManifest.boardSchemaVersion,
+      hash: sourceSnapshot?.hash ?? null,
+    },
+    dist: {
+      root: roots.dist,
+      version: distManifest?.version ?? null,
+      hash: distSnapshot?.hash ?? null,
+      matchesSource,
+    },
+    installed,
+    checks,
+    summary: {
+      passed: checks.length - failed.length,
+      failed: failed.length,
+      total: checks.length,
+    },
   };
-
-  if (!(await pathExists(files.policy))) return;
-
-  const policy = await readText(files.policy);
-  const aiInstall = await readText(files.aiInstall);
-  const classify = await readText(files.classify);
-  const initProject = await readText(files.initProject);
-  const installAdapter = await readText(files.installAdapter);
-  const milestone = await readText(files.milestone);
-  const plan = await readText(files.plan);
-  const provider = await readText(files.provider);
-  const providerSession = await readText(files.providerSession);
-  const review = await readText(files.review);
-  const close = await readText(files.close);
-  const status = await readText(files.status);
-  const doctor = await readText(files.doctor);
-  const registryDoctor = await readText(files.registryDoctor);
-  const globalAdapter = await readText(files.globalAdapter);
-  const projectAdapter = await readText(files.projectAdapter);
-  const qaStrategist = await readText(files.qaStrategist);
-  const designReviewer = await readText(files.designReviewer);
-  const architectureSpec = await readText(files.architectureSpec);
-  const subsystemsSpec = await readText(files.subsystemsSpec);
-  const operatingRules = await readText(files.operatingRules);
-  const projectDirectory = await readText(files.projectDirectory);
-  const rolesSpec = await readText(files.rolesSpec);
-  const workflowControl = await readText(files.workflowControl);
-  const milestoneTemplate = await readText(files.milestoneTemplate);
-  const planTemplate = await readText(files.planTemplate);
-  const reviewTemplate = await readText(files.reviewTemplate);
-  const providerDialogueTemplate = await readText(files.providerDialogueTemplate);
-  const testMatrix = await readText(files.testMatrix);
-  const staleMaterialJudgment =
-    policy.includes("materially improves judgment") ||
-    plan.includes("adds material judgment") ||
-    review.includes("materially affects the review");
-  const skippedAsProviderStance = plan.includes("`preferred` or `skipped`");
-
-  record(
-    `${rootLabel} lifecycle role routing`,
-    policy.includes("Lifecycle role routing"),
-    "runtime-policy.md",
-  );
-  record(
-    `${rootLabel} architecture layer model`,
-    architectureSpec.includes("4 conceptual layers + 2 cross-cutting control planes") &&
-      architectureSpec.includes("Artifact Graph") &&
-      architectureSpec.includes("Gates / Verification") &&
-      architectureSpec.includes("Do not count lifecycle stages or workflow levels as extra layers"),
-    "specs/01-architecture.md",
-  );
-  record(
-    `${rootLabel} progress handoff`,
-    policy.includes("Progress Handoff Contract"),
-    "runtime-policy.md",
-  );
-  record(
-    `${rootLabel} adapter activation guidance`,
-    aiInstall.includes("commands/install-adapter.md") &&
-      initProject.includes("commands/install-adapter.md") &&
-      installAdapter.includes("catpaw:install-adapter") &&
-      installAdapter.includes("<!-- CATPAW:BEGIN -->") &&
-      installAdapter.includes("marker block") &&
-      installAdapter.includes("Project adapter activation should be considered current") &&
-      doctor.includes("Adapter activation") &&
-      doctor.includes("catpaw:install-adapter --project --dry-run") &&
-      globalAdapter.includes("<!-- CATPAW:BEGIN -->") &&
-      globalAdapter.includes("<!-- CATPAW:END -->") &&
-      projectAdapter.includes("<!-- CATPAW:BEGIN -->") &&
-      projectAdapter.includes("<!-- CATPAW:END -->"),
-    "AI-INSTALL.md + commands/init-project.md + commands/install-adapter.md + commands/doctor.md + snippets",
-  );
-  record(
-    `${rootLabel} observable provider sessions`,
-    provider.includes("Observable Long-Running Provider Mode") &&
-      provider.includes("No stdout while the provider process/session is still alive") &&
-      provider.includes("is not sufficient\nevidence") &&
-      provider.includes("Claude Code") &&
-      provider.includes("Codex") &&
-      provider.includes("OpenCode") &&
-      provider.includes("Capability fallback ladder") &&
-      provider.includes("Provider availability is a capability check") &&
-      provider.includes("Do not repeatedly pressure the user") &&
-      provider.includes("provider-session.sh open") &&
-      provider.includes("provider-session.sh check") &&
-      review.includes("observable long-running provider mode") &&
-      operatingRules.includes("Provider Availability") &&
-      operatingRules.includes("tmux, Claude Code, Codex, Gemini, OpenCode") &&
-      operatingRules.includes("observable provider session -> provider-native or") &&
-      operatingRules.includes("No stdout") &&
-      providerSession.includes("provider-session.sh") &&
-      providerSession.includes("cmd_check") &&
-      providerSession.includes("FALLBACK non-interactive-cli") &&
-      providerSession.includes("claude)") &&
-      providerSession.includes("codex)") &&
-      providerSession.includes("opencode)") &&
-      providerDialogueTemplate.includes("Observed status") &&
-      providerDialogueTemplate.includes("Wait policy"),
-    "commands/provider.md + commands/review.md + specs/08-operating-rules.md + tools/provider-session.sh + templates/provider-dialogue.md",
-  );
-  record(
-    `${rootLabel} Claude Code safe-mode provider CLI`,
-    provider.includes("CC_SMOKE_OK") &&
-      provider.includes("stdin +\nsafe-mode") &&
-      provider.includes("--safe-mode") &&
-      provider.includes("--permission-mode plan") &&
-      provider.includes("--disallowedTools Edit,Write,NotebookEdit") &&
-      provider.includes("--add-dir /abs/path/worktree-a") &&
-      provider.includes("`--add-dir` is variadic") &&
-      provider.includes("Do not append the prompt after `--add-dir`") &&
-      provider.includes("Provider prompts must therefore be\nself-contained") &&
-      review.includes("counts\n  as no usable output") &&
-      operatingRules.includes("no usable output") &&
-      !provider.includes('claude -p --no-session-persistence --permission-mode plan "<prompt>"'),
-    "commands/provider.md + commands/review.md + specs/08-operating-rules.md",
-  );
-  record(
-    `${rootLabel} workflow control model`,
-    workflowControl.includes("Workflow Control Model") &&
-      workflowControl.includes("Canonical Decision Table") &&
-      workflowControl.includes("framed -> planned -> building -> reviewing -> verifying -> done") &&
-      workflowControl.includes("not a new required frontmatter schema") &&
-      policy.includes("specs/13-workflow-control-model.md") &&
-      policy.includes("Workflow state target when tracked") &&
-      policy.includes("Milestone fit") &&
-      classify.includes("State target:") &&
-      classify.includes("specs/13-workflow-control-model.md") &&
-      close.includes("terminal workflow state `done` or") &&
-      operatingRules.includes("Workflow State and Artifact Policy") &&
-      operatingRules.includes("not a new required\n  frontmatter schema") &&
-      architectureSpec.includes("specs/13-workflow-control-model.md"),
-    "specs/13-workflow-control-model.md + runtime-policy.md + classify/close + specs/08-operating-rules.md + specs/01-architecture.md",
-  );
-  record(
-    `${rootLabel} milestone phase orchestration`,
-    policy.includes("Milestone fit") &&
-      policy.includes("FR remains the smallest verifiable unit") &&
-      milestone.includes("catpaw:milestone") &&
-      milestone.includes(".catpaw/milestones/MS-001-<slug>.md") &&
-      milestone.includes("not a fifth workflow level") &&
-      projectDirectory.includes("milestones/") &&
-      projectDirectory.includes("Recommended Active Milestones shape") &&
-      initProject.includes("milestones/") &&
-      status.includes(".catpaw/milestones/*.md") &&
-      doctor.includes("Milestone consistency") &&
-      workflowControl.includes("Milestone artifact policy") &&
-      milestoneTemplate.includes("## Scope"),
-    "runtime-policy.md + commands/milestone.md + specs/templates/project commands",
-  );
-  record(
-    `${rootLabel} frontend UI self-verification`,
-    policy.includes("Frontend / UI Self-Verification") &&
-      policy.includes("Browser / browser-use") &&
-      policy.includes("Computer Use"),
-    "runtime-policy.md",
-  );
-  record(
-    `${rootLabel} UI verification command guidance`,
-    classify.includes("interactive surface") &&
-      plan.includes("self-verification surface") &&
-      review.includes("Interactive UI Evidence"),
-    "commands/classify.md + commands/plan.md + commands/review.md",
-  );
-  record(
-    `${rootLabel} UI verification adapter snippets`,
-    globalAdapter.includes("Computer Use") &&
-      projectAdapter.includes("Computer Use"),
-    "snippets/global-adapter.md + snippets/project-adapter.md",
-  );
-  record(
-    `${rootLabel} Computer Use priority guidance`,
-    policy.includes("Surface selection rules") &&
-      policy.includes("Promote Computer Use") &&
-      policy.includes("profile/session state") &&
-      classify.includes("Computer Use should move ahead") &&
-      plan.includes("selected surface, selection reason") &&
-      review.includes("Review evidence should name the selected surface") &&
-      qaStrategist.includes("Selection rules") &&
-      qaStrategist.includes("Promote Computer Use") &&
-      designReviewer.includes("Promote Computer Use") &&
-      subsystemsSpec.includes("Computer Use moves ahead") &&
-      operatingRules.includes("Surface selection") &&
-      globalAdapter.includes("real-window") &&
-      projectAdapter.includes("real-window"),
-    "runtime-policy.md + classify/plan/review commands + QA/Design roles + specs + adapter snippets",
-  );
-  record(
-    `${rootLabel} Subagent Preference Gate guidance`,
-    policy.includes("Subagent Preference Gate") &&
-      policy.includes("Prefer current-tool subagent") &&
-      policy.includes("Autonomous invocation rule") &&
-      policy.includes("Subagent skipped: <why inline handling is sufficient>") &&
-      provider.includes("Provider stance") &&
-      provider.includes("Subagent Preference Gate") &&
-      provider.includes("Preferred subagent invocation is one bounded round by default") &&
-      provider.includes("Provider outcome: used") &&
-      provider.includes("Subagent skipped: <why inline handling is sufficient>") &&
-      classify.includes("provider stance as `preferred`") &&
-      classify.includes("Provider: <inline|preferred|forced>") &&
-      plan.includes("provider stance as") &&
-      plan.includes("Provider outcome: used") &&
-      plan.includes("`skipped` is an outcome, not a provider stance") &&
-      plan.includes("Subagent skipped: <reason>") &&
-      review.includes("Provider stance should be reported") &&
-      review.includes("Provider outcome: used") &&
-      review.includes("reported separately from stance") &&
-      operatingRules.includes("Subagent Preference Gate") &&
-      operatingRules.includes("one bounded read-only subagent check") &&
-      rolesSpec.includes("Provider stance should be classified") &&
-      rolesSpec.includes("Preferred subagent selection") &&
-      rolesSpec.includes("Provider outcome: used") &&
-      globalAdapter.includes("Prefer current-tool subagent") &&
-      projectAdapter.includes("Prefer current-tool subagent"),
-    "runtime-policy.md + commands/provider.md + classify/plan/review + specs/08-operating-rules.md + specs/09-roles.md + adapter snippets",
-  );
-  record(
-    `${rootLabel} adversarial review guidance`,
-    policy.includes("Adversarial Review") &&
-      policy.includes("root problem and binding constraints") &&
-      plan.includes("root problem and binding constraints") &&
-      review.includes("Mode: none | light | adversarial | formal") &&
-      review.includes("Adversarial Checks") &&
-      provider.includes("Adversarial review") &&
-      operatingRules.includes("Adversarial Review") &&
-      rolesSpec.includes("Adversarial review summaries") &&
-      planTemplate.includes("root problem and binding constraints") &&
-      reviewTemplate.includes("Adversarial Checks") &&
-      qaStrategist.includes("Adversarial cases") &&
-      (await readText(path.join(root, "roles", "security-reviewer.md"))).includes("adversarial tests") &&
-      (await readText(path.join(root, "roles", "performance-reviewer.md"))).includes("Adversarial workloads") &&
-      (await readText(path.join(root, "roles", "debugging-advisor.md"))).includes("Challenge\nthe first plausible answer"),
-    "runtime-policy.md + plan/review/provider + roles + templates",
-  );
-  record(
-    `${rootLabel} provider stance enum`,
-    provider.includes("`forced`:") &&
-      provider.includes("`preferred`:") &&
-      provider.includes("`inline`:") &&
-      review.includes("`forced`, `preferred`, or `inline`") &&
-      operatingRules.includes("| `inline` |") &&
-      operatingRules.includes("| `preferred` |") &&
-      operatingRules.includes("| `forced` |"),
-    "commands/provider.md + commands/review.md + specs/08-operating-rules.md",
-  );
-  record(
-    `${rootLabel} provider outcome separation`,
-    !staleMaterialJudgment &&
-      !skippedAsProviderStance &&
-      plan.includes("record provider outcome") &&
-      review.includes("Provider outcomes such as `used`, `skipped`, `unavailable`, or `gap`") &&
-      operatingRules.includes("Provider outcome is the observed result") &&
-      operatingRules.includes("| `used` |") &&
-      operatingRules.includes("| `skipped` |") &&
-      operatingRules.includes("| `unavailable` |") &&
-      operatingRules.includes("| `gap` |"),
-    "runtime-policy.md + commands/plan.md + commands/review.md + specs/08-operating-rules.md",
-  );
-  record(
-    `${rootLabel} UI evidence templates include surface decision`,
-    planTemplate.includes("Selected surface") &&
-      planTemplate.includes("Selection reason") &&
-      reviewTemplate.includes("Interactive UI Evidence") &&
-      reviewTemplate.includes("Remaining gap"),
-    "templates/plan.md + templates/review-summary.md",
-  );
-  record(
-    `${rootLabel} provider stance templates include subagent skip`,
-    planTemplate.includes("Provider stance") &&
-      planTemplate.includes("Provider outcome") &&
-      planTemplate.includes("Subagent skipped") &&
-      reviewTemplate.includes("Provider stance") &&
-      reviewTemplate.includes("Provider outcome") &&
-      reviewTemplate.includes("Subagent skipped"),
-    "templates/plan.md + templates/review-summary.md",
-  );
-  record(
-    `${rootLabel} index active work table shape`,
-    initProject.includes("| ID | Title | Status | Links |") &&
-      status.includes("| ID | Title | Status | Links |") &&
-      projectDirectory.includes("Recommended Active Work shape"),
-    "commands/init-project.md + commands/status.md + specs/03-project-directory.md",
-  );
-  record(
-    `${rootLabel} provider command exists`,
-    await pathExists(files.provider),
-    "commands/provider.md",
-  );
-  record(
-    `${rootLabel} forced provider gate guidance`,
-    policy.includes("Forced Provider Gate") &&
-      provider.includes("Forced Provider Gate") &&
-      plan.includes("Provider gate") &&
-      review.includes("Provider gaps") &&
-      rolesSpec.includes("Forced provider gates"),
-    "runtime-policy.md + commands/provider.md + commands/plan.md + commands/review.md + specs/09-roles.md",
-  );
-  record(
-    `${rootLabel} forced provider gate templates`,
-    planTemplate.includes("Provider gate") &&
-      planTemplate.includes("Provider gap") &&
-      reviewTemplate.includes("Provider gaps"),
-    "templates/plan.md + templates/review-summary.md",
-  );
-  record(
-    `${rootLabel} status read-only wording`,
-    status.includes("Project-artifact read-only"),
-    "commands/status.md",
-  );
-  record(
-    `${rootLabel} doctor read-only wording`,
-    doctor.includes("Project-artifact read-only"),
-    "commands/doctor.md",
-  );
-  record(
-    `${rootLabel} registry discover report-only`,
-    registryDoctor.includes("never\nauto-registers discovered boards") ||
-      registryDoctor.includes("never auto-registers discovered boards"),
-    "commands/registry-doctor.md",
-  );
-  record(
-    `${rootLabel} test matrix req link`,
-    testMatrix.includes("Req: ../../reqs/"),
-    "templates/test-matrix.md",
-  );
-  record(
-    `${rootLabel} test matrix plan link`,
-    testMatrix.includes("Plan: ../../plans/"),
-    "templates/test-matrix.md",
-  );
 }
 
-async function verifySlimmingGuardrails(rootLabel, root) {
-  const targets = [
-    ["runtime-policy.md", 380],
-    ["commands/provider.md", 470],
-    ["specs/08-operating-rules.md", 270],
-    ["specs/09-roles.md", 310],
-    ["CHANGELOG.md", 300],
-  ];
-
-  for (const [relativePath, maxLines] of targets) {
-    const target = path.join(root, relativePath);
-    if (!(await pathExists(target))) continue;
-    const lines = lineCount(await readText(target));
-    record(
-      `${rootLabel} slimming line budget ${relativePath}`,
-      lines <= maxLines,
-      `${lines}/${maxLines}`,
-    );
-  }
-
-  const rolesDir = path.join(root, "roles");
-  if (await pathExists(rolesDir)) {
-    let roleLines = 0;
-    for (const fileName of await readdir(rolesDir)) {
-      if (!fileName.endsWith(".md")) continue;
-      roleLines += lineCount(await readText(path.join(rolesDir, fileName)));
-    }
-    record(
-      `${rootLabel} slimming line budget roles/`,
-      roleLines <= 660,
-      `${roleLines}/660`,
-    );
-  }
-
-  const policy = await readText(path.join(root, "runtime-policy.md"));
-  const provider = await readText(path.join(root, "commands", "provider.md"));
-  const workflow = await readText(path.join(root, "specs", "13-workflow-control-model.md"));
-  const operatingRules = await readText(path.join(root, "specs", "08-operating-rules.md"));
-  const roles = await readText(path.join(root, "specs", "09-roles.md"));
-
-  record(
-    `${rootLabel} slimming preserves core workflow vocabulary`,
-    ["L0", "L1", "L2", "L3"].every((level) =>
-      policy.includes(level) && workflow.includes(level),
-    ),
-    "runtime-policy.md + specs/13-workflow-control-model.md",
+function render(report) {
+  const lines = report.checks.map(
+    (item) => `${item.ok ? "PASS" : "FAIL"} ${item.name}: ${item.detail}`,
   );
-  record(
-    `${rootLabel} slimming preserves provider gates`,
-    provider.includes("Forced Provider Gate") &&
-      provider.includes("Subagent Preference Gate") &&
-      provider.includes("Capability fallback ladder") &&
-      operatingRules.includes("Provider Availability"),
-    "commands/provider.md + specs/08-operating-rules.md",
+  lines.push(
+    `Installed: ${report.installed.status}`,
+    `Result: ${report.status.toUpperCase()} (${report.summary.passed}/${report.summary.total})`,
   );
-  record(
-    `${rootLabel} slimming preserves stance/outcome terms`,
-    ["`inline`", "`preferred`", "`forced`"].every((term) =>
-      provider.includes(term) && operatingRules.includes(term),
-    ) &&
-      ["`used`", "`skipped`", "`unavailable`", "`gap`"].every((term) =>
-        operatingRules.includes(term),
-      ),
-    "commands/provider.md + specs/08-operating-rules.md",
-  );
-  record(
-    `${rootLabel} slimming preserves role routing`,
-    policy.includes("Lifecycle role routing") &&
-      roles.includes("Lifecycle Role Orchestration") &&
-      roles.includes("Provider Selection"),
-    "runtime-policy.md + specs/09-roles.md",
-  );
-  record(
-    `${rootLabel} slimming preserves safety gates`,
-    policy.includes("External actions require explicit user confirmation") &&
-      operatingRules.includes("External actions require explicit user confirmation") &&
-      provider.includes("Do not send secrets") &&
-      operatingRules.includes("Observable mode does not authorize writes"),
-    "runtime-policy.md + commands/provider.md + specs/08-operating-rules.md",
-  );
-}
-
-function frontmatterRuntime(text) {
-  if (!text.startsWith("---\n")) return null;
-  const end = text.indexOf("\n---", 4);
-  if (end < 0) return null;
-  const match = text.slice(4, end).match(/^runtime:\s*(.+)$/m);
-  return match?.[1]?.trim() ?? null;
-}
-
-async function verifyRegistry(installedVersion) {
-  const registryPath = path.join(installedRoot, "state", "projects.json");
-  if (!(await pathExists(registryPath))) {
-    record("registry exists", true, "not present; no registered boards");
-    return;
-  }
-
-  const registry = await readJson(registryPath);
-  const projects = registry.projects ?? [];
-  let current = 0;
-  let missing = 0;
-  let mismatched = 0;
-  let activeDone = 0;
-  let badMatrixLinks = 0;
-
-  for (const project of projects) {
-    const boardPath = project.boardPath;
-    if (!(await pathExists(boardPath))) {
-      missing += 1;
-      continue;
-    }
-
-    const indexPath = path.join(boardPath, "index.md");
-    const indexText = await readText(indexPath);
-    const indexRuntime = frontmatterRuntime(indexText);
-    if (project.stamp === installedVersion && indexRuntime === installedVersion) {
-      current += 1;
-    } else {
-      mismatched += 1;
-    }
-
-    const activeDir = path.join(boardPath, "plans", "active");
-    if (await pathExists(activeDir)) {
-      for (const fileName of await readdir(activeDir)) {
-        if (!fileName.endsWith(".md")) continue;
-        const text = await readText(path.join(activeDir, fileName));
-        if (/^status:\s*(done|cancelled)\s*$/m.test(text)) activeDone += 1;
-      }
-    }
-
-    const matrixDir = path.join(boardPath, "tests", "matrices");
-    if (await pathExists(matrixDir)) {
-      for (const fileName of await readdir(matrixDir)) {
-        if (!fileName.endsWith(".md")) continue;
-        const text = await readText(path.join(matrixDir, fileName));
-        if (/(?:Req:\s+\.\.\/reqs\/|Plan:\s+\.\.\/plans\/)/.test(text)) {
-          badMatrixLinks += 1;
-        }
-      }
-    }
-  }
-
-  record(
-    "registry boards current",
-    current === projects.length && missing === 0 && mismatched === 0,
-    `${current}/${projects.length} current, ${missing} missing, ${mismatched} mismatched`,
-  );
-  record(
-    "registry active plans are active",
-    activeDone === 0,
-    `${activeDone} done/cancelled plans under plans/active`,
-  );
-  record(
-    "registry test matrix links",
-    badMatrixLinks === 0,
-    `${badMatrixLinks} old test matrix links`,
-  );
+  return `${lines.join("\n")}\n`;
 }
 
 async function main() {
-  const sourceManifest = await readJson(path.join(sourceRoot, "runtime-manifest.json"));
-  await verifyVersions(sourceManifest);
-  await verifySourceTooling();
-  await verifyPackageRoot("source", sourceRoot, sourceManifest);
-  await verifyPackageRoot("dist", distRoot, sourceManifest);
-  await verifyPackageRoot("installed", installedRoot, sourceManifest);
-  await verifyProtocolInvariants("source", sourceRoot);
-  await verifyProtocolInvariants("dist", distRoot);
-  await verifyProtocolInvariants("installed", installedRoot);
-  await verifySlimmingGuardrails("source", sourceRoot);
-  await verifySlimmingGuardrails("dist", distRoot);
-  await verifySlimmingGuardrails("installed", installedRoot);
-
-  const installedVersion = (await pathExists(path.join(installedRoot, "VERSION")))
-    ? (await readText(path.join(installedRoot, "VERSION"))).trim()
-    : null;
-  if (installedVersion) await verifyRegistry(installedVersion);
-
-  const failed = checks.filter((check) => !check.ok);
-  for (const check of checks) {
-    console.log(`${check.ok ? "PASS" : "FAIL"} ${check.name}: ${check.detail}`);
+  let options;
+  try {
+    options = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    process.stderr.write(`verify-runtime: ${error.message}\n`);
+    process.exitCode = error.exitCode ?? 1;
+    return;
   }
-  console.log(
-    `Result: ${failed.length === 0 ? "PASS" : "FAIL"} (${checks.length - failed.length}/${checks.length})`,
-  );
-  if (failed.length > 0) process.exitCode = 1;
+  try {
+    const report = await verify(options);
+    process.stdout.write(
+      options.json ? `${JSON.stringify(report, null, 2)}\n` : render(report),
+    );
+    if (report.status === "fail") process.exitCode = 1;
+  } catch (error) {
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify({
+        status: "fail",
+        error: { code: error.code ?? "ERR_VERIFY", message: error.message },
+      }, null, 2)}\n`);
+    } else {
+      process.stderr.write(`${error.stack ?? error.message}\n`);
+    }
+    process.exitCode = 1;
+  }
 }
 
-main().catch((error) => {
-  console.error(error.stack ?? error.message);
-  process.exitCode = 1;
-});
+await main();

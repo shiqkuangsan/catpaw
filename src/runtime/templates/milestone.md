@@ -1,49 +1,34 @@
 ---
 id: MS-001
-status: draft
+status: active
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 closed: null
 target: null
 ---
 
-# MS-001: [Title]
+# {{MILESTONE_ID}}: {{TITLE}}
 
 ## Outcome
 
-One short outcome statement for this phase.
-
-## Background
-
-Why these FRs belong together.
-
-## Non-goals
-
-What this milestone intentionally will not cover.
+State the phase outcome.
 
 ## Scope
 
-| Req | Title | Status | Notes |
+<!-- catpaw:milestone-scope:start -->
+| Work Item ID | Title | Status | Notes |
 |---|---|---|---|
-| FR-001 | ... | draft / active / done | ... |
+<!-- catpaw:milestone-scope:end -->
 
 ## Exit Criteria
 
-- [ ] Milestone-level acceptance criterion.
+- [ ] Milestone completion condition
 
 ## Verification
 
-- [ ] Command/manual check:
-- [ ] Regression or smoke entrypoint:
-- [ ] Remaining gap:
+- Verification record:
 
-## User Assistance
-
-- Decision or external action needed:
-
-## Closeout Summary
+## Closeout
 
 - Completed:
-- Verification:
-- Remaining risks:
-- Next milestone / next action:
+- Remaining gaps:

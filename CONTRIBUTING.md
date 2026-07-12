@@ -1,55 +1,81 @@
 # Contributing
 
-Thanks for considering a CatPaw contribution.
+CatPaw 3.0 is a Hybrid Runtime: agents make contextual decisions, executable
+tools record and verify deterministic state, and users authorize writes and
+external effects. Contributions should keep those boundaries visible and the
+runtime small.
 
-CatPaw is primarily a runtime protocol and documentation package. Most changes
-should be small, explicit, and easy for AI agents to follow.
+## Source Layout
+
+| Path | Purpose |
+|---|---|
+| `src/runtime/` | Versioned runtime source |
+| `scripts/` | Source build and verification tooling |
+| `tests/` | Executable behavior and documentation contracts |
+| `docs/` | Maintainer rationale and ADRs; never installed |
+| `dist/runtime/` | Generated package; ignored by Git |
+
+The package boundary is
+[`src/runtime/runtime-manifest.json`](src/runtime/runtime-manifest.json).
+Project `.catpaw/` directories are user data and must never receive a copied
+runtime.
 
 ## Development Workflow
 
-1. Make source changes under `src/runtime/`, `docs/`, or `scripts/`.
-2. If runtime behavior changes, update `src/runtime/VERSION`,
-   `src/runtime/CHANGELOG.md`, and any affected command/spec files.
-3. Generate the installable runtime package:
+1. Read the canonical runtime owner for the behavior being changed.
+2. Make the smallest coherent source or maintainer-doc change.
+3. Add or update executable tests for deterministic contracts.
+4. When runtime behavior changes, review `VERSION`, `CHANGELOG.md`, the
+   manifest, templates, schema, and migration impact.
+5. Run focused tests, then the complete verification set appropriate to the
+   change.
+
+Typical commands:
 
 ```bash
+node --test
 node scripts/build-runtime.mjs
-```
-
-4. Verify source, generated runtime, installed runtime when present, and project
-   board stamps:
-
-```bash
 node scripts/verify-runtime.mjs
+git diff --check
 ```
 
-5. Before submitting, check for accidental local state or credentials:
+Building source does not automatically install, apply, or migrate CatPaw. Do
+not modify `~/.catpaw/`, adapters, registry state, or real project boards during
+source verification.
+
+## Runtime Change Checklist
+
+- Keep the lifecycle `Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect`.
+- Preserve Direct, Tracked, and Gated semantics unless an accepted ADR changes
+  them.
+- Treat `src/runtime/schemas/board-v2.json` as the board metadata contract.
+- Keep board mutations dry-run by default and write only with explicit
+  `--apply`.
+- Add a migration when a released project board schema must change.
+- Keep callable external Agents limited to `cc` and `cx` unless a future
+  accepted decision deliberately changes the boundary.
+- Update public docs when installation, CLI, artifact, or activation behavior
+  changes.
+
+## Maintainer Documentation
+
+Use `docs/` to explain why a design exists. Current behavior belongs in runtime
+policy, guidance, schema, or executable code. Significant design changes need
+a compact ADR with Status, Context, Decision, Consequences, and References.
+
+Historical ADRs remain decision records even when later vocabulary supersedes
+part of their operational description.
+
+## Submission Expectations
+
+Summarize the problem, changed authorities, migration impact, and verification
+evidence. Do not include generated dist files, local state, project boards,
+logs, credentials, or unrelated formatting churn.
+
+Before a requested commit, inspect the exact staged scope and scan for likely
+credentials:
 
 ```bash
 git status --short
 rg -n -i 'token|secret|api[_-]?key|bearer|password|passwd|credential|private[_-]?key|client[_-]?secret|access[_-]?key' .
 ```
-
-## Runtime Boundaries
-
-- `src/runtime/` is the authored runtime package source.
-- `dist/runtime/` is generated and should not be committed.
-- `docs/` is maintainer-facing rationale and is not installed.
-- Project `.catpaw/` directories are user data and must not receive copied
-  runtime specs, commands, roles, or templates.
-- `~/.catpaw/state/` is local machine state and must not be distributed.
-
-## Pull Request Expectations
-
-Include:
-
-- the problem or behavior being changed;
-- the command/spec/template files affected;
-- verification output from build and runtime verification;
-- migration notes when project artifact schema changes.
-
-Avoid:
-
-- hidden behavior changes without command/spec updates;
-- broad rewrites of protocol wording without a focused reason;
-- generated files, local agent state, project boards, logs, or credentials.

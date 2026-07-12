@@ -1,6 +1,6 @@
 # ADR-0013: Lifecycle Role Orchestration
 
-Status: Accepted
+Status: Superseded by ADR-0019
 Date: 2026-05-16
 
 ## Context

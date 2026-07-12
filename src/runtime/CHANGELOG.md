@@ -1,5 +1,44 @@
 # Changelog
 
+## 3.0.0 - 2026-07-11
+
+- Replace workflow levels with `Direct`, `Tracked`, and `Gated` while preserving
+  `Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect`.
+- Introduce board schema 2 with Milestone, Work Item, Plan, and typed Evidence;
+  add deterministic schema 1 migration with dry-run, staged validation, complete
+  backup, and exact second-run no-op.
+- Add the Node CLI for board/work/milestone/evidence operations and observable
+  Agent sessions.
+- Make Gated completion depend on substantive test plus independent Evidence
+  (or an accepted gap that names every current missing gate) across close,
+  doctor, and migration validation.
+- Reject non-UTF-8 migration inputs, preserve mapped file modes, and keep tmux
+  failures/provider-access uncertainty factual in Agent diagnostics; retain
+  provider process exit status and fallback through observable sessions.
+- Replace the old role tree with five Lens cards and lifecycle-owned review,
+  testing, release, debugging, and reflection methods.
+- Select optional execution methods by concrete lifecycle trigger instead of
+  meta-skill invocation; classify Agent delivery/adoption without adding a new
+  artifact ledger.
+- Treat prompt-only read-only as insufficient for sensitive state: require
+  enforceable sandbox/allowlist/read-only data access and bounded side-effect
+  audit when such work is delegated.
+- Limit managed reciprocal external Agents to Claude Code (`cc`) and Codex
+  (`cx`); remove third-provider invocation guidance and blocking session waits.
+- Consolidate runtime authority into one routing policy, four guidance files,
+  five Lenses, two provider recipes, one schema, and four templates.
+
+Migration note (2.x -> 3.0.0):
+
+```text
+Runtime activation: explicit; source/dist 3.0.0 does not update ~/.catpaw automatically.
+Project impact: board schema changes from 1 to 2; existing boards remain readable but mutation requires an explicit board migrate dry-run/apply.
+Required actions: build and verify source/dist; install runtime only when current work can tolerate activation; migrate each project independently.
+Safety: runtime upgrade preserves ~/.catpaw/state and unknown files; board apply writes a complete preimage backup before publishing the staged board.
+Non-goals: no global apply, registry rewrite, adapter rewrite, project migration, commit, or push is implied by this source release.
+Rollback: keep the installed 2.x runtime and schema 1 boards until explicitly activated; never delete published migration backups automatically.
+```
+
 ## 2.1.7 - 2026-07-07
 - Update Claude Code provider review/debug defaults to stdin pipe +
   `--safe-mode` + `--permission-mode plan` with write tools denied.

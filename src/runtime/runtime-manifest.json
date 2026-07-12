@@ -1,9 +1,9 @@
 {
   "name": "catpaw-runtime",
-  "version": "2.1.7",
+  "version": "3.0.0",
   "runtimePath": "~/.catpaw",
-  "artifactSchemaVersion": 1,
-  "released": "2026-06-07",
+  "boardSchemaVersion": 2,
+  "released": "2026-07-11",
   "canonicalFiles": [
     "VERSION",
     "runtime-manifest.json",
@@ -11,35 +11,26 @@
     "AI-INSTALL.md",
     "CHANGELOG.md",
     "runtime-policy.md",
-    "commands/",
-    "guides/",
+    "bin/",
+    "guidance/",
+    "lenses/",
+    "lib/",
     "migrations/",
-    "roles/",
+    "providers/",
+    "schemas/",
     "snippets/",
-    "source-evidence/",
-    "specs/",
-    "templates/",
-    "tools/"
+    "templates/"
   ],
-  "commands": [
-    "init-project",
-    "migrate-project",
-    "upgrade-runtime",
-    "release-runtime",
-    "upgrade-project",
-    "unregister-project",
-    "registry-doctor",
-    "classify",
-    "plan",
-    "milestone",
-    "provider",
-    "install-adapter",
-    "review",
-    "status",
-    "doctor",
-    "reconcile",
-    "close"
-  ],
+  "cli": {
+    "entrypoint": "bin/catpaw.mjs",
+    "commands": [
+      "board init|status|doctor|migrate",
+      "work start|close",
+      "milestone start|add|close",
+      "evidence add",
+      "agent check|open|send|status|read|close"
+    ]
+  },
   "projectArtifactPath": ".catpaw",
   "legacyRuntimePaths": []
 }
