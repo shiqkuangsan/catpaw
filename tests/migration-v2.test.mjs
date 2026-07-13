@@ -356,6 +356,75 @@ function historicalProseBoard() {
   };
 }
 
+function historicalGatedBoard() {
+  return {
+    ".catpaw/index.md": frontmatter(
+      { runtime: "2.1.7" },
+      "# CatPaw Index\n\n## Active Work\n\n_No active work._\n",
+    ),
+    ".catpaw/reqs/BUG-202-historical.md": frontmatter(
+      {
+        id: "BUG-202",
+        type: "bug",
+        status: "completed",
+        level: "L3",
+        stage: "reflect",
+        created: DATE,
+        updated: DATE,
+        closed: DATE,
+      },
+      "# BUG-202: Historical Fix\n\nCompleted before completion Evidence was required.",
+    ),
+    ".catpaw/reqs/BUG-203-cancelled.md": frontmatter(
+      {
+        id: "BUG-203",
+        type: "bug",
+        status: "cancelled",
+        level: "L3",
+        stage: "reflect",
+        created: DATE,
+        updated: DATE,
+        closed: DATE,
+      },
+      "# BUG-203: Cancelled Fix\n\nCancelled without a completion claim.",
+    ),
+    ".catpaw/plans/archive/BUG-202-historical.md": frontmatter(
+      { req: "BUG-202", updated: DATE, status: "done" },
+      "# Plan: BUG-202 Historical Fix\n\nArchived implementation plan.",
+    ),
+    ".catpaw/milestones/MS-001-history.md": frontmatter(
+      {
+        id: "MS-001",
+        status: "done",
+        created: DATE,
+        updated: DATE,
+        closed: DATE,
+        target: "2026 Q2",
+      },
+      [
+        "# MS-001: Historical Phase",
+        "",
+        "## Scope",
+        "",
+        "| Req | Title | Status | Notes |",
+        "|---|---|---|---|",
+        "| BUG-202 | Historical Fix | done | Closed under schema 1 |",
+      ].join("\n"),
+    ),
+    ".catpaw/tests/matrices/BUG-202-historical.md": frontmatter(
+      {
+        id: "T-202",
+        req: "BUG-202",
+        status: "done",
+        created: DATE,
+        updated: DATE,
+        closed: DATE,
+      },
+      "# Test Matrix: BUG-202 Historical Fix\n\nLegacy regression passed.",
+    ),
+  };
+}
+
 function operation(report, type, relativePath) {
   return report.operations.find(
     (item) => item.type === type &&
@@ -473,6 +542,74 @@ test("migration apply keeps preserved legacy bytes outside schema 2 status", asy
     plans: 0,
   });
   assert.equal(statusReport.findings.length, 0);
+});
+
+test("migration preserves historical Gated Work without complete completion Evidence", async (t) => {
+  const files = historicalGatedBoard();
+  const root = await fixture(t, files);
+  const boardPath = path.join(root, ".catpaw");
+  const catpawHome = path.join(root, "runtime-home");
+  const historicalSources = [
+    "milestones/MS-001-history.md",
+    "reqs/BUG-202-historical.md",
+    "plans/archive/BUG-202-historical.md",
+    "tests/matrices/BUG-202-historical.md",
+  ];
+
+  const report = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(report.blockers, []);
+  assert.equal(
+    report.mappings.some((item) => historicalSources.includes(item.from)),
+    false,
+  );
+  assert.ok(report.mappings.some((item) =>
+    item.from === "reqs/BUG-203-cancelled.md" &&
+    item.to === "work/BUG-203-cancelled.md"
+  ));
+  assert.ok(report.warnings.some((item) =>
+    item.code === "preserved-historical-gated-work" &&
+    item.path === "reqs/BUG-202-historical.md" &&
+    item.message.includes("independent-review-or-provider")
+  ));
+  for (const source of historicalSources) {
+    const archived = report.preservedLegacy.find((item) => item.from === source);
+    assert.equal(archived.disposition, "preserved", source);
+    assert.ok(operation(report, "move-file", archived.to), source);
+  }
+
+  const applied = await runCli([
+    "board",
+    "migrate",
+    "--project",
+    root,
+    "--apply",
+    "--json",
+  ], { cwd: root, env: { CATPAW_HOME: catpawHome } });
+
+  assert.equal(applied.code, 0, applied.stderr || applied.stdout);
+  for (const source of historicalSources) {
+    assert.equal(await exists(path.join(boardPath, source)), false, source);
+    assert.equal(
+      await readFile(path.join(boardPath, "legacy/schema-1", source), "utf8"),
+      files[`.catpaw/${source}`],
+      source,
+    );
+  }
+  const cancelled = parseFrontmatter(
+    await readFile(path.join(boardPath, "work/BUG-203-cancelled.md"), "utf8"),
+  );
+  assert.equal(cancelled.data.status, "cancelled");
+  const status = await runCli([
+    "board",
+    "status",
+    "--project",
+    root,
+    "--json",
+  ], { cwd: root });
+  assert.equal(status.code, 0, status.stderr || status.stdout);
+  assert.equal(JSON.parse(status.stdout).findings.length, 0);
 });
 
 test("planner reports one root blocker for an incomplete active Work Item", async (t) => {
@@ -1479,7 +1616,7 @@ test("blocked board migrate never writes or creates a backup", async (t) => {
   }
 });
 
-test("failed staged validation leaves the live board and backup area untouched", async (t) => {
+test("migration blocks missing completion Evidence in the active dependency closure", async (t) => {
   const files = readyBoard();
   delete files[".catpaw/tests/matrices/BUG-202-fix.md"];
   delete files[".catpaw/reviews/BUG-202-fix/summary.md"];
@@ -1488,28 +1625,43 @@ test("failed staged validation leaves the live board and backup area untouched",
   const boardPath = path.join(root, ".catpaw");
   const before = (await snapshotTree(boardPath)).digest;
 
-  const result = await runCli([
-    "board",
-    "migrate",
-    "--project",
-    root,
-    "--apply",
-    "--json",
-  ], {
-    cwd: root,
-    env: { CATPAW_HOME: catpawHome },
-  });
+  const analyzed = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+  assert.equal(analyzed.status, "blocked");
+  assert.deepEqual(analyzed.operations, []);
+  assert.deepEqual(analyzed.blockers, [{
+    code: "gated-work-missing-completion-evidence",
+    path: "reqs/BUG-202-fix.md",
+    message: "Required Gated Work BUG-202 closed as done is missing usable completion Evidence: test, independent-review-or-provider.",
+  }]);
 
-  assert.equal(result.code, 1, result.stderr || result.stdout);
-  assert.equal(result.stderr, "");
-  assert.deepEqual(JSON.parse(result.stdout), {
-    error: {
-      code: "ERR_BOARD_MIGRATION_STAGED_VALIDATION",
-      message: "Staged migration failed schema 2 graph validation.",
-    },
-  });
-  assert.equal((await snapshotTree(boardPath)).digest, before);
-  assert.equal(await exists(path.join(catpawHome, "backups")), false);
+  for (const apply of [false, true]) {
+    const result = await runCli([
+      "board",
+      "migrate",
+      "--project",
+      root,
+      ...(apply ? ["--apply"] : []),
+      "--json",
+    ], {
+      cwd: root,
+      env: { CATPAW_HOME: catpawHome },
+    });
+
+    assert.equal(result.code, 1, result.stderr || result.stdout);
+    assert.equal(result.stderr, "");
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.status, "blocked");
+    assert.equal(report.mode, apply ? "apply" : "dry-run");
+    assert.equal(report.patch, null);
+    assert.equal(report.backupPath, null);
+    assert.ok(report.blockers.some((item) =>
+      item.code === "gated-work-missing-completion-evidence" &&
+      item.path === "reqs/BUG-202-fix.md" &&
+      item.message.includes("test, independent-review-or-provider")
+    ));
+    assert.equal((await snapshotTree(boardPath)).digest, before);
+    assert.equal(await exists(path.join(catpawHome, "backups")), false);
+  }
 });
 
 test("board migrate rejects doctor-only flags", async (t) => {

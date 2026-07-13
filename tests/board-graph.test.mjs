@@ -572,7 +572,7 @@ test("rejects a board root that exists but is not a directory", async (t) => {
   );
 });
 
-test("terminal Gated Work requires usable test and independent Evidence", async (t) => {
+test("Gated Work closed as done requires usable test and independent Evidence", async (t) => {
   const root = await fixture(t, {
     ".catpaw/index.md": `---
 schema: 2

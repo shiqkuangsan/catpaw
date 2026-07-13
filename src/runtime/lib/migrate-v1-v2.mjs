@@ -5,6 +5,7 @@ import path from "node:path";
 import { TextDecoder } from "node:util";
 
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
+import { completionEvidenceState } from "./completion-evidence.mjs";
 import { validateMetadata } from "./schema.mjs";
 import {
   managedTableCell,
@@ -942,6 +943,9 @@ export async function analyzeV1ToV2Migration({
 
   function registerCandidate(candidate) {
     candidates.push(candidate);
+  }
+
+  function registerCandidateTarget(candidate) {
     report.mappings.push({
       kind: candidate.kind,
       from: candidate.source,
@@ -1172,7 +1176,17 @@ export async function analyzeV1ToV2Migration({
       );
     }
     const target = `work/${path.posix.basename(source)}`;
-    const work = { kind: "work", artifactKind: "workItem", source, target, id, title, metadata, body: parsed.body };
+    const work = {
+      kind: "work",
+      artifactKind: "workItem",
+      source,
+      target,
+      id,
+      title,
+      metadata,
+      body: parsed.body,
+      required,
+    };
     if (typeof id === "string" && !workById.has(id)) workById.set(id, work);
     registerCandidate(work);
   }
@@ -1445,6 +1459,59 @@ export async function analyzeV1ToV2Migration({
     const provider = path.posix.basename(source) === "provider-dialogue.md";
     await addEvidence(source, provider ? "provider" : "research", provider ? "review" : "think", false);
   }
+
+  const evidence = candidates
+    .filter((item) => item.artifactKind === "evidence")
+    .map((item) => ({ ...item.metadata, path: item.target, body: item.body }));
+  const historicalGatedGaps = new Map();
+  for (const work of candidates.filter((item) => item.artifactKind === "workItem")) {
+    if (work.metadata.mode !== "gated" || work.metadata.status !== "done") continue;
+    const state = completionEvidenceState({ evidence }, work.id);
+    if (state.missing.length === 0 || state.acceptedGap) continue;
+    if (work.required) {
+      report.blockers.push(
+        finding(
+          "gated-work-missing-completion-evidence",
+          work.source,
+          `Required Gated Work ${work.id} closed as done is missing usable completion Evidence: ${state.missing.join(", ")}.`,
+        ),
+      );
+    } else {
+      historicalGatedGaps.set(work.id, { work, missing: state.missing });
+    }
+  }
+
+  if (historicalGatedGaps.size > 0) {
+    const preservedIds = new Set(historicalGatedGaps.keys());
+    const preservedSources = new Set();
+    const retained = candidates.filter((candidate) => {
+      const boundToPreservedWork =
+        ["workItem", "plan", "evidence"].includes(candidate.artifactKind) &&
+        preservedIds.has(candidate.id);
+      const referencesPreservedWork =
+        candidate.artifactKind === "milestone" &&
+        [...scopeWorkIds(candidate.body)].some((id) => preservedIds.has(id));
+      if (!boundToPreservedWork && !referencesPreservedWork) return true;
+      preservedSources.add(candidate.source);
+      return false;
+    });
+    candidates.splice(0, candidates.length, ...retained);
+    for (const id of preservedIds) workById.delete(id);
+    report.warnings = report.warnings.filter(
+      (item) => !preservedSources.has(item.path),
+    );
+    for (const [id, { work, missing }] of historicalGatedGaps) {
+      report.warnings.push(
+        warning(
+          "preserved-historical-gated-work",
+          work.source,
+          `Preserved historical Gated Work ${id} and its dependent artifacts because usable completion Evidence is incomplete: ${missing.join(", ")}.`,
+        ),
+      );
+    }
+  }
+
+  for (const candidate of candidates) registerCandidateTarget(candidate);
 
   if (
     inventory.has(LEGACY_ARCHIVE_ROOT) ||

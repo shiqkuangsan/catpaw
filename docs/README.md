@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.0.2
+These documents explain the architecture and decisions behind CatPaw 3.0.3
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 

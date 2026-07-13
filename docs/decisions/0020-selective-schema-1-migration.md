@@ -36,6 +36,9 @@ Adopt a bounded hybrid migration strategy.
 7. Keep migration dry-run by default and apply each project independently.
 8. Preserve source directory modes in the legacy archive and validate an
    existing schema 2 board before reporting an idempotent no-op.
+9. Evaluate Gated `done` completion before native mapping. Missing completion
+   Evidence blocks when the Work is required by the active closure; otherwise
+   preserve the historical Work and its bound artifacts outside the live graph.
 
 The legacy archive is not a sixth artifact kind. Schema 2 readers and mutation
 commands operate only on the native roots and ignore it.
@@ -51,7 +54,8 @@ commands operate only on the native roots and ignore it.
 - A migrated board may retain a live legacy archive alongside five native
   artifact kinds; users must not edit or delete it as routine cleanup.
 - Board schema remains 2. Existing schema 2 boards are unaffected.
-- 3.0.0 migration previews are superseded and should be rerun with 3.0.1.
+- Schema 1 migration previews produced before 3.0.3 are superseded and should be
+  rerun before apply.
 - Source release, runtime activation, and each project apply remain separate;
   this decision authorizes none of them by itself.
 

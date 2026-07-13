@@ -104,7 +104,7 @@ test("default verification passes with installed runtime pending activation", as
   assert.equal(result.stderr, "");
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "pass");
-  assert.equal(report.source.version, "3.0.2");
+  assert.equal(report.source.version, "3.0.3");
   assert.equal(report.source.boardSchemaVersion, 2);
   assert.equal(report.dist.matchesSource, true);
   assert.equal(report.installed.version, "2.1.7");

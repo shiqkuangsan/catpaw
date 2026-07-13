@@ -10,7 +10,7 @@ durable project facts, and uses executable checks for mechanical consistency.
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.0.2`. Project boards use **board schema 2**.
+Source runtime version: `3.0.3`. Project boards use **board schema 2**.
 
 Activation status: **pending activation**. This source release is not active
 until an installed runtime is explicitly upgraded and verified. Building source

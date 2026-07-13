@@ -595,7 +595,7 @@ function checkSchema2CompletionEvidence(board) {
         work.id,
         "evidence",
         work.path,
-        `Terminal Gated Work ${work.id} is missing usable completion Evidence: ${state.missing.join(", ")}.`,
+        `Gated Work ${work.id} closed as done is missing usable completion Evidence: ${state.missing.join(", ")}.`,
         "Add substantive Evidence or record an explicitly accepted gap before treating the Work as done.",
         { work: work.id, missing: state.missing },
       ),

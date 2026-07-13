@@ -45,6 +45,12 @@ Safe normalization is deliberately narrow:
 CatPaw does not invent an active lifecycle stage, date, Work binding, status,
 mode, or accepted gap. Missing active facts remain blockers.
 
+Before native mapping, migration evaluates the schema 2 completion contract for
+every Gated Work closed as `done`. Missing usable completion Evidence blocks preview
+when that Work belongs to the active dependency closure. Otherwise the
+historical Work and its bound Plan, Evidence, and terminal Milestone remain
+byte-preserved in the legacy archive instead of entering an invalid live graph.
+
 ## Native Mapping And Legacy Archive
 
 Complete schema 1 artifacts map into the native graph:
@@ -75,6 +81,8 @@ filesystem entries and non-UTF-8 Markdown remain blockers.
 Migration stops instead of guessing when it encounters:
 
 - incomplete active Work, Plan, Milestone, or Evidence dependencies;
+- missing completion Evidence for Gated Work closed as `done` in the active dependency
+  closure;
 - active filename/frontmatter identity conflicts or terminal routing conflicts;
 - duplicate IDs, ambiguous bindings, or destination collisions;
 - broken links or links escaping the project root;
@@ -94,8 +102,8 @@ board, then run the dry-run again.
 1. Re-read and inventory the schema 1 board.
 2. Build an exact patch and reject stale or unsafe paths.
 3. Apply the patch to a sibling staged tree.
-4. Validate schema 2 metadata, graph references, required layout, terminal
-   Gated Evidence/accepted gaps, and the legacy checksum manifest.
+4. Validate schema 2 metadata, graph references, required layout, Gated `done`
+   Evidence/accepted gaps, and the legacy checksum manifest.
 5. Copy the complete preimage to
    `${CATPAW_HOME:-~/.catpaw}/backups/<project-key>/<UTC-timestamp>/`.
 6. Replace the live board only after staged validation and backup succeed.

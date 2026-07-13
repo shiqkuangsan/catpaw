@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.0.3 - 2026-07-13
+
+- Make schema 1 migration dry-run enforce the schema 2 completion-Evidence
+  contract for Gated Work closed as `done` in the active dependency closure.
+- Preserve historical Gated Work closed as `done` with incomplete Evidence,
+  together with its bound Plan, Evidence, and terminal Milestone, under the
+  checksummed legacy archive instead of generating an invalid live graph.
+- Add regression coverage for both preservation and early blocking so dry-run
+  and staged apply agree before any project write or backup.
+
+Migration note (3.0.2 -> 3.0.3):
+
+```text
+Runtime activation: explicit; source/dist 3.0.3 does not update ~/.catpaw automatically.
+Project impact: board schema remains 2; rerun schema 1 previews produced by 3.0.2 because historical Gated Work disposition may change from converted to preserved.
+Required actions: rebuild and verify source/dist; activate the runtime separately before using the installed CLI for remaining schema 1 projects.
+Safety: migration does not invent accepted gaps; active-closure Evidence gaps block during preview, while historical gaps and dependent artifacts are byte-preserved.
+Non-goals: no adapter rewrite, registry mutation, board migration, commit, push, or cleanup is implied by this hotfix.
+Rollback: keep the installed 3.0.2 runtime and schema 1 boards unchanged until 3.0.3 activation and each project apply are separately approved.
+```
+
 ## 3.0.2 - 2026-07-13
 
 - Make strict activation compare only manifest-managed installed files while

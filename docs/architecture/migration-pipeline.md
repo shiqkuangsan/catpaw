@@ -78,7 +78,7 @@ builds a complete candidate in a sibling stage. It then validates:
   [`board-v2.json`](../../src/runtime/schemas/board-v2.json);
 - paths, file types, and native graph references;
 - Work-to-Plan/Evidence bindings and Milestone Scope;
-- terminal Gated Evidence or accepted gaps;
+- Gated `done` Evidence or accepted gaps;
 - existing, physically project-contained local links and duplicate identities;
 - every legacy manifest checksum and byte length.
 

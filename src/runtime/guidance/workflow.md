@@ -80,7 +80,7 @@ meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
 - Tracked/Gated 在结果影响 closeout 判断时记录 test Evidence。
 - Evidence 的 Record 必须包含 substantive body；dry-run 可以预览 placeholder，
   `evidence add --apply` 必须提供非空 `--body`。
-- Terminal Gated Work 必须有 usable test + independent review/provider Evidence，
+- `status: done` 的 Gated Work 必须有 usable test + independent review/provider Evidence，
   或存在用户明确接受、逐项列出并覆盖当前缺失 gate 的 gap；close、doctor 与
   migration validation 使用同一判断。
 
