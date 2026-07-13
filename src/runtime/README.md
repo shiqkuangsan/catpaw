@@ -39,6 +39,9 @@ Project-local `.catpaw/` 是 artifact board，不是 runtime 副本：
 
 Evidence types：`research | review | test | provider | reflection`。
 
+Schema 1 migration 可能额外生成 `legacy/schema-1/`。它是带 checksum manifest 的
+只读迁移归档，不是第六类 artifact；schema 2 的 status、doctor 与 mutation 会忽略它。
+
 ## CLI
 
 所有 mutation 默认 dry-run，只有显式 `--apply` 才写 board：

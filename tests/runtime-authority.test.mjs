@@ -153,6 +153,18 @@ test("migration authority is schema-based and keeps release migrations historica
   );
 });
 
+test("schema 2 migration preserves incomplete history without weakening active closure", async () => {
+  const text = await readFile(
+    path.join(RUNTIME, "migrations/schema-2.md"),
+    "utf8",
+  );
+  assert.match(text, /active dependency closure/i);
+  assert.match(text, /legacy\/schema-1/);
+  assert.match(text, /SHA-256/i);
+  assert.match(text, /not a sixth schema 2 artifact kind/i);
+  assert.match(text, /does not invent an active lifecycle stage, date, Work binding/i);
+});
+
 test("schema 1 diagnostics never recommend removed v2 commands", async () => {
   const text = await readFile(path.join(RUNTIME, "lib/findings.mjs"), "utf8");
   assert.doesNotMatch(text, /catpaw:(?:reconcile|milestone|upgrade-project)/i);

@@ -6,7 +6,7 @@ the installed runtime, host adapters, registry, or project boards.
 
 ## Current State
 
-- Source runtime: `3.0.0`.
+- Source runtime: `3.0.1`.
 - Project board contract: board schema 2.
 - Activation: `pending activation` until the installed runtime is explicitly
   upgraded and verified.

@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.0.0
+These documents explain the architecture and decisions behind CatPaw 3.0.1
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 
@@ -73,10 +73,12 @@ The `Status` line is authoritative for an ADR's current standing:
 ADR bodies and references describe the source tree at decision time and may
 name removed v2 paths. They never override the current authority map above.
 
-The current architectural decision is
-[ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md).
-It preserves the source/runtime/storage separation while replacing the wider
-legacy workflow and role vocabulary with a smaller model.
+The current architecture is owned by
+[ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
+and [ADR-0020: Selective Schema 1 Migration](decisions/0020-selective-schema-1-migration.md).
+ADR-0019 defines the compact runtime model; ADR-0020 makes schema 1 conversion
+proportional to active state while preserving incomplete history without
+inventing metadata.
 
 ## Writing Rules
 

@@ -156,6 +156,9 @@ async function applyOperations(stageRoot, operations) {
     switch (operation.type) {
       case "ensure-dir":
         await mkdir(targetPath(stageRoot, operation.path), { recursive: true });
+        if (operation.dirMode !== undefined) {
+          await chmod(targetPath(stageRoot, operation.path), operation.dirMode);
+        }
         break;
       case "write-file": {
         const target = targetPath(stageRoot, operation.path);

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { TextDecoder } from "node:util";
@@ -46,7 +48,9 @@ const REQUIRED_DIRECTORIES = [
   "evidence/topics",
 ];
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
+const ACTIVE_STATUSES = new Set(["active", "blocked"]);
 const WORK_ID_PATTERN = /^(?:FR|BUG|CHORE)-[0-9]{3,}$/;
+const LEGACY_ARCHIVE_ROOT = "legacy/schema-1";
 const LEGACY_ROOTS = [
   "reqs",
   "plans",
@@ -57,8 +61,11 @@ const LEGACY_ROOTS = [
   "work",
   "evidence",
 ];
-const DEFAULT_LESSONS = /^# Lessons\s+> Status: active · Last updated: (?:YYYY-MM-DD|\d{4}-\d{2}-\d{2})\s+Short corrective records\.[\s\S]*?- Candidate rule title -> promoted to project CLAUDE\.md\s*$/;
 const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
+const UTF8_ARCHIVE_DECODER = new TextDecoder("utf-8", {
+  fatal: true,
+  ignoreBOM: true,
+});
 
 function compareText(left, right) {
   return left.localeCompare(right, "en");
@@ -73,6 +80,151 @@ function reportSort(left, right) {
 
 function finding(code, artifactPath, message) {
   return { code, path: artifactPath, message };
+}
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function warning(code, artifactPath, message) {
+  return finding(code, artifactPath, message);
+}
+
+function canonicalWorkId(value) {
+  if (typeof value !== "string") return null;
+  const match = path.posix
+    .basename(value.trim(), ".md")
+    .match(/^(FR|BUG|CHORE)-([0-9]+)(?:-.+)?$/i);
+  if (!match) return null;
+  const prefix = match[1].toUpperCase();
+  const digits = match[2].padStart(3, "0");
+  const id = `${prefix}-${digits}`;
+  return WORK_ID_PATTERN.test(id) ? id : null;
+}
+
+function workType(id) {
+  if (id?.startsWith("FR-")) return "feature";
+  if (id?.startsWith("BUG-")) return "bug";
+  if (id?.startsWith("CHORE-")) return "chore";
+  return null;
+}
+
+function canonicalMilestoneId(value) {
+  if (typeof value !== "string") return null;
+  const match = path.posix
+    .basename(value.trim(), ".md")
+    .match(/^(?:MS-|M)([0-9]+)(?:-.+)?$/i);
+  if (!match) return null;
+  return `MS-${match[1].padStart(3, "0")}`;
+}
+
+function normalizedMilestoneStatus(value) {
+  if (typeof value !== "string") return null;
+  const status = value.trim().toLowerCase();
+  if (["done", "completed", "closed"].includes(status)) return "done";
+  if (["active", "blocked", "cancelled"].includes(status)) return status;
+  return null;
+}
+
+function normalizedWorkStatus(value, activeSignal) {
+  if (typeof value !== "string") return null;
+  const status = value.trim().toLowerCase();
+  if (["done", "completed", "closed"].includes(status)) return "done";
+  if (status === "cancelled") return "cancelled";
+  if (status === "active") return "active";
+  if (["blocked", "paused"].includes(status)) return "blocked";
+  if (
+    activeSignal &&
+    ["draft", "todo", "backlog", "proposed", "framed"].includes(status)
+  ) {
+    return "active";
+  }
+  return null;
+}
+
+function normalizedClosed(value, status) {
+  if (!TERMINAL_STATUSES.has(status)) {
+    return value === undefined || value === null || value === "" ? null : value;
+  }
+  return value;
+}
+
+function sectionIds(body, heading) {
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const start = lines.findIndex(
+    (line) => line.trim().toLowerCase() === `## ${heading}`.toLowerCase(),
+  );
+  if (start === -1) return new Set();
+  const end = lines.findIndex(
+    (line, index) => index > start && /^##\s+/.test(line.trim()),
+  );
+  const section = lines.slice(start + 1, end === -1 ? undefined : end).join("\n");
+  const ids = new Set();
+  for (const token of section.matchAll(/\b(?:FR|BUG|CHORE)-[0-9]+\b/gi)) {
+    const id = canonicalWorkId(token[0]);
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+function milestoneSectionIds(body) {
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const start = lines.findIndex(
+    (line) => line.trim().toLowerCase() === "## active milestones",
+  );
+  if (start === -1) return new Set();
+  const end = lines.findIndex(
+    (line, index) => index > start && /^##\s+/.test(line.trim()),
+  );
+  const section = lines.slice(start + 1, end === -1 ? undefined : end).join("\n");
+  const ids = new Set();
+  for (const token of section.matchAll(/\b(?:MS-|M)[0-9]+\b/gi)) {
+    const id = canonicalMilestoneId(token[0]);
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+function normalizedBinding(data, artifactPath, artifactKind) {
+  const rawWork = data?.work ?? null;
+  const rawReq = data?.req ?? null;
+  const work = canonicalWorkId(rawWork);
+  const req = canonicalWorkId(rawReq);
+  if (rawWork !== null && work === null) {
+    return { value: null, error: `work=${rawWork} is not a canonical Work reference.` };
+  }
+  if (rawReq !== null && req === null) {
+    return { value: null, error: `req=${rawReq} is not a canonical Work reference.` };
+  }
+  if (work !== null && req !== null && work !== req) {
+    return {
+      value: null,
+      error: `Conflicting legacy Work bindings: work=${rawWork}, req=${rawReq}.`,
+      code: `conflicting-${artifactKind}-work`,
+      path: artifactPath,
+    };
+  }
+  const value = work ?? req;
+  return {
+    value,
+    normalized: value !== null && ![rawWork, rawReq].includes(value),
+  };
+}
+
+function metadataIssueFields(kind, metadata) {
+  return [
+    ...new Set(
+      validateMetadata(kind, metadata).map((issue) =>
+        issue.path.split(".")[0]
+      ),
+    ),
+  ].sort(compareText);
+}
+
+function isLegacySourcePath(relativePath) {
+  if (relativePath === "index.md" || relativePath === "lessons.md") return true;
+  const root = relativePath.split("/", 1)[0];
+  return LEGACY_ROOTS.includes(root);
 }
 
 function decodeKnownMarkdown(bytes, artifactPath, blockers) {
@@ -160,18 +312,6 @@ function headingTitle(body, prefixes = []) {
   return title;
 }
 
-function addMetadataBlockers(kind, metadata, artifactPath, blockers) {
-  for (const issue of validateMetadata(kind, metadata)) {
-    blockers.push(
-      finding(
-        `invalid-${kind}-metadata`,
-        artifactPath,
-        `${issue.path}: ${issue.message}`,
-      ),
-    );
-  }
-}
-
 function parseTableRow(line) {
   if (!line.startsWith("|") || !line.endsWith("|")) return null;
   const cells = [];
@@ -193,7 +333,30 @@ function parseTableRow(line) {
   return cells.length === 4 ? cells : null;
 }
 
-function transformLegacyScope(body, workById, artifactPath, blockers) {
+function scopeWorkIds(body) {
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const start = lines.findIndex(
+    (line) => line.trim().toLowerCase() === "## scope",
+  );
+  if (start === -1) return new Set();
+  const end = lines.findIndex(
+    (line, index) => index > start && /^##\s+/.test(line.trim()),
+  );
+  const ids = new Set();
+  for (const line of lines.slice(start + 1, end === -1 ? undefined : end)) {
+    const id = parseTableRow(line.trim())?.[0];
+    if (WORK_ID_PATTERN.test(id ?? "")) ids.add(id);
+  }
+  return ids;
+}
+
+function transformLegacyScope(
+  body,
+  workById,
+  blockedWorkIds,
+  artifactPath,
+  blockers,
+) {
   if (/<!-- catpaw:milestone-scope:(?:start|end) -->/.test(body)) {
     blockers.push(
       finding(
@@ -260,6 +423,7 @@ function transformLegacyScope(body, workById, artifactPath, blockers) {
     seen.add(id);
     const work = workById.get(id);
     if (!work) {
+      if (blockedWorkIds.has(id)) continue;
       blockers.push(
         finding(
           "missing-milestone-work",
@@ -334,10 +498,51 @@ function isExternalTarget(url) {
   );
 }
 
+function isContainedPath(root, target) {
+  return target === root || target.startsWith(root + path.sep);
+}
+
+function validateProjectLink({
+  projectRoot,
+  projectPhysicalRoot,
+  projectTarget,
+  source,
+  url,
+  blockers,
+}) {
+  const absoluteTarget = path.resolve(projectRoot, projectTarget);
+  let physicalTarget;
+  try {
+    physicalTarget = realpathSync(absoluteTarget);
+  } catch {
+    blockers.push(
+      finding(
+        "broken-project-link",
+        source,
+        "Project-local link target does not exist: " + url,
+      ),
+    );
+    return false;
+  }
+  if (!isContainedPath(projectPhysicalRoot, physicalTarget)) {
+    blockers.push(
+      finding(
+        "link-escapes-project",
+        source,
+        "Project-local link resolves outside the project: " + url,
+      ),
+    );
+    return false;
+  }
+  return true;
+}
+
 function rewriteDestination({
   raw,
   source,
   target,
+  projectRoot,
+  projectPhysicalRoot,
   inventory,
   moveMap,
   blockers,
@@ -349,10 +554,45 @@ function rewriteDestination({
   if (pathname === "") return raw;
   const oldTarget = path.posix.normalize(path.posix.join(path.posix.dirname(source), pathname));
   if (oldTarget === ".." || oldTarget.startsWith("../")) {
-    blockers.push(
-      finding("link-escapes-board", source, `Local link escapes the board: ${parsed.url}`),
+    const projectTarget = path.posix.normalize(
+      path.posix.join(".catpaw", path.posix.dirname(source), pathname),
     );
-    return raw;
+    if (projectTarget === ".." || projectTarget.startsWith("../")) {
+      blockers.push(
+        finding(
+          "link-escapes-project",
+          source,
+          `Local link escapes the project: ${parsed.url}`,
+        ),
+      );
+      return raw;
+    }
+    if (!validateProjectLink({
+      projectRoot,
+      projectPhysicalRoot,
+      projectTarget,
+      source,
+      url: parsed.url,
+      blockers,
+    })) {
+      return raw;
+    }
+    const targetProjectDirectory = path.posix.normalize(
+      path.posix.join(".catpaw", path.posix.dirname(target)),
+    );
+    let relative = path.posix.relative(targetProjectDirectory, projectTarget);
+    if (relative === "") relative = path.posix.basename(projectTarget);
+    const nextUrl = `${relative}${suffix}`;
+    if (nextUrl !== parsed.url) {
+      linkRewrites.push({
+        from: source,
+        to: target,
+        oldTarget: parsed.url,
+        newTarget: nextUrl,
+      });
+    }
+    const renderedUrl = parsed.angled ? `<${nextUrl}>` : nextUrl;
+    return `${parsed.leading}${renderedUrl}${parsed.suffix}${parsed.trailing}`;
   }
   if (!inventory.has(oldTarget)) {
     blockers.push(
@@ -542,12 +782,18 @@ function knownDirectory(relativePath) {
 function operationSort(left, right) {
   const phases = new Map([
     ["ensure-dir", 0],
-    ["write-file", 1],
-    ["remove-file", 2],
+    ["move-file", 1],
+    ["write-file", 2],
+    ["remove-file", 3],
+    ["remove-dir", 4],
   ]);
   const phase = phases.get(left.type) - phases.get(right.type);
   if (phase !== 0) return phase;
-  return compareText(left.path ?? "", right.path ?? "");
+  if (left.type === "remove-dir") {
+    const depth = right.path.split("/").length - left.path.split("/").length;
+    if (depth !== 0) return depth;
+  }
+  return compareText(left.path ?? left.from ?? "", right.path ?? right.from ?? "");
 }
 
 function baseReport(fromSchema) {
@@ -559,24 +805,10 @@ function baseReport(fromSchema) {
     mappings: [],
     blockers: [],
     warnings: [],
+    preservedLegacy: [],
     preservedUnknown: [],
     linkRewrites: [],
   };
-}
-
-function legacyWorkBinding(data, artifactPath, artifactKind, blockers) {
-  const work = data.work ?? null;
-  const req = data.req ?? null;
-  if (work !== null && req !== null && work !== req) {
-    blockers.push(
-      finding(
-        `conflicting-${artifactKind}-work`,
-        artifactPath,
-        `Conflicting legacy Work bindings: work=${work}, req=${req}.`,
-      ),
-    );
-  }
-  return work ?? req;
 }
 
 export async function analyzeV1ToV2Migration({
@@ -584,6 +816,7 @@ export async function analyzeV1ToV2Migration({
   boardPath = path.join(projectRoot, ".catpaw"),
 } = {}) {
   const root = path.resolve(boardPath);
+  const projectRootPath = path.resolve(projectRoot);
   const report = baseReport(null);
   let inventory;
   try {
@@ -593,6 +826,14 @@ export async function analyzeV1ToV2Migration({
     report.blockers = [finding("invalid-board-root", ".", error.message)];
     return report;
   }
+  let projectPhysicalRoot;
+  try {
+    projectPhysicalRoot = realpathSync(projectRootPath);
+  } catch (error) {
+    report.status = "blocked";
+    report.blockers = [finding("invalid-project-root", ".", error.message)];
+    return report;
+  }
 
   const indexEntry = inventory.get("index.md");
   if (indexEntry?.type !== "file") {
@@ -600,9 +841,12 @@ export async function analyzeV1ToV2Migration({
     report.blockers = [finding("missing-index", "index.md", "Board index.md is missing.")];
     return report;
   }
+  const knownBytes = new Map();
   const knownMarkdown = new Map();
+  const indexBytes = await readFile(path.join(root, "index.md"));
+  knownBytes.set("index.md", indexBytes);
   const indexText = decodeKnownMarkdown(
-    await readFile(path.join(root, "index.md")),
+    indexBytes,
     "index.md",
     report.blockers,
   );
@@ -631,6 +875,7 @@ export async function analyzeV1ToV2Migration({
       mappings: [],
       blockers: [],
       warnings: [],
+      preservedLegacy: [],
       preservedUnknown: [],
       linkRewrites: [],
     };
@@ -652,8 +897,10 @@ export async function analyzeV1ToV2Migration({
     .map(([relativePath]) => relativePath)
     .sort(compareText);
   for (const relativePath of knownPaths) {
+    const bytes = await readFile(path.join(root, relativePath));
+    knownBytes.set(relativePath, bytes);
     const text = decodeKnownMarkdown(
-      await readFile(path.join(root, relativePath)),
+      bytes,
       relativePath,
       report.blockers,
     );
@@ -733,24 +980,162 @@ export async function analyzeV1ToV2Migration({
     }
   }
 
-  async function parsedFile(relativePath) {
-    const text = knownMarkdown.get(relativePath);
-    const parsed = parseText(text, relativePath, report.blockers);
-    return parsed ? { text, ...parsed } : null;
-  }
-
   const workPaths = [...inventory.keys()]
     .filter((item) => /^reqs\/[^/]+\.md$/.test(item))
     .sort(compareText);
-  for (const source of workPaths) {
-    const parsed = await parsedFile(source);
+  const planPaths = [...inventory.keys()]
+    .filter((item) => /^plans\/(?:active|archive)\/[^/]+\.md$/.test(item))
+    .sort(compareText);
+  const milestonePaths = [...inventory.keys()]
+    .filter((item) => /^milestones\/[^/]+\.md$/.test(item))
+    .sort(compareText);
+  const parsedCache = new Map();
+  for (const [relativePath, text] of knownMarkdown) {
+    if (relativePath === "index.md" || relativePath === "lessons.md") continue;
+    try {
+      parsedCache.set(relativePath, { text, ...parseFrontmatter(text) });
+    } catch (error) {
+      parsedCache.set(relativePath, { text, error });
+    }
+  }
+  function parsedFile(relativePath) {
+    const cached = parsedCache.get(relativePath);
+    return cached?.error ? null : cached ?? null;
+  }
+  function parseError(relativePath) {
+    return parsedCache.get(relativePath)?.error ?? null;
+  }
+
+  const activeIndexWorkIds = sectionIds(indexParsed.body, "Active Work");
+  const activeIndexMilestoneIds = milestoneSectionIds(indexParsed.body);
+  const activePlanWorkIds = new Set();
+  for (const source of planPaths.filter((item) => item.startsWith("plans/active/"))) {
+    const parsed = parsedFile(source);
     if (!parsed) continue;
+    const binding = normalizedBinding(parsed.data, source, "plan");
+    if (binding.value) activePlanWorkIds.add(binding.value);
+  }
+  const activeMilestoneWorkIds = new Set();
+  for (const source of milestonePaths) {
+    const parsed = parsedFile(source);
+    if (!parsed) continue;
+    const sourceId = canonicalMilestoneId(source);
+    const explicitId = canonicalMilestoneId(parsed.data.id);
+    const status = normalizedMilestoneStatus(parsed.data.status);
+    const routedActive =
+      (sourceId !== null && activeIndexMilestoneIds.has(sourceId)) ||
+      (explicitId !== null && activeIndexMilestoneIds.has(explicitId));
+    if (!routedActive && !ACTIVE_STATUSES.has(status)) continue;
+    for (const id of scopeWorkIds(parsed.body)) {
+      activeMilestoneWorkIds.add(id);
+    }
+  }
+  const blockedActiveWorkIds = new Set();
+
+  function markBlockedWork(...ids) {
+    for (const id of ids) {
+      if (typeof id === "string" && WORK_ID_PATTERN.test(id)) {
+        blockedActiveWorkIds.add(id);
+      }
+    }
+  }
+
+  for (const source of workPaths) {
+    const sourceId = canonicalWorkId(source);
+    const parsed = parsedFile(source);
+    const sourceRoutedActive = sourceId !== null &&
+      (
+        activeIndexWorkIds.has(sourceId) ||
+        activePlanWorkIds.has(sourceId)
+      );
+    const sourceDependency = sourceId !== null &&
+      activeMilestoneWorkIds.has(sourceId);
+    const sourceRequired = sourceRoutedActive || sourceDependency;
+    if (!parsed) {
+      if (sourceRequired) {
+        markBlockedWork(sourceId);
+        report.blockers.push(
+          finding(
+            "active-work-incomplete",
+            source,
+            `Active Work Item ${sourceId} requires valid frontmatter: ${parseError(source)?.message ?? "unknown parse error"}.`,
+          ),
+        );
+      }
+      continue;
+    }
     const data = parsed.data;
-    const id = data.id;
+    const explicitId = canonicalWorkId(data.id);
+    const id = explicitId ?? sourceId;
+    const activeSignal = id !== null &&
+      (
+        activeIndexWorkIds.has(id) ||
+        activePlanWorkIds.has(id)
+      );
+    const dependencySignal = id !== null && activeMilestoneWorkIds.has(id);
+    const status = normalizedWorkStatus(data.status, activeSignal);
+    const routedActive = sourceRoutedActive || activeSignal;
+    const required = routedActive || sourceDependency || dependencySignal;
+    const active = required || ACTIVE_STATUSES.has(status);
+    if (explicitId !== null && sourceId !== null && explicitId !== sourceId) {
+      if (active) {
+        markBlockedWork(sourceId, explicitId);
+        report.blockers.push(
+          finding(
+            "active-work-identity-conflict",
+            source,
+            `Active Work Item identity conflicts: frontmatter=${explicitId}, filename=${sourceId}.`,
+          ),
+        );
+      }
+      continue;
+    }
+    if (routedActive && TERMINAL_STATUSES.has(status)) {
+      markBlockedWork(sourceId, id);
+      report.blockers.push(
+        finding(
+          "active-work-status-conflict",
+          source,
+          `Work Item ${id} is terminal in frontmatter but active in canonical schema 1 routing.`,
+        ),
+      );
+      continue;
+    }
+    const type = workType(id);
+    const mode = data.level === "L2" ? "tracked" : data.level === "L3" ? "gated" : null;
+    const stage = data.stage === undefined && TERMINAL_STATUSES.has(status)
+      ? "reflect"
+      : data.stage;
     const title = headingTitle(parsed.body, [
-      new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\s*:\s*`),
+      new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*`),
     ]);
-    if (typeof id === "string" && workIdSources.has(id)) {
+    const metadata = {
+      id,
+      type,
+      mode,
+      status,
+      stage,
+      created: data.created,
+      updated: data.updated,
+      closed: normalizedClosed(data.closed, status),
+    };
+    const invalidFields = metadataIssueFields("workItem", metadata);
+    if (!title) invalidFields.push("title");
+    const fields = [...new Set(invalidFields)].sort(compareText);
+    if (fields.length > 0) {
+      if (active) {
+        markBlockedWork(sourceId, id);
+        report.blockers.push(
+          finding(
+            "active-work-incomplete",
+            source,
+            `Active Work Item ${id ?? sourceId ?? "unknown"} requires explicit valid fields: ${fields.join(", ")}.`,
+          ),
+        );
+      }
+      continue;
+    }
+    if (workIdSources.has(id)) {
       report.blockers.push(
         finding(
           "duplicate-work-id",
@@ -758,45 +1143,29 @@ export async function analyzeV1ToV2Migration({
           `Work Item ${id} also appears at ${workIdSources.get(id)}.`,
         ),
       );
-    } else if (typeof id === "string") {
-      workIdSources.set(id, source);
+      continue;
     }
-    if (data.level === "L0" || data.level === "L1") {
-      report.blockers.push(
-        finding(
-          "unsupported-work-level",
-          source,
-          `${data.level} work has no schema 2 artifact mapping.`,
-        ),
+    workIdSources.set(id, source);
+    if (data.id !== id) {
+      report.warnings.push(
+        warning("normalized-work-id", source, `Normalized Work ID ${data.id ?? "<missing>"} -> ${id}.`),
       );
     }
-    if (data.status === "draft") {
-      report.blockers.push(
-        finding("draft-work", source, "Draft Work must be framed before migration."),
+    if (data.type !== type) {
+      report.warnings.push(
+        warning("normalized-work-type", source, `Normalized Work type ${data.type ?? "<missing>"} -> ${type} from ${id}.`),
       );
     }
-    if (data.stage === undefined) {
-      report.blockers.push(
-        finding("missing-work-stage", source, "Work Item requires an explicit lifecycle stage."),
+    if (data.status !== status) {
+      report.warnings.push(
+        warning("normalized-work-status", source, `Normalized Work status ${data.status ?? "<missing>"} -> ${status}.`),
       );
     }
-    if (!title) {
-      report.blockers.push(
-        finding("missing-work-title", source, "Work Item requires a concrete H1 title."),
+    if (data.stage !== stage) {
+      report.warnings.push(
+        warning("normalized-work-stage", source, `Normalized terminal Work stage ${data.stage ?? "<missing>"} -> ${stage}.`),
       );
     }
-    const mode = data.level === "L2" ? "tracked" : data.level === "L3" ? "gated" : null;
-    const metadata = {
-      id,
-      type: data.type,
-      mode,
-      status: data.status,
-      stage: data.stage,
-      created: data.created,
-      updated: data.updated,
-      closed: data.closed,
-    };
-    addMetadataBlockers("workItem", metadata, source, report.blockers);
     if (Object.hasOwn(data, "priority")) {
       report.warnings.push(
         finding("dropped-field", source, "Dropped schema 1 field: priority."),
@@ -808,30 +1177,69 @@ export async function analyzeV1ToV2Migration({
     registerCandidate(work);
   }
 
-  const planPaths = [...inventory.keys()]
-    .filter((item) => /^plans\/(?:active|archive)\/[^/]+\.md$/.test(item))
-    .sort(compareText);
   for (const source of planPaths) {
-    const parsed = await parsedFile(source);
-    if (!parsed) continue;
-    if (parsed.data.status === "draft") {
-      report.blockers.push(
-        finding("draft-plan", source, "Draft Plan must be finalized before migration."),
-      );
+    const parsed = parsedFile(source);
+    const active = source.startsWith("plans/active/");
+    if (!parsed) {
+      if (active) {
+        report.blockers.push(
+          finding(
+            "active-plan-incomplete",
+            source,
+            `Active Plan requires valid frontmatter: ${parseError(source)?.message ?? "unknown parse error"}.`,
+          ),
+        );
+      }
+      continue;
     }
-    const work = legacyWorkBinding(
-      parsed.data,
-      source,
-      "plan",
-      report.blockers,
-    );
-    if (typeof work !== "string" || !workById.has(work)) {
-      report.blockers.push(
-        finding("missing-plan-work", source, "Plan requires an explicit existing Work binding."),
-      );
+    const binding = normalizedBinding(parsed.data, source, "plan");
+    if (binding.error) {
+      if (active) {
+        report.blockers.push(
+          finding(
+            binding.code ?? "active-plan-incomplete",
+            source,
+            binding.error,
+          ),
+        );
+      }
+      continue;
     }
+    const work = binding.value;
     const metadata = { work, updated: parsed.data.updated };
-    addMetadataBlockers("plan", metadata, source, report.blockers);
+    const fields = metadataIssueFields("plan", metadata);
+    if (
+      work !== null &&
+      !workById.has(work) &&
+      !blockedActiveWorkIds.has(work) &&
+      !fields.includes("work")
+    ) {
+      fields.push("work");
+    }
+    if (parsed.data.status === "draft" && active) fields.push("status");
+    const invalidFields = [...new Set(fields)].sort(compareText);
+    if (invalidFields.length > 0) {
+      if (active) {
+        report.blockers.push(
+          finding(
+            "active-plan-incomplete",
+            source,
+            `Active Plan requires explicit valid fields: ${invalidFields.join(", ")}.`,
+          ),
+        );
+      }
+      continue;
+    }
+    if (work !== null && blockedActiveWorkIds.has(work)) continue;
+    if (binding.normalized) {
+      report.warnings.push(
+        warning(
+          "normalized-plan-binding",
+          source,
+          `Normalized legacy Plan binding to ${work}.`,
+        ),
+      );
+    }
     for (const field of ["status", "closed"]) {
       if (Object.hasOwn(parsed.data, field)) {
         report.warnings.push(
@@ -850,14 +1258,90 @@ export async function analyzeV1ToV2Migration({
     });
   }
 
-  const milestonePaths = [...inventory.keys()]
-    .filter((item) => /^milestones\/[^/]+\.md$/.test(item))
-    .sort(compareText);
   for (const source of milestonePaths) {
-    const parsed = await parsedFile(source);
-    if (!parsed) continue;
-    const id = parsed.data.id;
-    if (typeof id === "string" && milestoneIdSources.has(id)) {
+    const sourceId = canonicalMilestoneId(source);
+    const parsed = parsedFile(source);
+    const sourceActive = sourceId !== null && activeIndexMilestoneIds.has(sourceId);
+    if (!parsed) {
+      if (sourceActive) {
+        report.blockers.push(
+          finding(
+            "active-milestone-incomplete",
+            source,
+            `Active Milestone ${sourceId} requires valid frontmatter.`,
+          ),
+        );
+      }
+      continue;
+    }
+    const explicitId = canonicalMilestoneId(parsed.data.id);
+    const id = explicitId ?? sourceId;
+    const activeSignal = id !== null && activeIndexMilestoneIds.has(id);
+    const status = normalizedMilestoneStatus(parsed.data.status);
+    const routedActive = sourceActive || activeSignal;
+    const active = routedActive || ACTIVE_STATUSES.has(status);
+    if (explicitId !== null && sourceId !== null && explicitId !== sourceId) {
+      if (active) {
+        report.blockers.push(
+          finding(
+            "active-milestone-identity-conflict",
+            source,
+            "Active Milestone identity conflicts: frontmatter=" +
+              explicitId + ", filename=" + sourceId + ".",
+          ),
+        );
+      }
+      continue;
+    }
+    if (routedActive && TERMINAL_STATUSES.has(status)) {
+      report.blockers.push(
+        finding(
+          "active-milestone-status-conflict",
+          source,
+          "Milestone " + id +
+            " is terminal in frontmatter but active in canonical schema 1 routing.",
+        ),
+      );
+      continue;
+    }
+    const metadata = {
+      id,
+      status,
+      created: parsed.data.created,
+      updated: parsed.data.updated,
+      closed: normalizedClosed(parsed.data.closed, status),
+      target: parsed.data.target ?? null,
+    };
+    const title = headingTitle(parsed.body, [
+      new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*`),
+    ]);
+    const fields = metadataIssueFields("milestone", metadata);
+    if (!title) fields.push("title");
+    const scopeBlockers = [];
+    const body = fields.length === 0
+      ? transformLegacyScope(
+        parsed.body,
+        workById,
+        blockedActiveWorkIds,
+        source,
+        scopeBlockers,
+      )
+      : parsed.body;
+    if (scopeBlockers.length > 0) fields.push("scope");
+    const invalidFields = [...new Set(fields)].sort(compareText);
+    if (invalidFields.length > 0) {
+      if (active) {
+        report.blockers.push(
+          finding(
+            "active-milestone-incomplete",
+            source,
+            `Active Milestone ${id ?? sourceId ?? "unknown"} requires explicit valid fields: ${invalidFields.join(", ")}.`,
+          ),
+        );
+      }
+      continue;
+    }
+    if (milestoneIdSources.has(id)) {
       report.blockers.push(
         finding(
           "duplicate-milestone-id",
@@ -865,32 +1349,9 @@ export async function analyzeV1ToV2Migration({
           `Milestone ${id} also appears at ${milestoneIdSources.get(id)}.`,
         ),
       );
-    } else if (typeof id === "string") {
-      milestoneIdSources.set(id, source);
+      continue;
     }
-    if (parsed.data.status === "draft") {
-      report.blockers.push(
-        finding("draft-milestone", source, "Draft Milestone must be activated or cancelled."),
-      );
-    }
-    const metadata = {
-      id: parsed.data.id,
-      status: parsed.data.status,
-      created: parsed.data.created,
-      updated: parsed.data.updated,
-      closed: parsed.data.closed,
-      target: parsed.data.target ?? null,
-    };
-    addMetadataBlockers("milestone", metadata, source, report.blockers);
-    const title = headingTitle(parsed.body, [
-      new RegExp(`^${String(parsed.data.id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\s*:\s*`),
-    ]);
-    if (!title) {
-      report.blockers.push(
-        finding("missing-milestone-title", source, "Milestone requires a concrete H1 title."),
-      );
-    }
-    const body = transformLegacyScope(parsed.body, workById, source, report.blockers);
+    milestoneIdSources.set(id, source);
     registerCandidate({
       kind: "milestone",
       artifactKind: "milestone",
@@ -904,61 +1365,23 @@ export async function analyzeV1ToV2Migration({
   }
 
   async function addEvidence(source, type, stage, bindingRequired) {
-    const parsed = await parsedFile(source);
+    const parsed = parsedFile(source);
     if (!parsed) return;
-    if (parsed.data.status === "draft") {
-      report.blockers.push(
-        finding(
-          "draft-evidence",
-          source,
-          "Draft artifact must be finalized before it can become Evidence.",
-        ),
-      );
-    }
-    const work = legacyWorkBinding(
-      parsed.data,
-      source,
-      "evidence",
-      report.blockers,
-    );
-    if (bindingRequired && (typeof work !== "string" || !workById.has(work))) {
-      report.blockers.push(
-        finding("missing-evidence-work", source, "Evidence requires an explicit existing Work binding."),
-      );
-    } else if (work !== null && (typeof work !== "string" || !workById.has(work))) {
-      report.blockers.push(
-        finding("invalid-evidence-work", source, "Evidence Work binding does not resolve."),
-      );
-    }
-    if (parsed.data.created === undefined) {
-      report.blockers.push(
-        finding("missing-evidence-created", source, "Evidence requires an explicit created date."),
-      );
-    }
-    if (parsed.data.updated === undefined) {
-      report.blockers.push(
-        finding("missing-evidence-updated", source, "Evidence requires an explicit updated date."),
-      );
-    }
+    if (parsed.data.status === "draft") return;
+    const binding = normalizedBinding(parsed.data, source, "evidence");
+    if (binding.error) return;
+    const work = binding.value;
+    if (bindingRequired && (work === null || !workById.has(work))) return;
+    if (work !== null && !workById.has(work)) return;
     const title = headingTitle(parsed.body, [
       /^Test Matrix:\s*/i,
       /^Review:\s*/i,
       /^Provider Dialogue:\s*/i,
     ]);
-    if (!title) {
-      report.blockers.push(
-        finding("missing-evidence-title", source, "Evidence requires a concrete H1 title."),
-      );
-    }
     const independent = Object.hasOwn(parsed.data, "independent")
       ? parsed.data.independent
       : false;
     const agent = parsed.data.agent ?? null;
-    if (independent && (typeof agent !== "string" || agent.trim() === "")) {
-      report.blockers.push(
-        finding("missing-independent-agent", source, "Independent Evidence requires an agent."),
-      );
-    }
     const metadata = {
       type,
       work,
@@ -969,7 +1392,21 @@ export async function analyzeV1ToV2Migration({
       agent,
       lens: parsed.data.lens ?? null,
     };
-    addMetadataBlockers("evidence", metadata, source, report.blockers);
+    const fields = metadataIssueFields("evidence", metadata);
+    if (!title) fields.push("title");
+    if (independent && (typeof agent !== "string" || agent.trim() === "")) {
+      fields.push("agent");
+    }
+    if (fields.length > 0) return;
+    if (binding.normalized) {
+      report.warnings.push(
+        warning(
+          "normalized-evidence-binding",
+          source,
+          `Normalized legacy Evidence binding to ${work}.`,
+        ),
+      );
+    }
     const directory = work === null ? "evidence/topics" : `evidence/${work}`;
     const target = `${directory}/${parsed.data.created}-${type}-${asciiSlug(title ?? "item")}.md`;
     const known = new Set(["work", "req", "created", "updated", "independent", "agent", "lens"]);
@@ -1009,21 +1446,77 @@ export async function analyzeV1ToV2Migration({
     await addEvidence(source, provider ? "provider" : "research", provider ? "review" : "think", false);
   }
 
-  if (inventory.get("lessons.md")?.type === "file") {
-    const lessons = knownMarkdown.get("lessons.md");
-    report.preservedUnknown.push("lessons.md");
-    if (lessons.trim() !== "" && !DEFAULT_LESSONS.test(lessons.trim())) {
-      report.blockers.push(
-        finding(
-          "substantive-lessons",
-          "lessons.md",
-          "Lessons cannot be split into deterministic Reflection Evidence.",
-        ),
-      );
-    }
+  if (
+    inventory.has(LEGACY_ARCHIVE_ROOT) ||
+    [...inventory.keys()].some((item) => item.startsWith(`${LEGACY_ARCHIVE_ROOT}/`))
+  ) {
+    report.blockers.push(
+      finding(
+        "legacy-archive-occupied",
+        LEGACY_ARCHIVE_ROOT,
+        `Migration archive target already exists: ${LEGACY_ARCHIVE_ROOT}.`,
+      ),
+    );
   }
 
+  const candidateBySource = new Map(candidates.map((item) => [item.source, item]));
+  const candidateSources = new Set(candidateBySource.keys());
+  const legacyArchiveContent = new Map();
+  const legacyFiles = [...inventory.entries()]
+    .filter(([relativePath, entry]) =>
+      relativePath !== "" && entry.type === "file" && isLegacySourcePath(relativePath)
+    )
+    .map(([relativePath]) => relativePath)
+    .sort(compareText);
+  for (const source of legacyFiles) {
+    const bytes = knownBytes.get(source) ?? await readFile(path.join(root, source));
+    const target = `${LEGACY_ARCHIVE_ROOT}/${source}`;
+    report.preservedLegacy.push({
+      from: source,
+      to: target,
+      disposition: source === "index.md" || candidateSources.has(source)
+        ? "converted"
+        : "preserved",
+      bytes: bytes.length,
+      sha256: sha256(bytes),
+      mode: inventory.get(source).mode,
+    });
+    if (
+      source === "index.md" ||
+      candidateBySource.get(source)?.target === source
+    ) {
+      legacyArchiveContent.set(source, UTF8_ARCHIVE_DECODER.decode(bytes));
+    }
+    if (!candidateSources.has(source) && source !== "index.md") {
+      moveMap.set(source, target);
+    }
+  }
+  const legacyManifestContent = `${JSON.stringify({
+    format: 1,
+    schema: 1,
+    root: LEGACY_ARCHIVE_ROOT,
+    entries: report.preservedLegacy,
+  }, null, 2)}\n`;
+  report.preservedUnknown = report.preservedUnknown.filter((item) =>
+    !isLegacySourcePath(item.replace(/\/$/, ""))
+  );
+
   const targetDirectories = new Set(REQUIRED_DIRECTORIES);
+  const targetDirectoryModes = new Map([
+    [LEGACY_ARCHIVE_ROOT, inventory.get("").mode],
+  ]);
+  targetDirectories.add(LEGACY_ARCHIVE_ROOT);
+  for (const [relativePath, entry] of inventory) {
+    if (
+      relativePath !== "" &&
+      entry.type === "directory" &&
+      isLegacySourcePath(relativePath)
+    ) {
+      const target = `${LEGACY_ARCHIVE_ROOT}/${relativePath}`;
+      targetDirectories.add(target);
+      targetDirectoryModes.set(target, entry.mode);
+    }
+  }
   for (const candidate of candidates) {
     let directory = path.posix.dirname(candidate.target);
     while (directory !== ".") {
@@ -1065,6 +1558,8 @@ export async function analyzeV1ToV2Migration({
       {
         source,
         target: source,
+        projectRoot: projectRootPath,
+        projectPhysicalRoot,
         inventory,
         moveMap,
         blockers: report.blockers,
@@ -1079,6 +1574,8 @@ export async function analyzeV1ToV2Migration({
   const rewriteContext = (candidate) => ({
     source: candidate.source,
     target: candidate.target,
+    projectRoot: projectRootPath,
+    projectPhysicalRoot,
     inventory,
     moveMap,
     blockers: report.blockers,
@@ -1105,18 +1602,8 @@ export async function analyzeV1ToV2Migration({
     }
   }
 
-  const indexCandidate = {
-    kind: "index",
-    artifactKind: "board",
-    source: "index.md",
-    target: "index.md",
-  };
   report.mappings.push({ kind: "index", from: "index.md", to: "index.md" });
   moveMap.set("index.md", "index.md");
-  const indexBody = rewriteMarkdownLinks(
-    rewriteContext(indexCandidate),
-    indexParsed.body,
-  );
   const workItems = candidates
     .filter((item) => item.artifactKind === "workItem")
     .map((item) => ({ ...item.metadata, title: item.title, boardRelativePath: item.target }));
@@ -1126,6 +1613,16 @@ export async function analyzeV1ToV2Migration({
   const plans = candidates
     .filter((item) => item.artifactKind === "plan")
     .map((item) => ({ ...item.metadata, boardRelativePath: item.target }));
+  const indexBody = [
+    "# CatPaw Work Board",
+    "",
+    "Schema 1 source material remains available under the isolated legacy archive.",
+    "",
+    "## Legacy Material",
+    "",
+    `- [Schema 1 manifest](${LEGACY_ARCHIVE_ROOT}/manifest.json)`,
+    "",
+  ].join("\n");
   let indexContent = `${stringifyFrontmatter({ schema: 2 }, ["schema"])}${indexBody}`;
   try {
     indexContent = rebuildDashboard(indexContent, { workItems, milestones, plans });
@@ -1139,6 +1636,7 @@ export async function analyzeV1ToV2Migration({
   report.blockers.sort(reportSort);
   report.warnings.sort(reportSort);
   report.mappings.sort(reportSort);
+  report.preservedLegacy.sort((left, right) => compareText(left.from, right.from));
   report.preservedUnknown = [...new Set(report.preservedUnknown)].sort(compareText);
   report.linkRewrites.sort(reportSort);
   if (report.blockers.length > 0) {
@@ -1150,7 +1648,25 @@ export async function analyzeV1ToV2Migration({
   const operations = [...targetDirectories].sort(compareText).map((directory) => ({
     type: "ensure-dir",
     path: directory,
+    ...(targetDirectoryModes.has(directory)
+      ? { dirMode: targetDirectoryModes.get(directory) }
+      : {}),
   }));
+  for (const entry of report.preservedLegacy) {
+    const inPlaceReplacement = entry.from === "index.md" ||
+      candidateBySource.get(entry.from)?.target === entry.from;
+    if (inPlaceReplacement) {
+      operations.push({
+        type: "write-file",
+        path: entry.to,
+        content: legacyArchiveContent.get(entry.from),
+        mode: "create",
+        fileMode: entry.mode,
+      });
+    } else {
+      operations.push({ type: "move-file", from: entry.from, to: entry.to });
+    }
+  }
   for (const candidate of candidates) {
     operations.push({
       type: "write-file",
@@ -1159,10 +1675,14 @@ export async function analyzeV1ToV2Migration({
       mode: candidate.target === candidate.source ? "replace" : "create",
       fileMode: inventory.get(candidate.source).mode,
     });
-    if (candidate.target !== candidate.source) {
-      operations.push({ type: "remove-file", path: candidate.source });
-    }
   }
+  operations.push({
+    type: "write-file",
+    path: `${LEGACY_ARCHIVE_ROOT}/manifest.json`,
+    content: legacyManifestContent,
+    mode: "create",
+    fileMode: 0o644,
+  });
   for (const [relativePath, content] of [...preservedMarkdownRewrites].sort(
     ([left], [right]) => compareText(left, right),
   )) {
@@ -1181,6 +1701,19 @@ export async function analyzeV1ToV2Migration({
     mode: "replace",
     fileMode: inventory.get("index.md").mode,
   });
+  for (const [relativePath, entry] of inventory) {
+    if (entry.type !== "directory") continue;
+    if (
+      relativePath === "reqs" || relativePath.startsWith("reqs/") ||
+      relativePath === "tests" || relativePath.startsWith("tests/") ||
+      relativePath === "reviews" || relativePath.startsWith("reviews/") ||
+      relativePath === "research" || relativePath.startsWith("research/") ||
+      relativePath === "plans/active" || relativePath.startsWith("plans/active/") ||
+      relativePath === "plans/archive" || relativePath.startsWith("plans/archive/")
+    ) {
+      operations.push({ type: "remove-dir", path: relativePath });
+    }
+  }
   report.operations = operations.sort(operationSort);
   return report;
 }

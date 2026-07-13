@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.0.1 - 2026-07-13
+
+- Replace exhaustive schema 1 conversion with active-closure migration;
+  preserve incomplete historical artifacts and converted originals under an
+  isolated, checksummed `legacy/schema-1/` archive.
+- Normalize canonical filename IDs, prefix-derived types, exact status aliases,
+  terminal stage `reflect`, and uniquely resolvable path bindings without
+  inventing active dates, stages, modes, or accepted gaps.
+- Extend active dependency closure through active Milestone Scope, block active
+  Work/Milestone identity or terminal-routing conflicts, and suppress Plan or
+  Milestone findings that merely cascade from one invalid active Work Item.
+- Collapse cascaded metadata failures into actionable active Work/Plan root
+  blockers; require project-local links to exist and physically remain inside
+  the project, including through symlinks.
+- Preserve source file, BOM, and legacy-directory modes; validate schema 2
+  boards before reporting migration no-op.
+- Keep human migration output compact while retaining complete machine-readable
+  mappings, warnings, legacy dispositions, and checksums.
+
+Migration note (3.0.0 -> 3.0.1):
+
+```text
+Runtime activation: explicit; source/dist 3.0.1 does not update ~/.catpaw automatically.
+Project impact: board schema remains 2; existing schema 2 boards are unchanged, while schema 1 boards should rerun migration dry-run because 3.0.0 previews are superseded.
+Required actions: build and verify source/dist; inspect each schema 1 board's active blockers and legacy manifest before any separately authorized apply.
+Safety: incomplete history is byte-preserved with SHA-256; active dependency ambiguity and filesystem hazards still block migration.
+Non-goals: no installed-runtime activation, registry rewrite, adapter rewrite, board migration, legacy cleanup, commit, or push is implied by this source change.
+Rollback: keep the installed 2.x runtime and schema 1 boards until explicit activation and per-project migration approval.
+```
+
 ## 3.0.0 - 2026-07-11
 
 - Replace workflow levels with `Direct`, `Tracked`, and `Gated` while preserving

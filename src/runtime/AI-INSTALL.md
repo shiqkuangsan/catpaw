@@ -54,7 +54,12 @@ Schema 1 board 先 dry-run：
 catpaw board migrate --project /abs/project
 ```
 
-只有用户确认 blockers、mappings、unknown files 与 backup location 后执行：
+Dry-run 需要区分 native mappings、safe normalizations、`preservedLegacy` 与
+active/safety blockers。Historical incomplete files 会进入 checksummed
+`legacy/schema-1/` archive；它不是第六类 artifact，正常 schema 2 command 会忽略。
+
+只有用户确认 blockers、mappings、legacy archive/manifest、unknown files 与
+backup location 后执行：
 
 ```text
 catpaw board migrate --project /abs/project --apply

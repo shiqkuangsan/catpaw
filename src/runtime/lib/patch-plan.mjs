@@ -175,7 +175,30 @@ function normalizeOperation(operation, index) {
   }
 
   switch (operation.type) {
-    case "ensure-dir":
+    case "ensure-dir": {
+      assertExactKeys(operation, ["type", "path"], index, ["dirMode"]);
+      if (typeof operation.path !== "string") {
+        throw new TypeError(
+          "operations[" + index + "].path must be a string.",
+        );
+      }
+      if (
+        Object.hasOwn(operation, "dirMode") &&
+        (!Number.isInteger(operation.dirMode) ||
+          operation.dirMode < 0 ||
+          operation.dirMode > 0o7777)
+      ) {
+        throw new TypeError(
+          "operations[" + index +
+            "].dirMode must be an integer between 0 and 0o7777.",
+        );
+      }
+      const normalized = { type: operation.type, path: operation.path };
+      if (Object.hasOwn(operation, "dirMode")) {
+        normalized.dirMode = operation.dirMode;
+      }
+      return normalized;
+    }
     case "remove-file":
     case "remove-dir": {
       assertExactKeys(operation, ["type", "path"], index);
@@ -488,12 +511,20 @@ function simulateOperations(initialEntries, operations, blockers) {
         for (const segment of segments) {
           currentPath = currentPath ? `${currentPath}/${segment}` : segment;
           if (!entries.has(currentPath)) {
-            entries.set(currentPath, { mode: 0o755, type: "dir" });
+            entries.set(currentPath, {
+              mode: currentPath === operation.path
+                ? operation.dirMode ?? 0o755
+                : 0o755,
+              type: "dir",
+            });
           }
         }
         effective.push(operation);
       } else if (!inspected.entry) {
-        entries.set(operation.path, { mode: 0o755, type: "dir" });
+        entries.set(operation.path, {
+          mode: operation.dirMode ?? 0o755,
+          type: "dir",
+        });
         effective.push(operation);
       } else if (inspected.entry.type !== "dir") {
         blockers.add(
@@ -782,7 +813,9 @@ export function assertPatchPlan(plan) {
 function renderOperation(operation) {
   switch (operation.type) {
     case "ensure-dir":
-      return `ENSURE DIR ${operation.path}`;
+      return operation.dirMode === undefined
+        ? `ENSURE DIR ${operation.path}`
+        : `ENSURE DIR ${operation.path} (mode=${formatFileMode(operation.dirMode)})`;
     case "write-file": {
       const bytes = Buffer.byteLength(operation.content);
       const fileMode = operation.fileMode === undefined

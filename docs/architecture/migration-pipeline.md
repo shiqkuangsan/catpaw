@@ -1,15 +1,16 @@
 # Board Migration Pipeline
 
 CatPaw 3 converts an existing **schema 1** project board into **schema 2** as an
-explicit project operation. Runtime activation and board migration are separate
-authorization scopes.
+explicit per-project operation. Runtime activation and board migration are
+separate authorization scopes.
 
 ```text
 schema 1 board
   -> inventory and dry-run
-  -> resolve blockers
-  -> stage schema 2 candidate
-  -> validate graph and files
+  -> classify active closure and historical material
+  -> resolve true blockers
+  -> stage native graph plus legacy archive
+  -> validate graph, checksums, and files
   -> backup complete preimage
   -> publish atomically
   -> verify and become idempotent
@@ -17,23 +18,45 @@ schema 1 board
 
 Building or activating the runtime does not automatically migrate any board.
 
+## Bounded Hybrid Strategy
+
+Exhaustive conversion made historical metadata debt a release blocker and
+encouraged agents to invent dates, stages, or bindings. CatPaw instead uses four
+explicit dispositions: convert complete artifacts, apply narrow canonical
+normalizations, preserve incomplete historical material, and block only active
+closure or safety ambiguity.
+
+Active state comes only from the managed Active Work section,
+`plans/active/`, or explicit active/blocked metadata. Prose, Git history, and
+file timestamps are not activity signals. An active Milestone Scope extends the
+required Work closure without reactivating terminal Work. Every active Work Item
+and its live Plan, Milestone, and required Evidence dependency must be complete
+before publication.
+
+Safe normalizations are limited to canonical filename IDs, ID-prefix type,
+exact terminal status aliases, terminal stage `reflect`, and uniquely
+resolvable path bindings. Active dates, stages, modes, bindings, status, and
+accepted gaps are never fabricated.
+
 ## Target Shape
 
-The converged schema 2 board contains:
+The native schema 2 graph contains:
 
 ```text
 .catpaw/
-├── index.md
-├── milestones/
-├── work/
-├── plans/
-└── evidence/
+|-- index.md
+|-- milestones/
+|-- work/
+|-- plans/
+`-- evidence/
 ```
 
-Legacy requirement records become Work Items, active plans bind to Work,
-phase groupings become Milestones, and durable research/review/test/reflection
-facts become typed Evidence. Unknown or binary files are preserved unless the
-user explicitly chooses another disposition.
+Schema 1 migration may also create `legacy/schema-1/`. It contains originals
+used for conversion and incomplete historical files, plus a deterministic
+manifest of source/destination, disposition, bytes, mode, and SHA-256. The
+archive is not part of the native graph and is ignored by normal schema 2
+status and mutation commands. Source directory modes are retained in the
+archive as well as file bytes, BOM, and modes.
 
 ## Dry-run
 
@@ -42,12 +65,9 @@ catpaw board migrate --project /abs/project
 ```
 
 The planner inventories the complete board, parses metadata and links, detects
-collisions or ambiguous facts, and emits the exact source-to-target operations.
-It does not infer status, mode, lifecycle stage, dates, binding, or independence
-from directory placement, prose position, Git history, or file time.
-
-Ambiguous facts become a batched blocker list. Dry-run writes no backup, stage,
-board file, adapter, or registry entry.
+collisions or ambiguous facts, and emits native mappings, warnings, preserved
+legacy counts, and root blockers. It does not write a backup, stage, board file,
+adapter, or registry entry.
 
 ## Stage And Validate
 
@@ -56,11 +76,11 @@ builds a complete candidate in a sibling stage. It then validates:
 
 - schema 2 metadata against
   [`board-v2.json`](../../src/runtime/schemas/board-v2.json);
-- expected paths and file types;
-- Work-to-Plan and Work-to-Evidence bindings;
-- Milestone Scope references;
-- local links and duplicate identities;
-- Gated completion requirements and accepted gaps.
+- paths, file types, and native graph references;
+- Work-to-Plan/Evidence bindings and Milestone Scope;
+- terminal Gated Evidence or accepted gaps;
+- existing, physically project-contained local links and duplicate identities;
+- every legacy manifest checksum and byte length.
 
 A failed stage leaves the live board untouched and creates no success claim.
 
@@ -79,8 +99,9 @@ explicit contract. It never batch-migrates other registered projects.
 
 After publish, board doctor validates the live graph and reports any remaining
 gap. Running the same migration again against a valid schema 2 board must be an
-exact no-op. Backup cleanup, legacy-tree deletion, adapter edits, and unrelated
-project cleanup are not implied.
+exact no-op; an invalid schema 2 board is blocked and routed to doctor instead
+of being called complete. Backup cleanup, legacy archive deletion, adapter edits, and
+unrelated project cleanup are not implied.
 
 ## Recovery
 
@@ -94,3 +115,4 @@ silently replace a live board with an older copy.
 - [Schema 2 migration note](../../src/runtime/migrations/schema-2.md)
 - [Sync and References](sync-and-references.md)
 - [ADR-0019](../decisions/0019-catpaw-3-hybrid-runtime.md)
+- [ADR-0020](../decisions/0020-selective-schema-1-migration.md)

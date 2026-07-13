@@ -60,12 +60,12 @@ export function migrationBackupPath({
   );
 }
 
-async function validateMigratedStage(projectRoot, stageRoot) {
-  const board = await loadBoard({ projectRoot, boardPath: stageRoot });
+async function schema2Errors(projectRoot, boardPath) {
+  const board = await loadBoard({ projectRoot, boardPath });
   const graph = buildArtifactGraph(board);
   const findings = collectBoardFindings(board, graph);
   for (const directory of SCHEMA_2_LAYOUT.requiredDirectories) {
-    if (await pathKind(path.join(stageRoot, directory)) !== "directory") {
+    if (await pathKind(path.join(boardPath, directory)) !== "directory") {
       findings.push({
         severity: "error",
         code: "missing-board-directory",
@@ -74,7 +74,12 @@ async function validateMigratedStage(projectRoot, stageRoot) {
       });
     }
   }
-  const errors = findings.filter((item) => item.severity === "error");
+  return findings.filter((item) => item.severity === "error");
+}
+
+async function validateMigratedStage(projectRoot, stageRoot) {
+  const errors = await schema2Errors(projectRoot, stageRoot);
+  const board = await loadBoard({ projectRoot, boardPath: stageRoot });
   if (board.schema !== 2 || errors.length > 0) {
     throw migrationError(
       "ERR_BOARD_MIGRATION_STAGED_VALIDATION",
@@ -95,6 +100,7 @@ function reportBase(options, migration, mode) {
     mappings: migration.mappings,
     blockers: migration.blockers,
     warnings: migration.warnings,
+    preservedLegacy: migration.preservedLegacy,
     preservedUnknown: migration.preservedUnknown,
     linkRewrites: migration.linkRewrites,
   };
@@ -106,6 +112,25 @@ export async function runMigrationCommand(options) {
   const base = reportBase(options, migration, mode);
 
   if (migration.status === "noop") {
+    const errors = await schema2Errors(options.projectRoot, options.boardPath);
+    if (errors.length > 0) {
+      return {
+        exitCode: 1,
+        report: {
+          ...base,
+          status: "blocked",
+          blockers: errors.map((item) => ({
+            code: item.code,
+            path: item.filePath,
+            message: item.message,
+          })),
+          patch: null,
+          backupPath: null,
+          applyWarnings: [],
+          nextAction: "Run board doctor and resolve schema 2 errors.",
+        },
+      };
+    }
     return {
       exitCode: 0,
       report: {

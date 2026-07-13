@@ -27,7 +27,7 @@ installed manifest, previews exact managed changes, preserves local state and
 unknown files, stages a complete candidate, validates it, and only then
 publishes approved changes.
 
-When source/dist are 3.0.0 and the installed runtime is older, the correct
+When source/dist are 3.0.1 and the installed runtime is older, the correct
 state is `pending activation`. It is neither a broken source build nor a
 completed installation.
 
@@ -47,6 +47,9 @@ work/
 plans/
 evidence/
 ```
+
+Schema migration may retain a checksummed `legacy/schema-1/` archive alongside
+these roots. It is excluded from the native graph and normal board mutations.
 
 Installing CatPaw does not automatically create, apply, or migrate a project
 board.

@@ -500,6 +500,14 @@ export function renderBoardReport(report) {
   }
 
   if (report.command === "board migrate") {
+    const preservedCounts = report.preservedLegacy.reduce((counts, item) => {
+      counts[item.disposition] ??= [];
+      counts[item.disposition].push(item);
+      return counts;
+    }, {});
+    const preservedSummary = Object.entries(preservedCounts)
+      .map(([disposition, items]) => `${disposition} ${items.length}`)
+      .join(", ");
     const lines = [
       "Board migrate",
       `Mode: ${report.mode}`,
@@ -510,6 +518,10 @@ export function renderBoardReport(report) {
       ...renderFindingLines(report.blockers),
       `Warnings: ${report.warnings.length}`,
       ...renderFindingLines(report.warnings),
+      `Preserved legacy: ${report.preservedLegacy.length}${preservedSummary ? ` (${preservedSummary})` : ""}`,
+      ...(report.preservedLegacy.length > 0
+        ? ["Legacy manifest: legacy/schema-1/manifest.json"]
+        : []),
       `Preserved unknown: ${report.preservedUnknown.length}`,
       ...report.preservedUnknown.map((item) => `- ${item}`),
       `Link rewrites: ${report.linkRewrites.length}`,

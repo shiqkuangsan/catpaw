@@ -190,6 +190,26 @@ test("creates a deterministic, deeply frozen plan without writing", async (t) =>
   assert.doesNotMatch(rendered, /private payload/);
 });
 
+test("ensure-dir preserves an explicitly requested directory mode", async (t) => {
+  const { root } = await fixture(t);
+  const plan = await createPatchPlan({
+    root,
+    operations: [
+      { type: "ensure-dir", path: "legacy", dirMode: 0o750 },
+      { type: "ensure-dir", path: "legacy/private", dirMode: 0o710 },
+    ],
+  });
+
+  assert.equal(plan.status, "ready");
+  assert.match(renderPatchPlan(plan), /legacy\/private \(mode=0710\)/);
+  await applyPatchPlan(plan);
+  assert.equal((await lstat(path.join(root, "legacy"))).mode & 0o7777, 0o750);
+  assert.equal(
+    (await lstat(path.join(root, "legacy/private"))).mode & 0o7777,
+    0o710,
+  );
+});
+
 test("collapses idempotent filesystem requests into an exact no-op", async (t) => {
   const { root, sandbox } = await fixture(t);
   await mkdir(path.join(root, "docs"));
