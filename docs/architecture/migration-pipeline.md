@@ -33,10 +33,15 @@ conservative defaults. Unknown lifecycle state becomes `blocked`; it never
 becomes `done` merely because metadata is absent. Inferred fields are reported
 as provenance rather than as decisions for the user.
 
-Identity conflict or absence, duplicate IDs, unresolved Plan ownership,
-destination collisions, unsafe paths, invalid encoding/source structure, and
-transaction failures remain blockers. Historical Gated completion gaps become
-explicit reflection records naming the unavailable gates; they do not claim an
+Source defects and migration hazards are different classes. Nested or malformed
+optional artifact frontmatter, missing local targets from historical
+research/provider Evidence or preserved unknown narrative, stale routing, and absent lifecycle metadata are
+recovered or preserved with warnings. Malformed `id/work/req`, unterminated
+frontmatter, active-authority broken links, identity conflicts, duplicate IDs,
+unresolved Plan ownership after recovery, destination collisions, path escape,
+invalid index authority/encoding, special filesystem entries, and transaction
+failures remain blockers. Historical Gated completion gaps become explicit
+reflection records naming the unavailable gates; they do not claim an
 Independent Check or grant authority.
 
 ## Target Shape
@@ -59,16 +64,29 @@ archive is not part of the native graph and is ignored by normal schema 2
 status and mutation commands. Source directory modes are retained in the
 archive as well as file bytes, BOM, and modes.
 
+Legacy symlink aliases are not active artifacts and are never dereferenced.
+Migration stores valid UTF-8 target text in checksummed inert sidecars and
+removes only the alias leaf from the staged board. This preserves provenance
+without carrying host-specific or escaping links into schema 2. A non-UTF-8
+target blocks instead of being normalized lossily.
+
 ## Dry-run
 
 ```text
 catpaw board migrate --project /abs/project
 ```
 
-The planner inventories the complete board, parses metadata and links, infers
+The planner snapshots and inventories the complete board, parses metadata and links, infers
 missing fields, detects structural conflicts, and emits native mappings,
 aggregated inference warnings, legacy counts, and root blockers. It does not
 write a backup, stage, board file, adapter, or registry entry.
+
+The generated operations carry the analysis preimage digest into the patch
+planner. Drift before plan creation blocks as `stale-analysis-preimage`; drift
+after plan creation remains covered by the atomic publisher's stale checks.
+The publisher also verifies that the copied stage starts from that preimage and
+that the staged postimage remains byte-identical from validation through the
+final publish check.
 
 ## Stage And Validate
 
@@ -81,7 +99,14 @@ builds a complete candidate in a sibling stage. It then validates:
 - Work-to-Plan/Evidence bindings and Milestone Scope;
 - Gated `done` Evidence or accepted gaps;
 - existing, physically project-contained local links and duplicate identities;
-- every legacy manifest checksum and byte length.
+- exact manifest/report entries, archive file-set conservation, and every
+  legacy bytes/hash/mode/sourceMode claim.
+
+Real-board acceptance additionally reconciles source inventory against native
+mappings plus preserved dispositions, compares exact Work/Milestone identities
+and Plan/Evidence bindings, checks that human index narrative remains, verifies
+that paths outside `.catpaw/` retain their pre-migration worktree state, and
+records why generated migration Evidence changes target counts.
 
 A failed stage leaves the live board untouched and creates no success claim.
 
@@ -95,6 +120,11 @@ tree atomically.
 If the preimage changed, publication stops and the plan must be recomputed. A
 successful migration can then update the registry through its separate,
 explicit contract. It never batch-migrates other registered projects.
+
+For an actively used board, the safe pattern is snapshot -> sibling candidate
+-> verify -> recheck live tree digest. A changed digest means rebuilding from
+the latest board; it does not authorize overwriting or manually merging a stale
+candidate.
 
 ## Verification And Idempotence
 

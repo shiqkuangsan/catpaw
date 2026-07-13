@@ -18,6 +18,11 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { applyPatchPlan } from "../src/runtime/lib/atomic-write.mjs";
+import {
+  runMigrationCommand,
+  validateMigratedStage,
+} from "../src/runtime/lib/commands/migrate.mjs";
 import { parseFrontmatter } from "../src/runtime/lib/frontmatter.mjs";
 import { parseMilestoneScope } from "../src/runtime/lib/milestone-scope.mjs";
 import { analyzeV1ToV2Migration } from "../src/runtime/lib/migrate-v1-v2.mjs";
@@ -1165,7 +1170,7 @@ test("planner falls back to a canonical Work ID in the H1", async (t) => {
   );
 });
 
-test("planner blocks malformed frontmatter instead of treating it as missing", async (t) => {
+test("planner blocks malformed authoritative identity metadata", async (t) => {
   const files = historicalProseBoard();
   files[".catpaw/reqs/FR-301-old-note.md"] = [
     "---",
@@ -1183,9 +1188,91 @@ test("planner blocks malformed frontmatter instead of treating it as missing", a
   assert.equal(report.status, "blocked");
   assert.deepEqual(report.operations, []);
   assert.ok(report.blockers.some((item) =>
-    item.code === "invalid-frontmatter" &&
+    item.code === "invalid-legacy-identity" &&
     item.path === "reqs/FR-301-old-note.md"
   ));
+});
+
+test("planner blocks structured Work bindings and unterminated frontmatter", async (t) => {
+  const cases = [
+    ["plans/active/FR-101-alpha.md", "work: [FR-101]", "invalid-legacy-identity"],
+    ["reviews/FR-101-alpha/summary.md", "req: [FR-101]", "invalid-legacy-identity"],
+    ["reqs/FR-101-alpha.md", "\"id\": BUG-999", "invalid-legacy-identity"],
+    ["reqs/FR-101-alpha.md", "ID: BUG-999", "invalid-legacy-identity"],
+    [
+      "reqs/FR-101-alpha.md",
+      "ID: BUG-999\nscope:\n  - service-a",
+      "invalid-legacy-identity",
+    ],
+    ["reqs/FR-101-alpha.md", "id: FR-101", "unterminated-frontmatter"],
+  ];
+
+  for (const [relativePath, field, code] of cases) {
+    const files = readyBoard();
+    files[`.catpaw/${relativePath}`] = [
+      "---",
+      field,
+      ...(code === "unterminated-frontmatter" ? [] : ["---"]),
+      "# Legacy artifact",
+    ].join("\n");
+    const root = await fixture(t, files);
+
+    const report = await analyzeV1ToV2Migration({
+      projectRoot: root,
+      boardPath: path.join(root, ".catpaw"),
+    });
+
+    assert.equal(report.status, "blocked", relativePath);
+    assert.deepEqual(report.operations, [], relativePath);
+    assert.ok(report.blockers.some((item) =>
+      item.code === code && item.path === relativePath
+    ), `${relativePath}: ${JSON.stringify(report.blockers)}`);
+  }
+});
+
+test("planner recovers safe scalars from nested legacy frontmatter and binds Plans", async (t) => {
+  const files = readyBoard();
+  files[".catpaw/reqs/FR-101-alpha.md"] = [
+    "---",
+    "id: FR-101",
+    "type: feature",
+    "status: active",
+    "level: L2",
+    `created: ${DATE}`,
+    `updated: ${DATE}`,
+    "closed: null",
+    "scope:",
+    "  - service-a",
+    "  - service-b",
+    "---",
+    "",
+    "# FR-101: Alpha",
+    "",
+    "Nested scope is legacy context, not schema 2 metadata.",
+  ].join("\n");
+  const root = await fixture(t, files);
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.deepEqual(report.blockers, []);
+  assert.ok(report.warnings.some((item) =>
+    item.code === "recovered-frontmatter" &&
+    item.path === "reqs/FR-101-alpha.md" &&
+    item.message.includes("scope")
+  ));
+  assert.ok(report.mappings.some((item) =>
+    item.kind === "work" && item.id === "FR-101"
+  ));
+  assert.ok(report.mappings.some((item) =>
+    item.kind === "plan" && item.id === "FR-101"
+  ));
+  const migrated = operation(report, "write-file", "work/FR-101-alpha.md");
+  assert.equal(parseFrontmatter(migrated.content).data.id, "FR-101");
+  assert.doesNotMatch(migrated.content, /^scope:/m);
 });
 
 test("planner canonically normalizes terminal Work and path bindings", async (t) => {
@@ -1679,6 +1766,11 @@ test("planner returns sorted blockers and no operations when facts are ambiguous
   assert.equal((await snapshotTree(boardPath)).digest, before);
   const codes = new Set(report.blockers.map((item) => item.code));
   assert.equal(codes.has("broken-local-link"), true);
+  assert.ok(report.blockers.some((item) =>
+    item.code === "broken-local-link" &&
+    item.path === "index.md" &&
+    item.message.includes("missing/local.md")
+  ));
   assert.equal(codes.has("active-work-incomplete"), false);
   assert.equal(
     report.blockers.some((item) =>
@@ -1695,6 +1787,269 @@ test("planner returns sorted blockers and no operations when facts are ambiguous
       )
     ),
   );
+});
+
+test("planner preserves missing links only in historical research Evidence", async (t) => {
+  const files = readyBoard();
+  files[".catpaw/research/FR-101-alpha/history.md"] = frontmatter(
+    { req: "FR-101", created: DATE, updated: DATE },
+    "# Historical Research\n\n[Removed note](../removed-note.md)\n",
+  );
+  const root = await fixture(t, files);
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.ok(report.warnings.some((item) =>
+    item.code === "broken-local-link" &&
+    item.path === "research/FR-101-alpha/history.md"
+  ));
+  assert.equal(report.blockers.some((item) => item.code === "broken-local-link"), false);
+});
+
+test("migration archives a symlink alias as inert text without following it", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const catpawHome = path.join(root, "runtime-home");
+  const boardPath = path.join(root, ".catpaw");
+  const aliasPath = path.join(boardPath, "reviews/FR-101-alpha/latest");
+  const outside = path.join(root, "outside-review.log");
+  await writeFile(outside, "secret review payload\n");
+  await symlink(outside, aliasPath);
+
+  const analyzed = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+  assert.equal(analyzed.status, "ready", JSON.stringify(analyzed.blockers));
+  assert.deepEqual(analyzed.blockers, []);
+  const alias = analyzed.preservedLegacy.find((item) =>
+    item.from === "reviews/FR-101-alpha/latest"
+  );
+  assert.deepEqual(alias, {
+    from: "reviews/FR-101-alpha/latest",
+    to: "legacy/schema-1/reviews/FR-101-alpha/latest.symlink-target",
+    disposition: "preserved-alias",
+    sourceType: "symlink",
+    linkTarget: outside,
+    bytes: Buffer.byteLength(outside),
+    sha256: createHash("sha256").update(outside).digest("hex"),
+    sourceMode: (await lstat(aliasPath)).mode & 0o7777,
+    mode: 0o644,
+  });
+  const manifest = JSON.parse(operation(
+    analyzed,
+    "write-file",
+    "legacy/schema-1/manifest.json",
+  ).content);
+  assert.deepEqual(manifest.entries, analyzed.preservedLegacy);
+  assert.ok(analyzed.warnings.some((item) =>
+    item.code === "preserved-symlink-alias" &&
+    item.path === "reviews/FR-101-alpha/latest"
+  ));
+  assert.ok(operation(
+    analyzed,
+    "write-file",
+    "legacy/schema-1/reviews/FR-101-alpha/latest.symlink-target",
+  ));
+  assert.ok(operation(analyzed, "remove-symlink", "reviews/FR-101-alpha/latest"));
+  assert.equal(
+    analyzed.operations.some((item) => item.content?.includes("secret review payload")),
+    false,
+  );
+
+  const result = await runCli([
+    "board",
+    "migrate",
+    "--project",
+    root,
+    "--apply",
+    "--json",
+  ], {
+    cwd: root,
+    env: { CATPAW_HOME: catpawHome },
+  });
+  assert.equal(result.code, 0, result.stderr || result.stdout);
+  await assert.rejects(lstat(aliasPath), { code: "ENOENT" });
+  assert.equal(
+    await readFile(
+      path.join(
+        boardPath,
+        "legacy/schema-1/reviews/FR-101-alpha/latest.symlink-target",
+      ),
+      "utf8",
+    ),
+    outside,
+  );
+  assert.equal(await readFile(outside, "utf8"), "secret review payload\n");
+});
+
+test("migration blocks a non-UTF-8 legacy symlink target", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const aliasPath = path.join(root, ".catpaw/reviews/FR-101-alpha/latest");
+  await symlink(Buffer.from([46, 47, 255]), aliasPath);
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+  });
+
+  assert.equal(report.status, "blocked");
+  assert.deepEqual(report.operations, []);
+  assert.ok(report.blockers.some((item) =>
+    item.code === "non-utf8-symlink-target" &&
+    item.path === "reviews/FR-101-alpha/latest"
+  ));
+});
+
+test("migration preserves a valid UTF-8 symlink target byte-for-byte", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const boardPath = path.join(root, ".catpaw");
+  const aliasPath = path.join(boardPath, "reviews/FR-101-alpha/latest");
+  const targetBytes = Buffer.from([0xef, 0xbb, 0xbf, 46, 47, 114, 101, 118, 105, 101, 119]);
+  await symlink(targetBytes, aliasPath);
+
+  const report = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const alias = report.preservedLegacy.find((item) =>
+    item.from === "reviews/FR-101-alpha/latest"
+  );
+  assert.equal(alias.bytes, targetBytes.length);
+  assert.equal(alias.sha256, createHash("sha256").update(targetBytes).digest("hex"));
+  const sidecar = operation(
+    report,
+    "write-file",
+    "legacy/schema-1/reviews/FR-101-alpha/latest.symlink-target",
+  );
+  assert.equal(Buffer.from(sidecar.content).equals(targetBytes), true);
+});
+
+test("staged migration validation rejects a tampered legacy archive", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const boardPath = path.join(root, ".catpaw");
+  const catpawHome = path.join(root, "runtime-home");
+  const analyzed = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+  const applied = await runCli([
+    "board", "migrate",
+    "--project", root,
+    "--apply",
+    "--json",
+  ], { cwd: root, env: { CATPAW_HOME: catpawHome } });
+  assert.equal(applied.code, 0, applied.stderr || applied.stdout);
+  const first = analyzed.preservedLegacy[0];
+  const firstPath = path.join(boardPath, first.to);
+
+  await assert.rejects(
+    () => validateMigratedStage(
+      root,
+      boardPath,
+      [...analyzed.preservedLegacy].reverse(),
+    ),
+    (error) => {
+      assert.ok(error.findings.some((item) =>
+        item.code === "legacy-manifest-report-mismatch"
+      ));
+      return true;
+    },
+  );
+
+  const extraPath = path.join(boardPath, "legacy/schema-1/unlisted.tmp");
+  await writeFile(extraPath, "unlisted\n");
+  await assert.rejects(
+    () => validateMigratedStage(root, boardPath, analyzed.preservedLegacy),
+    (error) => {
+      assert.ok(error.findings.some((item) =>
+        item.code === "unlisted-legacy-archive-entry" &&
+        item.path === "legacy/schema-1/unlisted.tmp"
+      ));
+      return true;
+    },
+  );
+  await rm(extraPath);
+
+  const originalMode = (await lstat(firstPath)).mode & 0o7777;
+  await chmod(firstPath, originalMode === 0o600 ? 0o644 : 0o600);
+  await assert.rejects(
+    () => validateMigratedStage(root, boardPath, analyzed.preservedLegacy),
+    (error) => {
+      assert.ok(error.findings.some((item) =>
+        item.code === "legacy-archive-digest-mismatch" && item.path === first.to
+      ));
+      return true;
+    },
+  );
+  await chmod(firstPath, originalMode);
+
+  await writeFile(firstPath, "tampered archive\n");
+
+  await assert.rejects(
+    () => validateMigratedStage(root, boardPath, analyzed.preservedLegacy),
+    (error) => {
+      assert.equal(error.code, "ERR_BOARD_MIGRATION_STAGED_VALIDATION");
+      assert.ok(error.findings.some((item) =>
+        item.code === "legacy-archive-digest-mismatch" && item.path === first.to
+      ));
+      return true;
+    },
+  );
+});
+
+test("migration command binds patch planning to the analyzed preimage", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const boardPath = path.join(root, ".catpaw");
+  const indexPath = path.join(boardPath, "index.md");
+
+  const result = await runMigrationCommand(
+    { projectRoot: root, boardPath, migrationDate: DATE, apply: false },
+    {
+      analyzeMigration: async (options) => {
+        const migration = await analyzeV1ToV2Migration(options);
+        await writeFile(indexPath, `${await readFile(indexPath, "utf8")}\nConcurrent change.\n`);
+        return migration;
+      },
+    },
+  );
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.report.status, "blocked");
+  assert.ok(result.report.patch.blockers.some((item) =>
+    item.code === "stale-analysis-preimage"
+  ));
+});
+
+test("migration command wires archive validation into staged apply", async (t) => {
+  const root = await fixture(t, readyBoard());
+  const boardPath = path.join(root, ".catpaw");
+  const before = (await snapshotTree(boardPath)).digest;
+  const backupPath = path.join(root, "backup");
+
+  await assert.rejects(
+    () => runMigrationCommand(
+      { projectRoot: root, boardPath, migrationDate: DATE, apply: true },
+      {
+        applyPlan: (plan, { validate }) => applyPatchPlan(plan, {
+          backupPath,
+          validate: async ({ stageRoot }) => {
+            const manifest = JSON.parse(
+              await readFile(path.join(stageRoot, "legacy/schema-1/manifest.json"), "utf8"),
+            );
+            await writeFile(path.join(stageRoot, manifest.entries[0].to), "tampered archive\n");
+            await validate({ stageRoot });
+          },
+        }),
+      },
+    ),
+    (error) => {
+      assert.equal(error.code, "ERR_BOARD_MIGRATION_STAGED_VALIDATION");
+      assert.ok(error.findings.some((item) =>
+        item.code === "legacy-archive-digest-mismatch"
+      ));
+      return true;
+    },
+  );
+
+  assert.equal((await snapshotTree(boardPath)).digest, before);
+  await assert.rejects(access(backupPath), { code: "ENOENT" });
 });
 
 test("planner returns an exact no-op for a schema 2 board", async (t) => {

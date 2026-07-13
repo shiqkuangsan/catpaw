@@ -117,8 +117,12 @@ preserve `state/projects.json`。
 | `todos/lessons.md` | 每条可独立复用且来源明确时转成 `reflection Evidence` |
 | `.claude/`, `.codex/` | inventory/report only；不复制到 board |
 
-Migration metadata 对普通用户是 implementation detail，不形成补录任务。按下列顺序
-自动解析，每个 artifact 只报告一条聚合的 `inferred-metadata` provenance：
+Migration metadata 对普通用户是 implementation detail，不形成补录任务。Legacy
+artifact frontmatter 先按严格 scalar contract 解析；遇到嵌套字段或其它旧格式时，
+migration 保留原件、恢复可安全读取的 top-level scalar，并把其余 optional 字段记为
+`recovered-frontmatter` warning。无法解析的 `id/work/req`、invalid explicit identity 与
+unterminated frontmatter 属于 identity hazard，继续 block。按下列顺序自动解析，每个
+artifact 只报告聚合的 provenance：
 
 1. explicit valid frontmatter；
 2. canonical alias normalization；
@@ -134,20 +138,39 @@ Conservative defaults：未知 nonterminal `status -> blocked`，terminal histor
 不丢弃。原正文不改写语义，原文件全部进入 checksum archive。
 
 只有无法安全决定结构时 block：canonical identity 冲突/缺失、duplicate ID、Plan 无法
-绑定现有 Work、target collision、unsafe/broken path、unsupported filesystem entry、
-invalid UTF-8/frontmatter、stale preimage 或 staged validation failure。Stale routing、
-缺少 lifecycle metadata 与 historical completion gate 不要求用户补 YAML；前两者归一化
-并 warning，后者生成明确列出 missing gates 的 migration reflection gap。
+绑定现有 Work、target collision、path escape、invalid index authority、invalid UTF-8、
+special/unsafe filesystem entry、stale preimage 或 staged validation failure。普通 artifact
+的 malformed/nested optional frontmatter 不阻塞；historical research/provider Evidence 或
+preserved unknown narrative 的缺失 in-board link 保留原链接并 warning，index/Work/Plan 等
+active authority 中的缺失链接仍 block。Legacy root 下的 UTF-8 symlink 只把 link target 文本归档为 inert
+sidecar，并在 manifest 分别记录原 alias 的 `sourceMode` 与 sidecar 的 `mode`，然后安全移除
+alias；不 dereference、不在 schema 2 active surface 重建。非 UTF-8 target、其它
+symlink 与 special entry 仍 block。Stale routing、缺少 lifecycle metadata 与 historical
+completion gate 不要求用户补 YAML；前两者归一化并 warning，后者生成明确列出 missing
+gates 的 migration reflection gap。
 
 Execution：
 
-1. inventory 完整 legacy tree、tracked/ignored state、links、unknown/binary files；
-2. 输出完整 source -> target mapping、inference summary、结构 blockers 与 target tree dry-run；
-3. 无结构 blocker 时，在 sibling stage 创建 schema 2 board；
-4. 保留 index narrative 与全部原件，重写可确定 local links，unknown files 原样保留；
-5. 对 staged board 运行 `catpaw board doctor --project <stage-project>` 和相关验证；
-6. 验证通过且用户确认后发布 board，再按 registry contract 显式注册；
-7. preserve the legacy tree as read-only reference by default。
+1. inventory 完整 legacy tree、tracked/ignored state、links、unknown/binary files，
+   并记录 `.catpaw/` 外的 worktree baseline；
+2. 把 mapping 分析与 patch plan 绑定到同一 source tree digest；digest 变化即 block 并重算；
+3. 输出完整 source -> target mapping、inference summary、结构 blockers 与 target tree dry-run；
+4. 无结构 blocker 时，在 sibling stage 创建 schema 2 board；
+5. 保留 index narrative 与全部原件，重写可确定 local links，unknown files 原样保留；
+6. 对 staged board 运行 `board doctor`、schema/graph 检查，并自动对账 legacy manifest
+   的文件集合与 bytes/hash/mode/sourceMode；
+7. 验证通过且用户确认后发布 board，再按 registry contract 显式注册；
+8. preserve the legacy tree as read-only reference by default。
+
+Operator/release acceptance DoD：source artifact inventory 与 native
+mapping/preserved disposition 数量守恒；
+Work/Milestone identity 集合及 Plan/Evidence binding 与 mapping report 一致；
+manifest 中每个 regular file 的 bytes/hash/mode 可复验，symlink sidecar 的
+target/hash/sourceMode/mode 可复验；
+index narrative 保留；staged 与 published board 的 `status`/`doctor` 无 finding；再次
+`board migrate` 精确 `noop`；`.catpaw/` 外的 tracked/ignored baseline 不因迁移改变。
+Board 正在被其它 task 写入时，publish 前必须重算 tree
+digest；preimage 有变化就基于最新 snapshot 重新 stage，不覆盖或手工拼接并发改动。
 
 删除、移动、untrack、`.gitignore` 修改或 bulk cleanup 需要独立列出 exact targets
 并再次确认。Nested repository 的 legacy tree 默认 out of scope。

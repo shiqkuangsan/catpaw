@@ -11,6 +11,7 @@ const OPERATION_PHASE = new Map([
   ["move-file", 1],
   ["write-file", 2],
   ["remove-file", 3],
+  ["remove-symlink", 3],
   ["remove-dir", 4],
 ]);
 
@@ -200,6 +201,7 @@ function normalizeOperation(operation, index) {
       return normalized;
     }
     case "remove-file":
+    case "remove-symlink":
     case "remove-dir": {
       assertExactKeys(operation, ["type", "path"], index);
       if (typeof operation.path !== "string") {
@@ -376,6 +378,10 @@ function collectStructuralBlockers(operations, blockers) {
         break;
       case "remove-file":
         addRole(sources, operation.path, "remove-file");
+        filePaths.add(operation.path);
+        break;
+      case "remove-symlink":
+        addRole(sources, operation.path, "remove-symlink");
         filePaths.add(operation.path);
         break;
       case "remove-dir":
@@ -671,6 +677,28 @@ function simulateOperations(initialEntries, operations, blockers) {
       continue;
     }
 
+    if (operation.type === "remove-symlink") {
+      const inspected = inspectPath(entries, operation.path);
+      if (
+        inspected.ancestor &&
+        blockUnsafeEntry(blockers, operation.path, inspected)
+      ) {
+        continue;
+      }
+      if (inspected.missingParent || !inspected.entry) continue;
+      if (inspected.entry.type !== "symlink") {
+        blockers.add(
+          "expected-symlink",
+          operation.path,
+          `Remove target "${operation.path}" is not a symbolic link.`,
+        );
+        continue;
+      }
+      entries.delete(operation.path);
+      effective.push(operation);
+      continue;
+    }
+
     if (operation.type === "remove-dir") {
       const inspected = inspectPath(entries, operation.path);
       if (blockUnsafeEntry(blockers, operation.path, inspected)) continue;
@@ -723,12 +751,18 @@ async function inspectAbsentRootParent(root, blockers) {
   }
 }
 
-export async function createPatchPlan({ root, operations } = {}) {
+export async function createPatchPlan({ root, operations, expectedRootDigest } = {}) {
   if (typeof root !== "string" || root.length === 0 || CONTROL_CHARACTERS.test(root)) {
     throw new TypeError("root must be a non-empty path without control characters.");
   }
   if (!Array.isArray(operations)) {
     throw new TypeError("operations must be an array.");
+  }
+  if (
+    expectedRootDigest !== undefined &&
+    (typeof expectedRootDigest !== "string" || expectedRootDigest.length === 0)
+  ) {
+    throw new TypeError("expectedRootDigest must be a non-empty string when provided.");
   }
 
   const canonicalRoot = await canonicalizeRoot(root);
@@ -738,6 +772,17 @@ export async function createPatchPlan({ root, operations } = {}) {
   const snapshot = await snapshotTree(canonicalRoot);
   const blockers = createBlockerCollector();
   const safeOperations = [];
+
+  if (
+    expectedRootDigest !== undefined &&
+    snapshot.digest !== expectedRootDigest
+  ) {
+    blockers.add(
+      "stale-analysis-preimage",
+      "",
+      "The patch root changed after its operations were analyzed.",
+    );
+  }
 
   for (const operation of normalizedOperations) {
     let safe = true;
@@ -827,6 +872,8 @@ function renderOperation(operation) {
       return `MOVE FILE ${operation.from} -> ${operation.to}`;
     case "remove-file":
       return `REMOVE FILE ${operation.path}`;
+    case "remove-symlink":
+      return `REMOVE SYMLINK ${operation.path}`;
     case "remove-dir":
       return `REMOVE DIR ${operation.path}`;
     default:

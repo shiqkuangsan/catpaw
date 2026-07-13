@@ -94,8 +94,8 @@ async function assertTreeDigest(root, expectedDigest, message) {
 }
 
 async function validateStage(stageRoot, validate) {
-  if (!validate) return;
   const beforeDigest = (await snapshotTree(stageRoot)).digest;
+  if (!validate) return beforeDigest;
   await validate({ stageRoot });
   const afterDigest = (await snapshotTree(stageRoot)).digest;
   if (afterDigest !== beforeDigest) {
@@ -104,6 +104,7 @@ async function validateStage(stageRoot, validate) {
       "Validator mutated the staged postimage.",
     );
   }
+  return afterDigest;
 }
 
 async function prepareBackup(sourceRoot, backupPath, expectedDigest) {
@@ -184,6 +185,9 @@ async function applyOperations(stageRoot, operations) {
       case "remove-file":
         await unlink(targetPath(stageRoot, operation.path));
         break;
+      case "remove-symlink":
+        await unlink(targetPath(stageRoot, operation.path));
+        break;
       case "remove-dir":
         await rmdir(targetPath(stageRoot, operation.path));
         break;
@@ -244,14 +248,24 @@ export async function applyPatchPlan(plan, { validate, backupPath } = {}) {
     await rmdir(stageRoot);
     if (rootExisted) {
       await cp(plan.root, stageRoot, COPY_OPTIONS);
+      await assertTreeDigest(
+        stageRoot,
+        plan.rootDigest,
+        "Patch plan is stale because the staged preimage differs from the planned root.",
+      );
     } else {
       await mkdir(stageRoot);
     }
     await applyOperations(stageRoot, plan.operations);
-    await validateStage(stageRoot, validate);
+    const validatedStageDigest = await validateStage(stageRoot, validate);
 
     if (!rootExisted) {
       await assertFresh(plan);
+      await assertTreeDigest(
+        stageRoot,
+        validatedStageDigest,
+        "Staged postimage changed after validation.",
+      );
       await rename(stageRoot, plan.root);
       stagePublished = true;
     } else {
@@ -292,6 +306,11 @@ export async function applyPatchPlan(plan, { validate, backupPath } = {}) {
         publishedBackupPath = canonicalBackupPath;
       }
 
+      await assertTreeDigest(
+        stageRoot,
+        validatedStageDigest,
+        "Staged postimage changed after validation.",
+      );
       try {
         await rename(stageRoot, plan.root);
         stagePublished = true;

@@ -20,8 +20,20 @@
   so migrated terminal history remains valid without claiming a new review.
 - Keep conflicting identities, duplicates, unsafe paths, undecodable Markdown,
   destination collisions, and failed staged validation as hard blockers.
+- Recover safe scalar facts from nested or malformed legacy artifact
+  frontmatter while keeping malformed identity fields and unterminated blocks
+  fatal; preserve missing historical research/provider or unknown narrative
+  links as warnings while active-authority links remain blockers.
+- Archive valid UTF-8 symlink target text as an inert checksummed sidecar
+  without following or recreating the alias, and stage-gate the complete legacy
+  manifest against report order, file inventory, bytes, hashes, and modes.
+- Bind migration analysis and patch planning to one source tree digest so an
+  active board cannot publish operations derived from an older preimage.
 - Add full mapping regression coverage and verify the real `lowcode-qa-agent`
   preimage at 116 Work, 107 Plan, 13 Milestone, and 136 Evidence artifacts.
+- Verify the active `ergouzi-space` preimage at 43 Work, 38 Plan, 1 Milestone,
+  79 Evidence artifacts, and 158 archived legacy entries with zero migration
+  blockers, clean doctor output, and an exact second-migration no-op.
 
 Migration note (3.0.3 -> 3.0.4):
 

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readFile, readdir, readlink } from "node:fs/promises";
 import path from "node:path";
 import { TextDecoder } from "node:util";
 
@@ -470,10 +470,24 @@ function milestoneSectionIds(body) {
 }
 
 function normalizedBinding(data, artifactPath, artifactKind) {
-  const rawWork = data?.work ?? null;
-  const rawReq = data?.req ?? null;
+  const hasWork = Object.hasOwn(data ?? {}, "work") && data.work !== null;
+  const hasReq = Object.hasOwn(data ?? {}, "req") && data.req !== null;
+  const rawWork = hasWork ? data.work : null;
+  const rawReq = hasReq ? data.req : null;
   const work = canonicalWorkId(rawWork);
   const req = canonicalWorkId(rawReq);
+  const invalid = [
+    ...(hasWork && work === null ? ["work"] : []),
+    ...(hasReq && req === null ? ["req"] : []),
+  ];
+  if (invalid.length > 0) {
+    return {
+      value: null,
+      error: `Invalid legacy Work binding fields: ${invalid.join(", ")}.`,
+      code: "invalid-legacy-identity",
+      path: artifactPath,
+    };
+  }
   if (work !== null && req !== null && work !== req) {
     return {
       value: null,
@@ -585,10 +599,22 @@ async function inventoryTree(root) {
       : stats.isSymbolicLink()
         ? "symlink"
         : "special";
+    let symlinkFacts = {};
+    if (type === "symlink") {
+      const targetBytes = await readlink(absolutePath, { encoding: "buffer" });
+      let target = null;
+      try {
+        target = UTF8_ARCHIVE_DECODER.decode(targetBytes);
+      } catch {
+        // The caller turns a non-UTF-8 target into a deterministic blocker.
+      }
+      symlinkFacts = { target, targetBytes };
+    }
     entries.set(normalized, {
       type,
       empty: false,
       mode: stats.mode & 0o7777,
+      ...symlinkFacts,
     });
   }
 
@@ -602,6 +628,171 @@ function parseText(text, artifactPath, blockers) {
   } catch (error) {
     blockers.push(finding("invalid-frontmatter", artifactPath, error.message));
     return null;
+  }
+}
+
+function recoverLegacyFrontmatter(text) {
+  const opening = text.match(/^---(?:\r?\n|$)/);
+  if (!opening) {
+    return {
+      data: {},
+      body: text,
+      conflicts: [],
+      ignoredFields: [],
+      unterminated: false,
+    };
+  }
+
+  const closingPattern = /^---\r?$/gm;
+  closingPattern.lastIndex = opening[0].length;
+  const closing = closingPattern.exec(text);
+  if (!closing) {
+    return {
+      data: {},
+      body: text,
+      conflicts: [],
+      ignoredFields: ["unterminated-frontmatter"],
+      unterminated: true,
+    };
+  }
+
+  let bodyStart = closing.index + closing[0].length;
+  if (text[bodyStart] === "\n") bodyStart += 1;
+  const body = text.slice(bodyStart);
+  const raw = text.slice(opening[0].length, closing.index);
+  const data = {};
+  const conflicts = new Set();
+  const ignoredFields = new Set();
+
+  for (const line of raw.split(/\r?\n/)) {
+    if (line.trim() === "" || /^\s/.test(line)) continue;
+    const matched = line.match(/^([A-Za-z][A-Za-z0-9_-]*):(.*)$/);
+    if (!matched) {
+      const authoritative = line.match(
+        /^(?:["']?)(id|work|req)(?:["']?)\s*:/i,
+      )?.[1];
+      ignoredFields.add(authoritative?.toLowerCase() ?? "invalid-entry");
+      continue;
+    }
+    const key = matched[1];
+    const value = matched[2].trim();
+    if (value === "") {
+      ignoredFields.add(key);
+      continue;
+    }
+    let parsed;
+    try {
+      parsed = parseFrontmatter(`---\n${key}: ${value}\n---\n`).data[key];
+    } catch {
+      ignoredFields.add(key);
+      continue;
+    }
+    if (Object.hasOwn(data, key)) {
+      if (data[key] !== parsed) conflicts.add(key);
+      continue;
+    }
+    data[key] = parsed;
+  }
+
+  return {
+    data,
+    body,
+    conflicts: [...conflicts].sort(compareText),
+    ignoredFields: [...ignoredFields].sort(compareText),
+    unterminated: false,
+  };
+}
+
+function authoritativeLegacyFields(artifactPath) {
+  const fields = new Set(["work", "req"]);
+  if (/^(?:reqs|milestones)\/[^/]+\.md$/.test(artifactPath)) fields.add("id");
+  return fields;
+}
+
+function malformedLegacyIdentityKeys(data, artifactPath) {
+  const authoritative = authoritativeLegacyFields(artifactPath);
+  return Object.keys(data).filter((key) => {
+    const normalized = key.toLowerCase();
+    return authoritative.has(normalized) && key !== normalized;
+  }).sort(compareText);
+}
+
+function parseLegacyArtifact(text, artifactPath, report) {
+  try {
+    const parsed = parseFrontmatter(text);
+    const malformedKeys = malformedLegacyIdentityKeys(parsed.data, artifactPath);
+    if (malformedKeys.length > 0) {
+      report.blockers.push(
+        finding(
+          "invalid-legacy-identity",
+          artifactPath,
+          `Authoritative legacy fields must use canonical keys: ${malformedKeys.join(", ")}.`,
+        ),
+      );
+      return null;
+    }
+    return { text, ...parsed };
+  } catch (error) {
+    const recovered = recoverLegacyFrontmatter(text);
+    if (recovered.unterminated) {
+      report.blockers.push(
+        finding(
+          "unterminated-frontmatter",
+          artifactPath,
+          "Legacy frontmatter has no closing delimiter.",
+        ),
+      );
+      return null;
+    }
+    const authoritative = authoritativeLegacyFields(artifactPath);
+    const malformedKeys = malformedLegacyIdentityKeys(
+      recovered.data,
+      artifactPath,
+    );
+    if (malformedKeys.length > 0) {
+      report.blockers.push(
+        finding(
+          "invalid-legacy-identity",
+          artifactPath,
+          `Authoritative legacy fields must use canonical keys: ${malformedKeys.join(", ")}.`,
+        ),
+      );
+      return null;
+    }
+    const invalidIdentity = recovered.ignoredFields.filter((field) =>
+      authoritative.has(field)
+    );
+    if (invalidIdentity.length > 0) {
+      report.blockers.push(
+        finding(
+          "invalid-legacy-identity",
+          artifactPath,
+          `Could not safely parse authoritative legacy fields: ${invalidIdentity.join(", ")}.`,
+        ),
+      );
+      return null;
+    }
+    if (recovered.conflicts.length > 0) {
+      report.blockers.push(
+        finding(
+          "conflicting-legacy-frontmatter",
+          artifactPath,
+          `Conflicting duplicate scalar fields: ${recovered.conflicts.join(", ")}.`,
+        ),
+      );
+      return null;
+    }
+    const ignored = recovered.ignoredFields.length > 0
+      ? ` Ignored structured or invalid fields: ${recovered.ignoredFields.join(", ")}.`
+      : "";
+    report.warnings.push(
+      warning(
+        "recovered-frontmatter",
+        artifactPath,
+        `Recovered safe scalar metadata after legacy frontmatter parse failure: ${error.message}.${ignored}`,
+      ),
+    );
+    return { text, data: recovered.data, body: recovered.body };
   }
 }
 
@@ -714,7 +905,9 @@ function rewriteDestination({
   inventory,
   moveMap,
   blockers,
+  warnings,
   linkRewrites,
+  allowBrokenLocalLinks = false,
 }) {
   const parsed = splitDestination(raw);
   if (!parsed || isExternalTarget(parsed.url)) return raw;
@@ -763,8 +956,16 @@ function rewriteDestination({
     return `${parsed.leading}${renderedUrl}${parsed.suffix}${parsed.trailing}`;
   }
   if (!inventory.has(oldTarget)) {
-    blockers.push(
-      finding("broken-local-link", source, `Local link target does not exist: ${parsed.url}`),
+    const unresolved = allowBrokenLocalLinks ? warning : finding;
+    const destination = allowBrokenLocalLinks ? warnings : blockers;
+    destination.push(
+      unresolved(
+        "broken-local-link",
+        source,
+        allowBrokenLocalLinks
+          ? `Preserved unresolved historical local link target: ${parsed.url}`
+          : `Local link target does not exist: ${parsed.url}`,
+      ),
     );
     return raw;
   }
@@ -953,6 +1154,7 @@ function operationSort(left, right) {
     ["move-file", 1],
     ["write-file", 2],
     ["remove-file", 3],
+    ["remove-symlink", 3],
     ["remove-dir", 4],
   ]);
   const phase = phases.get(left.type) - phases.get(right.type);
@@ -1082,7 +1284,22 @@ export async function analyzeV1ToV2Migration({
   }
 
   for (const [relativePath, entry] of inventory) {
-    if (entry.type === "symlink" || entry.type === "special") {
+    if (
+      entry.type === "symlink" &&
+      isLegacySourcePath(relativePath) &&
+      entry.target === null
+    ) {
+      report.blockers.push(
+        finding(
+          "non-utf8-symlink-target",
+          relativePath,
+          "Legacy symlink target is not valid UTF-8 and cannot be archived losslessly.",
+        ),
+      );
+    }
+    if (entry.type === "special" || (
+      entry.type === "symlink" && !isLegacySourcePath(relativePath)
+    )) {
       report.blockers.push(
         finding(
           "unsupported-board-entry",
@@ -1164,16 +1381,11 @@ export async function analyzeV1ToV2Migration({
   const parsedCache = new Map();
   for (const [relativePath, text] of knownMarkdown) {
     if (relativePath === "index.md" || relativePath === "lessons.md") continue;
-    try {
-      parsedCache.set(relativePath, { text, ...parseFrontmatter(text) });
-    } catch (error) {
-      parsedCache.set(relativePath, { text, error });
-      report.blockers.push(finding("invalid-frontmatter", relativePath, error.message));
-    }
+    parsedCache.set(relativePath, parseLegacyArtifact(text, relativePath, report));
   }
   function parsedFile(relativePath) {
     const cached = parsedCache.get(relativePath);
-    return cached?.error ? null : cached ?? null;
+    return cached ?? null;
   }
   const inferenceDate = migrationDateFrom(migrationDate, knownMarkdown);
 
@@ -1300,6 +1512,20 @@ export async function analyzeV1ToV2Migration({
       activeMilestoneWorkIds.has(sourceId);
     if (!parsed) continue;
     const data = parsed.data;
+    if (
+      Object.hasOwn(data, "id") &&
+      data.id !== null &&
+      canonicalWorkId(data.id) === null
+    ) {
+      report.blockers.push(
+        finding(
+          "invalid-legacy-identity",
+          source,
+          `Invalid explicit Work ID: ${String(data.id)}.`,
+        ),
+      );
+      continue;
+    }
     const explicitId = canonicalWorkId(data.id);
     const headingId = workIdFromHeading(parsed.body);
     const identityIds = new Set([explicitId, sourceId, headingId].filter(Boolean));
@@ -1545,6 +1771,21 @@ export async function analyzeV1ToV2Migration({
     const parsed = parsedFile(source);
     const sourceActive = sourceId !== null && activeIndexMilestoneIds.has(sourceId);
     if (!parsed) continue;
+
+    if (
+      Object.hasOwn(parsed.data, "id") &&
+      parsed.data.id !== null &&
+      canonicalMilestoneId(parsed.data.id) === null
+    ) {
+      report.blockers.push(
+        finding(
+          "invalid-legacy-identity",
+          source,
+          `Invalid explicit Milestone ID: ${String(parsed.data.id)}.`,
+        ),
+      );
+      continue;
+    }
 
     const explicitId = canonicalMilestoneId(parsed.data.id);
     const headingToken = String(parsed.body ?? "")
@@ -1864,6 +2105,51 @@ export async function analyzeV1ToV2Migration({
       moveMap.set(source, target);
     }
   }
+  const legacyAliases = [...inventory.entries()]
+    .filter(([relativePath, entry]) =>
+      relativePath !== "" &&
+      entry.type === "symlink" &&
+      isLegacySourcePath(relativePath) &&
+      entry.target !== null
+    )
+    .sort(([left], [right]) => compareText(left, right));
+  const archiveTargets = new Set(report.preservedLegacy.map((item) => item.to));
+  for (const [source, entry] of legacyAliases) {
+    const target = `${LEGACY_ARCHIVE_ROOT}/${source}.symlink-target`;
+    if (archiveTargets.has(target)) {
+      report.blockers.push(
+        finding(
+          "legacy-archive-target-collision",
+          target,
+          `Multiple legacy entries map to archive target: ${target}`,
+        ),
+      );
+      continue;
+    }
+    archiveTargets.add(target);
+    const bytes = entry.targetBytes;
+    report.preservedLegacy.push({
+      from: source,
+      to: target,
+      disposition: "preserved-alias",
+      sourceType: "symlink",
+      linkTarget: entry.target,
+      bytes: bytes.length,
+      sha256: sha256(bytes),
+      sourceMode: entry.mode,
+      mode: 0o644,
+    });
+    legacyArchiveContent.set(source, entry.target);
+    moveMap.set(source, target);
+    report.warnings.push(
+      warning(
+        "preserved-symlink-alias",
+        source,
+        `Archived symlink target text without following or recreating the alias: ${entry.target}`,
+      ),
+    );
+  }
+  report.preservedLegacy.sort((left, right) => compareText(left.from, right.from));
   const legacyManifestContent = `${JSON.stringify({
     format: 1,
     schema: 1,
@@ -1936,7 +2222,9 @@ export async function analyzeV1ToV2Migration({
         inventory,
         moveMap,
         blockers: report.blockers,
+        warnings: report.warnings,
         linkRewrites: report.linkRewrites,
+        allowBrokenLocalLinks: true,
       },
       original,
     );
@@ -1952,7 +2240,9 @@ export async function analyzeV1ToV2Migration({
     inventory,
     moveMap,
     blockers: report.blockers,
+    warnings: report.warnings,
     linkRewrites: report.linkRewrites,
+    allowBrokenLocalLinks: ["research", "provider"].includes(candidate.kind),
   });
   for (const candidate of candidates) {
     const body = rewriteMarkdownLinks(rewriteContext(candidate), candidate.body);
@@ -1997,6 +2287,7 @@ export async function analyzeV1ToV2Migration({
       inventory,
       moveMap,
       blockers: report.blockers,
+      warnings: report.warnings,
       linkRewrites: report.linkRewrites,
     },
     `${indexBody}\n`,
@@ -2024,7 +2315,6 @@ export async function analyzeV1ToV2Migration({
   report.blockers.sort(reportSort);
   report.warnings.sort(reportSort);
   report.mappings.sort(reportSort);
-  report.preservedLegacy.sort((left, right) => compareText(left.from, right.from));
   report.preservedUnknown = [...new Set(report.preservedUnknown)].sort(compareText);
   report.linkRewrites.sort(reportSort);
   if (report.blockers.length > 0) {
@@ -2041,6 +2331,16 @@ export async function analyzeV1ToV2Migration({
       : {}),
   }));
   for (const entry of report.preservedLegacy) {
+    if (entry.sourceType === "symlink") {
+      operations.push({
+        type: "write-file",
+        path: entry.to,
+        content: legacyArchiveContent.get(entry.from),
+        mode: "create",
+        fileMode: 0o644,
+      });
+      continue;
+    }
     const inPlaceReplacement = entry.from === "index.md" ||
       candidateBySource.get(entry.from)?.target === entry.from;
     if (inPlaceReplacement) {
@@ -2089,6 +2389,9 @@ export async function analyzeV1ToV2Migration({
     mode: "replace",
     fileMode: inventory.get("index.md").mode,
   });
+  for (const [relativePath] of legacyAliases) {
+    operations.push({ type: "remove-symlink", path: relativePath });
+  }
   for (const [relativePath, entry] of inventory) {
     if (entry.type !== "directory") continue;
     if (

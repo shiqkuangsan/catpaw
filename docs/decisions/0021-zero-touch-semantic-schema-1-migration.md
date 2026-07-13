@@ -50,10 +50,25 @@ Adopt zero-touch semantic conversion for every recognized schema 1 artifact.
    reflection Evidence naming unavailable modern completion gates. This is a
    migration gap record, not a claim that an independent check occurred and
    not authority for any external action.
-10. Keep filesystem escapes, unsupported entries, invalid UTF-8, malformed
-   source structure, stale preimages, and staged-validation failures as hard
-   blockers. Migration remains dry-run by default and project apply remains a
-   separate authorization.
+10. Treat malformed optional artifact frontmatter and missing local targets
+    from historical research/provider Evidence or preserved unknown narrative as recoverable source defects:
+    recover safe scalars, preserve unresolved link text, archive the original,
+    and warn. Malformed `id/work/req`, unterminated frontmatter, active-authority
+    broken links, and conflicting identities remain blockers.
+11. Archive valid UTF-8 legacy-root symlink target text as a checksummed inert
+    sidecar; never dereference or recreate the alias. Keep non-UTF-8 targets,
+    non-legacy symlinks, special entries, filesystem escapes, invalid index
+    authority/UTF-8, stale preimages, and staged-validation failures as hard
+    blockers.
+12. Require source inventory to reconcile with native mappings plus preserved
+    dispositions, clean staged/live doctor results, verified archive checksums,
+    preserved index narrative, and an exact second-migration no-op. Rebuild a
+    candidate when an active board's preimage digest changes.
+13. Bind semantic analysis and patch planning to the same tree digest; reject
+    drift before staging and retain the publisher's stale checks afterward.
+
+Migration remains dry-run by default and project apply remains a separate
+authorization.
 
 No `recordState: historical` concept or nullable parallel artifact model is
 introduced. Schema 2 remains the only live board model.
@@ -68,6 +83,8 @@ introduced. Schema 2 remains the only live board model.
   inspectable.
 - Existing schema 2 boards and their mutation rules are unchanged.
 - Schema 1 previews produced before 3.0.4 are superseded and must be rerun.
+- Historical source defects remain inspectable warnings instead of user cleanup
+  tickets; security and identity boundaries remain hard gates.
 - Runtime activation, registry mutation, and each project migration remain
   independently authorized.
 

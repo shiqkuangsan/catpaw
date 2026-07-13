@@ -396,6 +396,39 @@ test("blocks symlink traversal and special files", async (t) => {
   assert.ok(blockerCodes(specialFile).includes("special-file"));
 });
 
+test("remove-symlink removes only the leaf alias without following it", async (t) => {
+  const { root, sandbox } = await fixture(t);
+  const outside = path.join(sandbox, "outside.txt");
+  await writeFile(outside, "outside\n");
+  await symlink(outside, path.join(root, "latest"));
+
+  const plan = await createPatchPlan({
+    root,
+    operations: [{ type: "remove-symlink", path: "latest" }],
+  });
+  assert.equal(plan.status, "ready", JSON.stringify(plan.blockers));
+  assert.match(renderPatchPlan(plan), /REMOVE SYMLINK latest/);
+  await applyPatchPlan(plan);
+  await assert.rejects(lstat(path.join(root, "latest")), { code: "ENOENT" });
+  assert.equal(await readFile(outside, "utf8"), "outside\n");
+
+  await put(root, "regular.txt", "regular\n");
+  const regular = await createPatchPlan({
+    root,
+    operations: [{ type: "remove-symlink", path: "regular.txt" }],
+  });
+  assert.equal(regular.status, "blocked");
+  assert.ok(blockerCodes(regular).includes("expected-symlink"));
+
+  await symlink(path.dirname(outside), path.join(root, "linked"));
+  const traversal = await createPatchPlan({
+    root,
+    operations: [{ type: "remove-symlink", path: "linked/outside.txt" }],
+  });
+  assert.equal(traversal.status, "blocked");
+  assert.ok(blockerCodes(traversal).includes("symlink-traversal"));
+});
+
 test("throws TypeError for malformed operation objects", async (t) => {
   const { root } = await fixture(t);
 
@@ -924,6 +957,30 @@ test("rejects a stale plan before validation or staging", async (t) => {
   assert.deepEqual(await readdir(sandbox), ["board"]);
 });
 
+test("binds generated operations to the analyzed root digest", async (t) => {
+  const { root } = await fixture(t);
+  await put(root, "value.txt", "analyzed preimage\n");
+  const analyzedDigest = (await snapshotTree(root)).digest;
+  await put(root, "value.txt", "changed after analysis\n");
+
+  const plan = await createPatchPlan({
+    root,
+    expectedRootDigest: analyzedDigest,
+    operations: [{
+      type: "write-file",
+      path: "result.txt",
+      content: "must not publish\n",
+      mode: "create",
+    }],
+  });
+
+  assert.equal(plan.status, "blocked");
+  assert.deepEqual(plan.operations, []);
+  assert.ok(plan.blockers.some((item) =>
+    item.code === "stale-analysis-preimage" && item.path === ""
+  ));
+});
+
 test("rejects post-validation staleness before backup or swap", async (t) => {
   const { root, sandbox } = await fixture(t);
   const backupPath = path.join(sandbox, "backup");
@@ -1103,7 +1160,44 @@ test("rejects validator mutation of the staged postimage", async (t) => {
   assert.deepEqual(await readdir(sandbox), ["board"]);
 });
 
-test("retains a published backup and reports it when commit fails", async (t) => {
+test("rejects staged postimage mutation after validation and restores the live root", async (t) => {
+  const { root, sandbox } = await fixture(t);
+  await addDigestPadding(root);
+  await put(root, "value.txt", "before");
+  const before = await treeSnapshot(root);
+  const plan = await createPatchPlan({
+    root,
+    operations: [{
+      type: "write-file",
+      path: "value.txt",
+      content: "after",
+      mode: "replace",
+    }],
+  });
+  let observer;
+  let applyError;
+
+  try {
+    await applyPatchPlan(plan, {
+      validate: async ({ stageRoot }) => {
+        observer = observeRollback(plan, async () => {
+          await writeFile(path.join(stageRoot, "value.txt"), "late mutation");
+        });
+      },
+    });
+  } catch (error) {
+    applyError = error;
+  } finally {
+    observer?.cancel();
+  }
+
+  assert.equal(await observer.promise, true);
+  assert.match(applyError?.message ?? "", /Staged postimage changed after validation/);
+  assert.deepEqual(await treeSnapshot(root), before);
+  assert.deepEqual(await readdir(sandbox), ["board"]);
+});
+
+test("retains a published backup when the staged postimage disappears before publish", async (t) => {
   const { root, sandbox } = await fixture(t);
   const backupPath = path.join(sandbox, "backup");
   await addDigestPadding(root);
@@ -1139,7 +1233,8 @@ test("retains a published backup and reports it when commit fails", async (t) =>
   }
 
   assert.equal(await observer.promise, true);
-  assert.equal(applyError?.code, "ERR_PATCH_COMMIT");
+  assert.equal(applyError?.code, "ERR_PATCH_PLAN_STALE");
+  assert.match(applyError?.message ?? "", /Staged postimage changed after validation/);
   assert.equal(applyError?.backupPath, path.resolve(backupPath));
   assert.deepEqual(await treeSnapshot(root), before);
   assert.deepEqual(await treeSnapshot(backupPath), before);
