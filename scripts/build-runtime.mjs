@@ -12,12 +12,14 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const scriptPath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
+  path.dirname(scriptPath),
   "..",
 );
 const sourceRoot = path.join(repoRoot, "src", "runtime");
 const distRoot = path.join(repoRoot, "dist", "runtime");
+const PROTECTED_LOCAL_ROOTS = new Set(["backups", "state"]);
 
 function inside(parent, child) {
   const relative = path.relative(parent, child);
@@ -26,24 +28,25 @@ function inside(parent, child) {
     !path.isAbsolute(relative);
 }
 
-function canonicalPath(entry) {
+function canonicalPath(entry, field = "canonicalFiles") {
   if (
     typeof entry !== "string" ||
     entry === "" ||
     entry.includes("\\") ||
     /[\u0000-\u001f\u007f]/.test(entry)
   ) {
-    throw new Error(`Unsafe runtime-manifest canonicalFiles entry: ${entry}`);
+    throw new Error(`Unsafe runtime-manifest ${field} entry: ${entry}`);
   }
   const directory = entry.endsWith("/");
   const value = directory ? entry.slice(0, -1) : entry;
   if (
     value === "" ||
+    value === "." ||
     path.posix.isAbsolute(value) ||
     path.posix.normalize(value) !== value ||
     value.split("/").includes("..")
   ) {
-    throw new Error(`Unsafe runtime-manifest canonicalFiles entry: ${entry}`);
+    throw new Error(`Unsafe runtime-manifest ${field} entry: ${entry}`);
   }
   return { entry, value, directory };
 }
@@ -69,22 +72,54 @@ async function assertRegularTree(root, relativePath) {
   }
 }
 
-async function validateManifest(manifest) {
+export function validateRuntimeManifestPaths(manifest) {
   if (
     manifest?.name !== "catpaw-runtime" ||
     typeof manifest.version !== "string" ||
     !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
     !Number.isInteger(manifest.boardSchemaVersion) ||
     !Array.isArray(manifest.canonicalFiles) ||
+    !Array.isArray(manifest.legacyRuntimePaths) ||
     typeof manifest.cli?.entrypoint !== "string" ||
     !Array.isArray(manifest.cli?.commands)
   ) {
     throw new Error("runtime-manifest.json has an invalid package contract.");
   }
-  const entries = manifest.canonicalFiles.map(canonicalPath);
+  const entries = manifest.canonicalFiles.map((entry) =>
+    canonicalPath(entry, "canonicalFiles")
+  );
+  const retired = manifest.legacyRuntimePaths.map((entry) =>
+    canonicalPath(entry, "legacyRuntimePaths")
+  );
+  if (entries.some((item) => item.value.includes("/"))) {
+    throw new Error("runtime-manifest canonicalFiles entries must be top-level.");
+  }
   if (new Set(entries.map((item) => item.value)).size !== entries.length) {
     throw new Error("runtime-manifest canonicalFiles entries must be unique.");
   }
+  if (retired.some((item) =>
+    !item.directory ||
+    item.value.includes("/") ||
+    item.value.startsWith(".") ||
+    PROTECTED_LOCAL_ROOTS.has(item.value.toLowerCase())
+  )) {
+    throw new Error(
+      "runtime-manifest legacyRuntimePaths entries must be unprotected top-level directories.",
+    );
+  }
+  const allPaths = [...entries, ...retired].map((item) =>
+    item.value.toLowerCase()
+  );
+  if (new Set(allPaths).size !== allPaths.length) {
+    throw new Error(
+      "runtime-manifest canonicalFiles and legacyRuntimePaths must not overlap.",
+    );
+  }
+  return entries;
+}
+
+async function validateManifest(manifest) {
+  const entries = validateRuntimeManifestPaths(manifest);
   const version = (await readFile(path.join(sourceRoot, "VERSION"), "utf8")).trim();
   if (version !== manifest.version) {
     throw new Error(`VERSION ${version} does not match manifest ${manifest.version}.`);
@@ -107,7 +142,7 @@ async function validateManifest(manifest) {
     await assertRegularTree(sourceRoot, item.value);
   }
 
-  const entrypoint = canonicalPath(manifest.cli.entrypoint).value;
+  const entrypoint = canonicalPath(manifest.cli.entrypoint, "cli.entrypoint").value;
   const entrypointPath = path.join(sourceRoot, entrypoint);
   if (!inside(sourceRoot, entrypointPath) || await kind(entrypointPath) !== "file") {
     throw new Error(`Missing CLI entrypoint: ${manifest.cli.entrypoint}`);
@@ -153,7 +188,9 @@ async function main() {
   console.log(`CLI: ${manifest.cli.entrypoint} (${manifest.cli.commands.length} command groups).`);
 }
 
-main().catch((error) => {
-  console.error(error.stack ?? error.message);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
+  main().catch((error) => {
+    console.error(error.stack ?? error.message);
+    process.exitCode = 1;
+  });
+}

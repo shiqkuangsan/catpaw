@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.0.2 - 2026-07-13
+
+- Make strict activation compare only manifest-managed installed files while
+  preserving and reporting local state, backups, unknown files, and symlinks.
+- Declare retired 2.x runtime roots through `legacyRuntimePaths` and fail strict
+  verification if stale command, role, spec, guide, source-evidence, or tool
+  authority remains live after activation.
+- Require explicit canonical/retired path arrays and validate retired paths in
+  both build and verification as unprotected top-level directories with
+  case-insensitive collision checks; `state/`, `backups/`, root, file, and
+  nested targets are invalid.
+- Keep `build-runtime` cleanup fixed to the repository dist root instead of
+  exposing destructive source/dist overrides through process environment.
+- Run installed CLI smoke only after exact managed file/directory parity and a
+  contained executable entrypoint are proven; bound smoke time and report the
+  actual failing init/status stage.
+- Require local active documentation links to remain lexically and physically
+  inside the runtime root, reject absolute filesystem and `file:` targets, and
+  allow only explicit web/mail schemes before reporting installation current.
+- Keep the thin global adapter's `老二` routing explicit for reciprocal
+  Codex-to-`cc` and Claude-Code-to-`cx` checks without restoring a third Agent.
+
+Migration note (3.0.1 -> 3.0.2):
+
+```text
+Runtime activation: explicit; source/dist 3.0.2 does not update ~/.catpaw automatically.
+Project impact: board schema remains 2 and schema 1 migration behavior is unchanged from 3.0.1.
+Required actions: rebuild and verify source/dist; stage activation with local extras preserved and every legacyRuntimePaths entry backed up and absent from live runtime.
+Safety: strict verification does not read local-only surfaces, but still rejects drift inside canonical runtime directories and checks installed CLI mode/links/smoke.
+Optional actions: refresh stale global or project adapters separately when they reference retired 2.x paths or providers.
+Non-goals: no adapter rewrite, registry mutation, board migration, commit, push, or cleanup is implied by this hotfix.
+Rollback: keep the installed 2.1.7 runtime until 3.0.2 and required adapter patches are separately approved.
+```
+
 ## 3.0.1 - 2026-07-13
 
 - Replace exhaustive schema 1 conversion with active-closure migration;

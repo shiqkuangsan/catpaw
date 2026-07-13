@@ -6,7 +6,7 @@ the installed runtime, host adapters, registry, or project boards.
 
 ## Current State
 
-- Source runtime: `3.0.1`.
+- Source runtime: `3.0.2`.
 - Project board contract: board schema 2.
 - Activation: `pending activation` until the installed runtime is explicitly
   upgraded and verified.
@@ -52,6 +52,9 @@ Proceed only after the user asks to install or upgrade:
 Preserve `~/.catpaw/state/` and unknown user files. Do not copy repository-root
 `docs/`, `scripts/`, tests, Git metadata, or other source-only files into the
 installed runtime.
+
+Paths listed in `legacyRuntimePaths` are retired managed runtime content, not
+unknown user files. Back them up and exclude them from the staged installation.
 
 ## Separate Authorization Scopes
 

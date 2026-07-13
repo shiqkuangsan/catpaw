@@ -283,5 +283,7 @@ test("adapter snippets activate the compact policy without copying runtime files
   const combined = `${globalAdapter}\n${projectAdapter}`;
   assert.match(combined, /~\/\.catpaw\/runtime-policy\.md/);
   assert.match(combined, /project-local `\.catpaw\/`[\s\S]*artifact board/i);
+  assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
+  assert.doesNotMatch(globalAdapter, /老三|Gemini|third Agent/i);
   assert.doesNotMatch(combined, /commands\/provider\.md|specs\/09-roles\.md/);
 });

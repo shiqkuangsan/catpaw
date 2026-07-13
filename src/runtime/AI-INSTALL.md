@@ -21,8 +21,10 @@ dist/runtime      generated package
 2. 验证 manifest 中每个 canonical file、hash、可执行入口和本地链接。
 3. 比较 `~/.catpaw/`，输出 exact dry-run：新增、替换、保留与冲突。
 4. 明确保留 `~/.catpaw/state/projects.json`、整个 `state/`、未知用户文件和备份。
-5. 用户授权后，在 sibling stage 组装完整 runtime，验证后再替换 managed files。
-6. 复查 installed `VERSION`、manifest/hash、CLI smoke 与 obvious secret scan。
+5. 将 manifest `legacyRuntimePaths` 视为退役 managed content：先备份，再从 sibling
+   stage 排除；不得把它们误当 unknown files 保留在 live runtime。
+6. 用户授权后，在 sibling stage 组装完整 runtime，验证后再替换 managed files。
+7. 复查 installed `VERSION`、manifest/hash、CLI smoke 与 obvious secret scan。
 
 不要把 runtime 安装到 `~/.claude/`、`~/.codex/` 或项目目录。Provider-specific
 目录只允许写 thin adapter，而且仍需用户明确授权。

@@ -14,6 +14,7 @@ Upgrade 默认 dry-run：列出 managed files 的 add/replace/remove、未知文
 - 备份现有 managed runtime；
 - preserve `~/.catpaw/state/projects.json` 和整个 `state/`；
 - 不删除未知文件；
+- backup 并移除 manifest `legacyRuntimePaths` 声明的退役 managed paths；
 - 在 stage 中验证 manifest、hash、links 与 CLI smoke；
 - 只替换 runtime managed surface。
 
@@ -67,7 +68,7 @@ Canonical shape：
       "boardPath": "/abs/project/.catpaw",
       "projectRoot": "/abs/project",
       "schema": 2,
-      "runtimeSeen": "3.0.1",
+      "runtimeSeen": "3.0.2",
       "registeredVia": "project-activation | legacy-import | schema-migration",
       "registeredAt": "YYYY-MM-DD",
       "lastSeenAt": "YYYY-MM-DD",

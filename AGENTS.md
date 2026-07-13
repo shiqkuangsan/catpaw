@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 3.0.1 Hybrid Runtime.
+This repository is the versioned source for CatPaw 3.0.2 Hybrid Runtime.
 
 ## Repository Role
 

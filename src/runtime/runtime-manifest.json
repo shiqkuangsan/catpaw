@@ -1,6 +1,6 @@
 {
   "name": "catpaw-runtime",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "runtimePath": "~/.catpaw",
   "boardSchemaVersion": 2,
   "released": "2026-07-13",
@@ -32,5 +32,12 @@
     ]
   },
   "projectArtifactPath": ".catpaw",
-  "legacyRuntimePaths": []
+  "legacyRuntimePaths": [
+    "commands/",
+    "guides/",
+    "roles/",
+    "source-evidence/",
+    "specs/",
+    "tools/"
+  ]
 }

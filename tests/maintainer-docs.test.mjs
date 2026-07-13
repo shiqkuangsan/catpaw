@@ -34,7 +34,7 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.0\.1/);
+    assert.match(text, /3\.0\.2/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);

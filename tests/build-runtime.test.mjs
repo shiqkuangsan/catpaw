@@ -12,6 +12,7 @@ import {
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { validateRuntimeManifestPaths } from "../scripts/build-runtime.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const SOURCE = path.join(REPO, "src", "runtime");
@@ -68,7 +69,7 @@ test("runtime manifest declares schema 2 and executable CLI package entries", as
   const manifest = JSON.parse(
     await readFile(path.join(SOURCE, "runtime-manifest.json"), "utf8"),
   );
-  assert.equal(manifest.version, "3.0.1");
+  assert.equal(manifest.version, "3.0.2");
   assert.equal(manifest.boardSchemaVersion, 2);
   assert.equal(manifest.cli.entrypoint, "bin/catpaw.mjs");
   assert.deepEqual(manifest.cli.commands, [
@@ -91,6 +92,14 @@ test("runtime manifest declares schema 2 and executable CLI package entries", as
   for (const removed of ["commands/", "specs/", "roles/", "tools/"]) {
     assert.equal(manifest.canonicalFiles.includes(removed), false, removed);
   }
+  assert.deepEqual(manifest.legacyRuntimePaths, [
+    "commands/",
+    "guides/",
+    "roles/",
+    "source-evidence/",
+    "specs/",
+    "tools/",
+  ]);
 });
 
 test("build replaces stale dist with a hash-identical executable package", async () => {
@@ -101,9 +110,24 @@ test("build replaces stale dist with a hash-identical executable package", async
 
   assert.equal(result.code, 0, result.stderr || result.stdout);
   assert.equal(result.stderr, "");
-  assert.match(result.stdout, /Built CatPaw runtime 3\.0\.1/);
+  assert.match(result.stdout, /Built CatPaw runtime 3\.0\.2/);
   assert.deepEqual(await fileHashes(DIST), await fileHashes(SOURCE));
   await assert.rejects(stat(path.join(DIST, "stale.txt")), { code: "ENOENT" });
   const cliMode = (await stat(path.join(DIST, "bin", "catpaw.mjs"))).mode;
   assert.notEqual(cliMode & 0o111, 0);
+});
+
+test("build rejects protected retired runtime paths case-insensitively", async () => {
+  const manifest = JSON.parse(
+    await readFile(path.join(SOURCE, "runtime-manifest.json"), "utf8"),
+  );
+  for (const retiredPath of ["state/", "State/", "BACKUPS/"]) {
+    assert.throws(
+      () => validateRuntimeManifestPaths({
+        ...manifest,
+        legacyRuntimePaths: [retiredPath],
+      }),
+      /legacyRuntimePaths/,
+    );
+  }
 });

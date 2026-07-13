@@ -8,6 +8,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rm,
   stat,
 } from "node:fs/promises";
@@ -40,6 +41,7 @@ const ACTIVE_DOC_ROOTS = [
   "snippets",
   "templates",
 ];
+const PROTECTED_LOCAL_ROOTS = new Set(["backups", "state"]);
 
 function parseArgs(argv) {
   const options = { json: false, strictActivation: false };
@@ -55,9 +57,33 @@ function parseArgs(argv) {
   return options;
 }
 
+function smokeTimeoutMs() {
+  const value = Number(process.env.CATPAW_VERIFY_SMOKE_TIMEOUT_MS ?? 10000);
+  return Number.isInteger(value) && value > 0 && value <= 60000
+    ? value
+    : 10000;
+}
+
+function inside(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative);
+}
+
 async function exists(target) {
   try {
     await stat(target);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
+async function pathExists(target) {
+  try {
+    await lstat(target);
     return true;
   } catch (error) {
     if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return false;
@@ -76,11 +102,52 @@ function safeManifestEntry(entry) {
   const value = directory ? entry.slice(0, -1) : entry;
   if (
     value === "" ||
+    value === "." ||
     path.posix.isAbsolute(value) ||
     path.posix.normalize(value) !== value ||
     value.split("/").includes("..")
   ) return null;
   return { value, directory };
+}
+
+function manifestPathContract(manifest) {
+  const canonicalValues = manifest.canonicalFiles;
+  const canonical = Array.isArray(canonicalValues)
+    ? canonicalValues.map(safeManifestEntry)
+    : [];
+  const legacyValues = manifest.legacyRuntimePaths;
+  const legacy = Array.isArray(legacyValues)
+    ? legacyValues.map(safeManifestEntry)
+    : [];
+  const canonicalSafe = Array.isArray(canonicalValues) &&
+    canonical.every((entry) => entry !== null && !entry.value.includes("/"));
+  const legacySafe = Array.isArray(legacyValues) &&
+    legacy.every((entry) =>
+      entry !== null &&
+      entry.directory &&
+      !entry.value.includes("/") &&
+      !entry.value.startsWith(".") &&
+      !PROTECTED_LOCAL_ROOTS.has(entry.value.toLowerCase())
+    );
+  const allSafe = canonicalSafe &&
+    Array.isArray(legacyValues) &&
+    legacySafe;
+  const values = [...canonical, ...legacy]
+    .filter(Boolean)
+    .map((entry) => entry.value.toLowerCase());
+  const unique = new Set(values).size === values.length;
+  const overlaps = canonical.filter(Boolean).some((current) =>
+    legacy.filter(Boolean).some((retired) =>
+      current.value.toLowerCase() === retired.value.toLowerCase() ||
+      (current.directory && retired.value.toLowerCase().startsWith(
+        `${current.value.toLowerCase()}/`,
+      )) ||
+      (retired.directory && current.value.toLowerCase().startsWith(
+        `${retired.value.toLowerCase()}/`,
+      ))
+    )
+  );
+  return { canonical, legacy, safe: allSafe && unique && !overlaps };
 }
 
 async function listFiles(root) {
@@ -113,6 +180,53 @@ async function listFiles(root) {
   return { files, directories };
 }
 
+async function listManagedFiles(root, entries) {
+  const files = new Map();
+  const directories = new Set([""]);
+  const visited = new Set();
+
+  async function visit(relativePath) {
+    if (visited.has(relativePath)) return;
+    visited.add(relativePath);
+    const target = path.join(root, relativePath);
+    let stats;
+    try {
+      stats = await lstat(target);
+    } catch (error) {
+      if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return;
+      throw error;
+    }
+    const slashPath = relativePath.split(path.sep).join("/");
+    if (stats.isDirectory()) {
+      directories.add(slashPath);
+      const children = await readdir(target, { withFileTypes: true });
+      children.sort((left, right) => left.name.localeCompare(right.name, "en"));
+      for (const child of children) {
+        await visit(path.join(relativePath, child.name));
+      }
+    } else if (stats.isFile()) {
+      files.set(
+        slashPath,
+        createHash("sha256").update(await readFile(target)).digest("hex"),
+      );
+    } else {
+      throw new Error(`Unsupported managed package entry: ${slashPath}`);
+    }
+  }
+
+  for (const entry of entries) await visit(entry.value);
+  return { files, directories };
+}
+
+async function localExtraRoots(root, entries) {
+  const children = await readdir(root, { withFileTypes: true });
+  return children
+    .map((entry) => entry.name)
+    .filter((name) => !entries.some((entry) =>
+      entry.value === name || entry.value.startsWith(`${name}/`)
+    ));
+}
+
 function packageDigest(files) {
   const hash = createHash("sha256");
   for (const [relativePath, digest] of [...files].sort(([left], [right]) =>
@@ -131,26 +245,64 @@ function mapsEqual(left, right) {
   return true;
 }
 
+function setsEqual(left, right) {
+  if (left.size !== right.size) return false;
+  for (const value of left) {
+    if (!right.has(value)) return false;
+  }
+  return true;
+}
+
+function snapshotsEqual(left, right) {
+  return left !== null && right !== null &&
+    mapsEqual(left.files, right.files) &&
+    setsEqual(left.directories, right.directories);
+}
+
 function covered(relativePath, entries) {
   return entries.some((entry) =>
     entry.directory
-      ? relativePath.startsWith(`${entry.value}/`)
+      ? relativePath === entry.value || relativePath.startsWith(`${entry.value}/`)
       : relativePath === entry.value
   );
 }
 
-async function packageSnapshot(label, root, manifest, record) {
+function resolveCliEntrypoint(root, manifest) {
+  const entry = safeManifestEntry(manifest.cli?.entrypoint);
+  const canonical = Array.isArray(manifest.canonicalFiles)
+    ? manifest.canonicalFiles.map(safeManifestEntry)
+    : [];
+  if (
+    !entry ||
+    entry.directory ||
+    canonical.length === 0 ||
+    !canonical.every(Boolean) ||
+    !covered(entry.value, canonical)
+  ) return null;
+  const resolved = path.resolve(root, entry.value);
+  return inside(root, resolved) ? resolved : null;
+}
+
+async function packageSnapshot(label, root, manifest, record, options = {}) {
   if (!(await exists(root))) {
     record(`${label} package root`, false, root);
     return null;
   }
-  const entries = manifest.canonicalFiles.map(safeManifestEntry);
-  const safe = entries.every(Boolean) &&
+  const canonicalValues = manifest?.canonicalFiles;
+  const entries = Array.isArray(canonicalValues)
+    ? canonicalValues.map(safeManifestEntry)
+    : [];
+  const safe = Array.isArray(canonicalValues) &&
+    entries.length > 0 &&
+    entries.every(Boolean) &&
     new Set(entries.filter(Boolean).map((entry) => entry.value)).size === entries.length;
   record(`${label} manifest paths`, safe, `${entries.length} canonical entries`);
   if (!safe) return null;
 
-  const snapshot = await listFiles(root);
+  const preserveLocalExtras = options.preserveLocalExtras === true;
+  const snapshot = preserveLocalExtras
+    ? await listManagedFiles(root, entries)
+    : await listFiles(root);
   const missing = [];
   for (const entry of entries) {
     if (entry.directory) {
@@ -159,17 +311,24 @@ async function packageSnapshot(label, root, manifest, record) {
       missing.push(entry.value);
     }
   }
-  const undeclared = [...snapshot.files.keys()].filter(
-    (relativePath) => !covered(relativePath, entries),
-  );
+  const undeclared = preserveLocalExtras
+    ? await localExtraRoots(root, entries)
+    : [...new Set([
+        ...snapshot.files.keys(),
+        ...[...snapshot.directories].filter(Boolean),
+      ])].filter((relativePath) => !covered(relativePath, entries));
+  const files = snapshot.files;
   record(
     `${label} canonical coverage`,
-    missing.length === 0 && undeclared.length === 0,
-    `missing=${missing.length}, undeclared=${undeclared.length}`,
+    missing.length === 0 && (preserveLocalExtras || undeclared.length === 0),
+    preserveLocalExtras
+      ? `missing=${missing.length}, localExtras=${undeclared.length}`
+      : `missing=${missing.length}, undeclared=${undeclared.length}`,
   );
   return {
     ...snapshot,
-    hash: packageDigest(snapshot.files),
+    files,
+    hash: packageDigest(files),
     missing,
     undeclared,
   };
@@ -192,6 +351,7 @@ async function markdownFiles(root, relativePath) {
 }
 
 async function brokenActiveLinks(root) {
+  const physicalRoot = await realpath(root);
   const files = [];
   for (const activeRoot of ACTIVE_DOC_ROOTS) {
     const target = path.join(root, activeRoot);
@@ -204,12 +364,25 @@ async function brokenActiveLinks(root) {
       const target = match[1].split(/[?#]/, 1)[0];
       if (
         target === "" ||
-        target.includes("{{") ||
+        /^(?:https?|mailto):/i.test(target)
+      ) continue;
+      if (
         target.startsWith("/") ||
         /^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)
-      ) continue;
+      ) {
+        broken.push(`${file} -> ${match[1]}`);
+        continue;
+      }
+      if (target.includes("{{")) continue;
       const resolved = path.resolve(root, path.dirname(file), target);
-      if (!(await exists(resolved))) broken.push(`${file} -> ${match[1]}`);
+      if (!inside(root, resolved) || !(await exists(resolved))) {
+        broken.push(`${file} -> ${match[1]}`);
+        continue;
+      }
+      const physicalTarget = await realpath(resolved);
+      if (!inside(physicalRoot, physicalTarget)) {
+        broken.push(`${file} -> ${match[1]}`);
+      }
     }
   }
   return broken;
@@ -220,8 +393,17 @@ function subprocess(command, args, options = {}) {
     encoding: "utf8",
     env: { ...process.env, ...(options.env ?? {}) },
     maxBuffer: 16 * 1024 * 1024,
+    timeout: options.timeout,
+    killSignal: "SIGKILL",
   });
-  if (result.error) return { ok: false, detail: result.error.message };
+  if (result.error) {
+    return {
+      ok: false,
+      detail: result.error.code === "ETIMEDOUT"
+        ? `timed out after ${options.timeout}ms`
+        : result.error.message,
+    };
+  }
   return {
     ok: result.status === 0,
     detail: (result.stderr || result.stdout || `exit ${result.status}`).trim(),
@@ -229,12 +411,24 @@ function subprocess(command, args, options = {}) {
   };
 }
 
-async function verifyCliBehavior(label, root, manifest, record) {
+async function verifyCliBehavior(label, root, manifest, record, options = {}) {
+  if (options.enabled === false) {
+    record(
+      `${label} CLI behavior`,
+      false,
+      `skipped: ${options.reason ?? "package precondition failed"}`,
+    );
+    return false;
+  }
+  const cli = resolveCliEntrypoint(root, manifest);
+  if (cli === null) {
+    record(`${label} CLI behavior`, false, "skipped: unsafe CLI entrypoint");
+    return false;
+  }
   const sandbox = await mkdtemp(path.join(os.tmpdir(), `catpaw-${label}-smoke-`));
   try {
     const project = path.join(sandbox, "project");
     await mkdir(project);
-    const cli = path.join(root, manifest.cli.entrypoint);
     const env = { CATPAW_HOME: path.join(sandbox, "home") };
     const initialized = subprocess(process.execPath, [
       cli,
@@ -244,7 +438,7 @@ async function verifyCliBehavior(label, root, manifest, record) {
       project,
       "--apply",
       "--json",
-    ], { env });
+    ], { env, timeout: smokeTimeoutMs() });
     let initReport = null;
     try {
       initReport = initialized.stdout ? JSON.parse(initialized.stdout) : null;
@@ -259,7 +453,7 @@ async function verifyCliBehavior(label, root, manifest, record) {
           "--project",
           project,
           "--json",
-        ], { env })
+        ], { env, timeout: smokeTimeoutMs() })
       : { ok: false, detail: "init failed", stdout: "" };
     let statusReport = null;
     try {
@@ -267,17 +461,29 @@ async function verifyCliBehavior(label, root, manifest, record) {
     } catch {
       // The check below reports the malformed output.
     }
-    const ok = initialized.ok &&
+    const initOk = initialized.ok &&
       initReport?.schema === manifest.boardSchemaVersion &&
-      ["applied", "noop"].includes(initReport?.status) &&
-      status.ok &&
+      ["applied", "noop"].includes(initReport?.status);
+    const statusOk = status.ok &&
       statusReport?.schema === manifest.boardSchemaVersion &&
-      !statusReport.findings?.some((item) => item.severity === "error");
+      Array.isArray(statusReport?.findings) &&
+      !statusReport.findings.some((item) => item.severity === "error");
+    const ok = initOk && statusOk;
+    const detail = ok
+      ? "board init/status schema 2 smoke"
+      : !initialized.ok
+        ? initialized.detail
+        : !initOk
+          ? "init returned unusable schema 2 output"
+          : !status.ok
+            ? status.detail
+            : "status returned unusable schema 2 output";
     record(
       `${label} CLI behavior`,
       ok,
-      ok ? "board init/status schema 2 smoke" : initialized.detail || status.detail,
+      detail,
     );
+    return ok;
   } finally {
     await rm(sandbox, { recursive: true, force: true });
   }
@@ -309,8 +515,71 @@ async function installedReport(sourceVersion, sourceManifest, sourceSnapshot, op
     roots.installed,
     sourceManifest,
     record,
+    { preserveLocalExtras: true },
   );
-  const matchesSource = snapshot !== null && mapsEqual(snapshot.files, sourceSnapshot.files);
+  const managedParity = snapshotsEqual(snapshot, sourceSnapshot);
+  const paths = manifestPathContract(sourceManifest);
+  const retiredPresent = [];
+  if (paths.safe) {
+    for (const entry of paths.legacy) {
+      if (await pathExists(path.join(roots.installed, entry.value))) {
+        retiredPresent.push(`${entry.value}${entry.directory ? "/" : ""}`);
+      }
+    }
+  }
+  record(
+    "installed retired paths",
+    paths.safe && retiredPresent.length === 0,
+    paths.safe
+      ? retiredPresent.length === 0 ? "none" : retiredPresent.join(", ")
+      : "invalid runtime path contract",
+  );
+  const installedCli = resolveCliEntrypoint(roots.installed, sourceManifest);
+  const cliExecutable = installedCli !== null && await exists(installedCli) &&
+    ((await stat(installedCli)).mode & 0o111) !== 0;
+  record(
+    "installed CLI executable",
+    cliExecutable,
+    sourceManifest.cli.entrypoint,
+  );
+  const installedLinks = managedParity
+    ? await brokenActiveLinks(roots.installed)
+    : null;
+  const linksOk = installedLinks !== null && installedLinks.length === 0;
+  record(
+    "installed active links",
+    linksOk,
+    installedLinks === null
+      ? "skipped: managed parity failed"
+      : `${installedLinks.length} broken`,
+  );
+  const smokeReady = managedParity &&
+    paths.safe &&
+    retiredPresent.length === 0 &&
+    cliExecutable &&
+    linksOk;
+  const smokeReason = !managedParity
+    ? "managed parity failed"
+    : !paths.safe
+      ? "runtime path contract failed"
+      : retiredPresent.length > 0
+        ? "retired runtime paths remain"
+        : !cliExecutable
+          ? "CLI executable check failed"
+          : "active link check failed";
+  const cliBehavior = await verifyCliBehavior(
+    "installed",
+    roots.installed,
+    sourceManifest,
+    record,
+    { enabled: smokeReady, reason: smokeReason },
+  );
+  const matchesSource = managedParity &&
+    paths.safe &&
+    retiredPresent.length === 0 &&
+    cliExecutable &&
+    linksOk &&
+    cliBehavior;
   const status = matchesSource ? "current" : "drift";
   record("installed activation", matchesSource, status);
   return { root: roots.installed, version, status, matchesSource };
@@ -321,6 +590,12 @@ async function verify(options) {
   const record = (name, ok, detail) => checks.push({ name, ok, detail });
   const sourceManifest = JSON.parse(
     await readFile(path.join(roots.source, "runtime-manifest.json"), "utf8"),
+  );
+  const sourcePaths = manifestPathContract(sourceManifest);
+  record(
+    "runtime path contract",
+    sourcePaths.safe,
+    `${sourcePaths.canonical.length} canonical / ${sourcePaths.legacy.length} retired`,
   );
   const sourceVersion = (await readFile(path.join(roots.source, "VERSION"), "utf8")).trim();
   record(
@@ -346,11 +621,20 @@ async function verify(options) {
   );
   const sourceLinks = await brokenActiveLinks(roots.source);
   record("source active links", sourceLinks.length === 0, `${sourceLinks.length} broken`);
-  const sourceCli = path.join(roots.source, sourceManifest.cli.entrypoint);
-  const sourceExecutable = await exists(sourceCli) &&
+  const sourceCli = resolveCliEntrypoint(roots.source, sourceManifest);
+  const sourceExecutable = sourceCli !== null && await exists(sourceCli) &&
     ((await stat(sourceCli)).mode & 0o111) !== 0;
   record("source CLI executable", sourceExecutable, sourceManifest.cli.entrypoint);
-  await verifyCliBehavior("source", roots.source, sourceManifest, record);
+  const sourceReady = sourcePaths.safe &&
+    sourceSnapshot !== null &&
+    sourceSnapshot.missing.length === 0 &&
+    sourceSnapshot.undeclared.length === 0 &&
+    sourceExecutable &&
+    sourceLinks.length === 0;
+  await verifyCliBehavior("source", roots.source, sourceManifest, record, {
+    enabled: sourceReady,
+    reason: "source package precondition failed",
+  });
 
   const distManifestPath = path.join(roots.dist, "runtime-manifest.json");
   let distManifest = null;
@@ -368,11 +652,16 @@ async function verify(options) {
     : null;
   const matchesSource = sourceSnapshot !== null &&
     distSnapshot !== null &&
-    mapsEqual(sourceSnapshot.files, distSnapshot.files);
+    snapshotsEqual(sourceSnapshot, distSnapshot);
   record("source/dist hashes", matchesSource, matchesSource ? sourceSnapshot.hash : "drift");
   const distLinks = distManifest ? await brokenActiveLinks(roots.dist) : ["missing dist"];
   record("dist active links", distLinks.length === 0, `${distLinks.length} broken`);
-  if (distManifest) await verifyCliBehavior("dist", roots.dist, sourceManifest, record);
+  if (distManifest) {
+    await verifyCliBehavior("dist", roots.dist, sourceManifest, record, {
+      enabled: matchesSource && distLinks.length === 0,
+      reason: "source/dist parity failed",
+    });
+  }
 
   const installed = await installedReport(
     sourceVersion,
