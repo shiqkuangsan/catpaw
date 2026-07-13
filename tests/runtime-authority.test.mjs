@@ -147,6 +147,8 @@ test("migration authority is schema-based and keeps release migrations historica
   assert.match(text, /schema-2\.md/);
   assert.match(text, /1\.1\.0\.md[\s\S]*historical/i);
   assert.match(text, /dry-run[\s\S]*stage[\s\S]*backup[\s\S]*publish/i);
+  assert.match(text, /ordinary metadata inference[\s\S]*do not/i);
+  assert.doesNotMatch(text, /ambiguous metadata[^\n]*block the whole plan/i);
   assert.doesNotMatch(
     text,
     /upgrade-project|runtime stamp|commands\/(?:upgrade-project|release-runtime)\.md/i,
@@ -285,7 +287,8 @@ test("adapter snippets activate the compact policy without copying runtime files
   ]);
   const combined = `${globalAdapter}\n${projectAdapter}`;
   assert.match(combined, /~\/\.catpaw\/runtime-policy\.md/);
-  assert.match(combined, /project-local `\.catpaw\/`[\s\S]*artifact board/i);
+  assert.match(projectAdapter, /project-local `\.catpaw\/` native graph/i);
+  assert.match(projectAdapter, /graph-external legacy archive/i);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
   assert.doesNotMatch(globalAdapter, /老三|Gemini|third Agent/i);
   assert.doesNotMatch(combined, /commands\/provider\.md|specs\/09-roles\.md/);

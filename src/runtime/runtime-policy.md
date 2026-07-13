@@ -51,8 +51,9 @@ Global runtime, local artifacts：
 
 - runtime：`~/.catpaw/`；
 - project board：`<project>/.catpaw/`；
-- project board 只存 `index.md`、Milestone、Work Item、Plan 与 typed Evidence；
-- 不把 runtime guidance、Lens、provider recipe、schema 或 CLI source 复制进项目。
+- project board 的 native graph 只存 `index.md`、Milestone、Work Item、Plan 与
+  typed Evidence；schema migration 可在 graph 外保留 `legacy/schema-1/` archive；
+- 不把 runtime guidance、Lens、Agent recipe、schema 或 CLI source 复制进项目。
 
 ```text
 .catpaw/

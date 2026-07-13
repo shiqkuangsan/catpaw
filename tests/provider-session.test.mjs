@@ -724,6 +724,9 @@ test("provider recipes are self-contained, read-only, and authority-bounded", as
   assert.match(claude, /--disallowedTools Edit,Write,NotebookEdit/);
   assert.match(codex, /codex[\s\S]*--sandbox read-only[\s\S]*exec/);
   assert.match(codex, /--ignore-user-config/);
+  assert.match(codex, /execpolicy `\.rules`/i);
+  assert.match(codex, /没有承诺忽略 `AGENTS\.md`/i);
+  assert.match(codex, /不等价于[\s\S]*--safe-mode/i);
   assert.match(combined, /stable[\s\S]*not completion/i);
   assert.match(readme, /local surface/i);
   assert.match(readme, /provider access[\s\S]*(?:unknown|unverified)/i);

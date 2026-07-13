@@ -25,7 +25,9 @@ inventory -> dry-run -> resolve blockers -> stage -> validate -> backup -> publi
 ```
 
 - dry-run is the default and writes nothing；
-- ambiguous metadata, links, identities, or targets block the whole plan；
+- unresolved structural identity/reference conflicts, unsafe paths, encoding,
+  or transaction hazards block the whole plan；ordinary metadata inference and
+  permitted historical-link warnings do not；
 - stage contains a complete candidate board and must pass schema/graph checks；
 - backup stores the complete live preimage only after staged validation；
 - publish rechecks the live preimage and replaces it atomically；

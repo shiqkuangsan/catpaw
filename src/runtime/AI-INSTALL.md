@@ -26,7 +26,7 @@ dist/runtime      generated package
 6. 用户授权后，在 sibling stage 组装完整 runtime，验证后再替换 managed files。
 7. 复查 installed `VERSION`、manifest/hash、CLI smoke 与 obvious secret scan。
 
-不要把 runtime 安装到 `~/.claude/`、`~/.codex/` 或项目目录。Provider-specific
+不要把 runtime 安装到 `~/.claude/`、`~/.codex/` 或项目目录。Host configuration
 目录只允许写 thin adapter，而且仍需用户明确授权。
 
 安装应保留 `bin/catpaw.mjs` 的 executable mode，但不修改 `PATH`。安装后的真实

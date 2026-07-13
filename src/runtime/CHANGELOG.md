@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.0.5 - 2026-07-14
+
+- Describe activation as machine-local instead of hard-coding every source
+  checkout as `pending activation`.
+- Clarify that Codex `--ignore-user-config` and `--ignore-rules` suppress
+  `config.toml` and execpolicy `.rules`, but do not promise to ignore
+  `AGENTS.md`.
+- Align the migration safety summary with zero-touch conversion: inference and
+  historical-link warnings remain non-blocking while structural and safety
+  ambiguity still blocks.
+- Distinguish the five-artifact native board graph from an optional
+  checksummed `legacy/schema-1/` migration archive.
+- Complete the Agent vocabulary cleanup without renaming the `providers/`
+  implementation surface or the `provider` Evidence type.
+
+Migration note (3.0.4 -> 3.0.5):
+
+```text
+Runtime activation: explicit; compare the installed runtime on each machine before applying 3.0.5.
+Project impact: board schema remains 2; no board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, activate the runtime separately, and refresh managed project adapter blocks when the clarified wording is desired.
+Safety: adapter refresh replaces only the managed block; Codex one-shot remains read-only but does not claim AGENTS.md isolation.
+Non-goals: no commit, push, project data migration, legacy cleanup, or external action is implied.
+Rollback: retain the previous runtime and adapter/registry backups until 3.0.5 verification succeeds.
+```
+
 ## 3.0.4 - 2026-07-13
 
 - Make schema 1 migration zero-touch: every recognized Work, Plan, Milestone,

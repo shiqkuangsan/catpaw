@@ -26,7 +26,7 @@ history outside the native graph, but that made migrated projects appear to
 lose Work, Plans, Milestones, and Evidence. Both behaviors exposed implementation
 details to users.
 
-CatPaw 3.0.4 converts every recognized artifact and fills machine metadata
+The current CatPaw 3 converter maps every recognized artifact and fills machine metadata
 without user input. Explicit metadata wins, followed by canonical structure,
 scoped status prose/index/Milestone facts, artifact relationships, and
 conservative defaults. Unknown lifecycle state becomes `blocked`; it never

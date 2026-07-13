@@ -17,7 +17,7 @@ Security-sensitive areas include:
 
 - runtime install and upgrade behavior;
 - project artifact migration;
-- provider command routing;
+- external Agent invocation and session routing;
 - registry handling under `~/.catpaw/state/`;
 - instructions that could authorize destructive actions, commits, pushes, PRs,
   deploys, or secret access.

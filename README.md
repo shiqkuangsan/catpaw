@@ -10,12 +10,13 @@ durable project facts, and uses executable checks for mechanical consistency.
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.0.4`. Project boards use **board schema 2**.
+Source runtime version: `3.0.5`. Project boards use **board schema 2**.
 
-Activation status: **pending activation**. This source release is not active
-until an installed runtime is explicitly upgraded and verified. Building source
-can generate `dist/runtime/`, but does not automatically install, apply, or
-migrate CatPaw.
+Activation is machine-local. A source checkout cannot declare the installed
+runtime current or pending for every machine: compare it with
+`node scripts/verify-runtime.mjs`. An older or missing installation is
+`pending activation`; a matching verified installation is current. Building
+source does not automatically install, apply, or migrate CatPaw.
 
 Repository: https://github.com/shiqkuangsan/catpaw
 
@@ -119,8 +120,7 @@ and reports an older installed runtime as `pending activation` by default.
 
 To install or upgrade after explicit approval, start with
 [`AI-INSTALL.md`](AI-INSTALL.md). Runtime installation, adapter activation, and
-each project board migration are separate actions. This 3.0 source refactor
-does not perform a global apply.
+each project board migration are separate actions.
 
 ## CLI
 

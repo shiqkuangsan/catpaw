@@ -89,7 +89,7 @@ Agent output does not authorize commit, push, PR, deploy, destructive operations
 external side effects, secret access, or permission expansion。Evidence、session
 state 与 Independent Check 也不能扩大授权。
 
-Provider-specific recipes：
+Agent recipes：
 
 - [Claude Code](claude.md)
 - [Codex](codex.md)

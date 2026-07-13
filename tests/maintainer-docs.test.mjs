@@ -35,11 +35,12 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.0\.4/);
+    assert.match(text, /3\.0\.5/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
-    assert.match(text, /pending activation/i);
+    assert.match(text, /activation[\s\S]*machine-local/i);
+    assert.doesNotMatch(text, /Activation (?:status|状态)[:：]?\s*\*\*pending activation\*\*/i);
     assert.match(text, /does not[\s\S]*automatically[\s\S]*(install|apply|migrate)/i);
     assert.match(text, /cc[\s\S]*cx/i);
     assert.match(text, /~\/\.catpaw\/bin\/catpaw\.mjs/);

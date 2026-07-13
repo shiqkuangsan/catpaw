@@ -6,11 +6,10 @@ the installed runtime, host adapters, registry, or project boards.
 
 ## Current State
 
-- Source runtime: `3.0.4`.
+- Source runtime: `3.0.5`.
 - Project board contract: board schema 2.
-- Activation: `pending activation` until the installed runtime is explicitly
-  upgraded and verified.
-- This source refactor performs no global apply and no project migration.
+- Activation is machine-local. Compare source/dist with the installed runtime;
+  only an older or missing installation is `pending activation`.
 
 Building source does not automatically install, apply, or migrate CatPaw.
 

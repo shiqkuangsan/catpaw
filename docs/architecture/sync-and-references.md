@@ -27,9 +27,9 @@ installed manifest, previews exact managed changes, preserves local state and
 unknown files, stages a complete candidate, validates it, and only then
 publishes approved changes.
 
-When source/dist are 3.0.4 and the installed runtime is older, the correct
-state is `pending activation`. It is neither a broken source build nor a
-completed installation.
+When source/dist are newer than the installed runtime, the correct state is
+`pending activation`. It is neither a broken source build nor a completed
+installation.
 
 ## Installed -> Project Board
 
