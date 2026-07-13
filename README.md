@@ -10,7 +10,7 @@ durable project facts, and uses executable checks for mechanical consistency.
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.0.3`. Project boards use **board schema 2**.
+Source runtime version: `3.0.4`. Project boards use **board schema 2**.
 
 Activation status: **pending activation**. This source release is not active
 until an installed runtime is explicitly upgraded and verified. Building source
@@ -58,6 +58,10 @@ Schema 2 has five artifact kinds:
 Schema 1 migration may also create `legacy/schema-1/`. It is a checksummed,
 read-only migration archive, not a sixth artifact kind; normal schema 2 status,
 doctor, and mutation commands ignore it.
+
+Migration is zero-touch for ordinary users: CatPaw infers missing legacy
+metadata from explicit facts, canonical structure, scoped prose, and artifact
+relationships, while preserving every original file for audit and rollback.
 
 Direct work normally stays in the conversation. Tracked and Gated work use the
 board when durable coordination adds value.

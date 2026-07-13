@@ -19,6 +19,7 @@ const DOCS = [
   "docs/architecture/migration-pipeline.md",
   "docs/decisions/0019-catpaw-3-hybrid-runtime.md",
   "docs/decisions/0020-selective-schema-1-migration.md",
+  "docs/decisions/0021-zero-touch-semantic-schema-1-migration.md",
 ];
 
 async function exists(target) {
@@ -34,7 +35,7 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.0\.3/);
+    assert.match(text, /3\.0\.4/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
@@ -108,17 +109,23 @@ test("ADR-0019 records the accepted Hybrid Runtime decision", async () => {
   assert.match(text, /supersed/i);
 });
 
-test("ADR-0020 records bounded schema 1 migration", async () => {
-  const text = await readFile(
+test("ADR-0021 supersedes selective migration with zero-touch conversion", async () => {
+  const oldDecision = await readFile(
     path.join(REPO, "docs/decisions/0020-selective-schema-1-migration.md"),
     "utf8",
   );
-  assert.match(text, /^# ADR-0020:/m);
+  const text = await readFile(
+    path.join(REPO, "docs/decisions/0021-zero-touch-semantic-schema-1-migration.md"),
+    "utf8",
+  );
+  assert.match(oldDecision, /Status: Superseded by ADR-0021/i);
+  assert.match(text, /^# ADR-0021:/m);
   assert.match(text, /Status: Accepted/i);
-  assert.match(text, /active dependency closure/i);
+  assert.match(text, /zero-touch/i);
+  assert.match(text, /conservative defaults/i);
   assert.match(text, /legacy\/schema-1/);
-  assert.match(text, /SHA-256/i);
-  assert.match(text, /not a sixth artifact kind/i);
+  assert.match(text, /checksummed/i);
+  assert.match(text, /No `recordState: historical`/i);
 });
 
 test("maintainer docs retain durable rationale instead of completed task plans", async () => {

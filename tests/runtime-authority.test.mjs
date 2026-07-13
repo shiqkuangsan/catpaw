@@ -153,16 +153,18 @@ test("migration authority is schema-based and keeps release migrations historica
   );
 });
 
-test("schema 2 migration preserves incomplete history without weakening active closure", async () => {
+test("schema 2 migration maps incomplete history with conservative inference", async () => {
   const text = await readFile(
     path.join(RUNTIME, "migrations/schema-2.md"),
     "utf8",
   );
-  assert.match(text, /active dependency closure/i);
+  assert.match(text, /zero-touch semantic migration/i);
   assert.match(text, /legacy\/schema-1/);
   assert.match(text, /SHA-256/i);
   assert.match(text, /not a sixth schema 2 artifact kind/i);
-  assert.match(text, /does not invent an active lifecycle stage, date, Work binding/i);
+  assert.match(text, /unknown nonterminal status becomes `blocked`/i);
+  assert.match(text, /inferred-metadata/i);
+  assert.match(text, /structural conflicts still block/i);
 });
 
 test("schema 1 diagnostics never recommend removed v2 commands", async () => {
@@ -186,9 +188,10 @@ test("maintenance retains deterministic legacy import boundaries", async () => {
   ]) {
     assert.match(text, mapping);
   }
-  assert.match(text, /ID prefix[\s\S]*infer[\s\S]*type/i);
-  assert.match(text, /do not infer[\s\S]*status[\s\S]*stage[\s\S]*date/i);
-  assert.match(text, /file mtime/i);
+  assert.match(text, /普通用户[\s\S]*implementation detail/i);
+  assert.match(text, /status -> blocked[\s\S]*mode -> tracked[\s\S]*gated/i);
+  assert.match(text, /migration observation date/i);
+  assert.match(text, /identity[\s\S]*duplicate ID[\s\S]*target collision/i);
   assert.match(text, /board doctor/);
   assert.match(text, /preserve[\s\S]*legacy tree/i);
 });

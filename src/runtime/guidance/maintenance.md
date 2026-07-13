@@ -68,7 +68,7 @@ Canonical shape：
       "boardPath": "/abs/project/.catpaw",
       "projectRoot": "/abs/project",
       "schema": 2,
-      "runtimeSeen": "3.0.3",
+      "runtimeSeen": "3.0.4",
       "registeredVia": "project-activation | legacy-import | schema-migration",
       "registeredAt": "YYYY-MM-DD",
       "lastSeenAt": "YYYY-MM-DD",
@@ -109,25 +109,42 @@ preserve `state/projects.json`。
 | Legacy source | Schema 2 target |
 |---|---|
 | `todos/plan.md`, `todos/reqs.md` | `index.md` narrative 与 Work inventory；不原样复制 |
-| `todos/reqs/*` | `work/`，仅当 Work metadata 完整或用户补齐 |
-| `todos/plans/active/*`, `todos/plans/archive/*` | `plans/`，要求已有 Work binding；目录名不决定状态 |
+| `todos/reqs/*` | `work/`；metadata 缺失由 migration inference 补齐 |
+| `todos/plans/active/*`, `todos/plans/archive/*` | `plans/`；从明确 binding 或 canonical filename 绑定 Work |
 | `todos/research/*` | work-bound 或 topic `research Evidence` |
-| `todos/tests.md`, `todos/tests/*` | 有验证价值时转成 work-bound `test Evidence` |
-| `todos/reviews/*` | 有 finding/decision 价值时转成 `review Evidence` |
+| `todos/tests.md`, `todos/tests/*` | work-bound 或 topic `test Evidence` |
+| `todos/reviews/*` | work-bound 或 topic `review Evidence` |
 | `todos/lessons.md` | 每条可独立复用且来源明确时转成 `reflection Evidence` |
 | `.claude/`, `.codex/` | inventory/report only；不复制到 board |
 
-Metadata boundary：可以从明确 ID prefix infer `type`（FR/BUG/CHORE）；do not infer
-`status`、Mode、lifecycle `stage`、created/updated/closed date、Evidence binding 或
-independence from directory names、prose position、git history 或 file mtime。缺失
-事实形成一个 batched user-decision list，不写 placeholder 或 guessed value。
+Migration metadata 对普通用户是 implementation detail，不形成补录任务。按下列顺序
+自动解析，每个 artifact 只报告一条聚合的 `inferred-metadata` provenance：
+
+1. explicit valid frontmatter；
+2. canonical alias normalization；
+3. filename、H1、artifact root 与唯一 path binding；
+4. `## Status` / `## 状态`、index 中该 ID 的行、Milestone 的 FR/Scope section；
+5. Plan/Test/Review graph 与 conservative defaults。
+
+Conservative defaults：未知 nonterminal `status -> blocked`，terminal history
+`mode -> tracked`，其它未知 Mode `-> gated`；terminal `stage -> reflect`，其它 stage
+按已有 Plan/Test/Review 推断。日期优先使用 metadata/正文中的合法日期，再使用 board
+中的最新日期，最后使用 migration observation date。Evidence 只有在 explicit boolean
+`independent: true` 且 Agent 非空时才算 independent；无法绑定的 Evidence 转 topic，
+不丢弃。原正文不改写语义，原文件全部进入 checksum archive。
+
+只有无法安全决定结构时 block：canonical identity 冲突/缺失、duplicate ID、Plan 无法
+绑定现有 Work、target collision、unsafe/broken path、unsupported filesystem entry、
+invalid UTF-8/frontmatter、stale preimage 或 staged validation failure。Stale routing、
+缺少 lifecycle metadata 与 historical completion gate 不要求用户补 YAML；前两者归一化
+并 warning，后者生成明确列出 missing gates 的 migration reflection gap。
 
 Execution：
 
 1. inventory 完整 legacy tree、tracked/ignored state、links、unknown/binary files；
-2. 输出 source -> target mapping、metadata blockers、保留项与 target tree dry-run；
-3. 用户补齐全部 required facts 后，在 sibling stage 创建 schema 2 board；
-4. 保留原 narrative，重写可确定 local links，unknown files 原样保留或明确 out-of-scope；
+2. 输出完整 source -> target mapping、inference summary、结构 blockers 与 target tree dry-run；
+3. 无结构 blocker 时，在 sibling stage 创建 schema 2 board；
+4. 保留 index narrative 与全部原件，重写可确定 local links，unknown files 原样保留；
 5. 对 staged board 运行 `catpaw board doctor --project <stage-project>` 和相关验证；
 6. 验证通过且用户确认后发布 board，再按 registry contract 显式注册；
 7. preserve the legacy tree as read-only reference by default。

@@ -17,54 +17,67 @@ Run `catpaw board migrate` to inspect one schema 1 board. The command is a
 dry-run unless `--apply` is present. Runtime installation, registry updates,
 and migration of other projects are separate actions and are never implied.
 
-## Bounded Migration
+## Zero-touch Semantic Migration
 
 Migration assigns every schema 1 file one explicit disposition:
 
 | Disposition | Meaning |
 |---|---|
-| `converted` | Complete content becomes a native schema 2 artifact. |
-| `normalized` | A fact is derived only from a canonical source, then converted. |
-| `preserved` | Incomplete historical content is retained byte-for-byte outside the live graph. |
-| `blocked` | Active state or filesystem safety is ambiguous and requires a decision. |
+| `converted` | Recognized content becomes a native schema 2 artifact. |
+| `preserved` | Non-artifact legacy content remains byte-for-byte in the archive. |
+| `blocked` | Identity, reference, path, encoding, or transaction safety is unresolved. |
 
-The active dependency closure must be complete. Active routing comes only from
-machine-readable sources: the managed Active Work section, `plans/active/`, or
-an explicit active/blocked status. Work listed in an active Milestone Scope is
-a required dependency but is not reactivated when already terminal. Prose
-position, Git history, and file mtime never make an artifact active.
+Ordinary users never author metadata for migration. Inference uses this order:
 
-Safe normalization is deliberately narrow:
+1. explicit valid frontmatter;
+2. canonical status aliases and ID normalization;
+3. filename, H1, artifact root, and unique path binding;
+4. scoped `Status`/`状态` prose, the matching index row, and Milestone FR/Scope;
+5. Plan/Test/Review relationships and conservative defaults.
 
-- Work or Milestone ID from a canonical filename;
-- Work type from the canonical ID prefix;
-- exact legacy status aliases such as `completed` or `closed` to `done`;
-- terminal Work without a stage to `reflect`;
-- a path binding when it resolves to exactly one Work item.
+Unknown nonterminal status becomes `blocked`, never `done`. Terminal history may
+default to Tracked; unknown nonterminal work defaults to Gated. Stage follows a
+terminal state or existing Plan/Test/Review relationships. Dates come from
+metadata or body first, then the latest board date, then the migration
+observation date. An Evidence record is independent only when both explicit
+`independent: true` and a named Agent are present; otherwise it cannot satisfy
+an Independent Check. Unbound Evidence maps to `evidence/topics/`.
 
-CatPaw does not invent an active lifecycle stage, date, Work binding, status,
-mode, or accepted gap. Missing active facts remain blockers.
+Negated phrases such as `not done`, `未完成`, or `未取消` never become terminal
+facts. Plan, Test, or Review existence may advance stage but does not prove
+completion; a graph-derived completion requires an explicitly terminal Plan
+and completed Test results. Actual metadata or canonical path binding is used
+before basename inference.
 
-Before native mapping, migration evaluates the schema 2 completion contract for
-every Gated Work closed as `done`. Missing usable completion Evidence blocks preview
-when that Work belongs to the active dependency closure. Otherwise the
-historical Work and its bound Plan, Evidence, and terminal Milestone remain
-byte-preserved in the legacy archive instead of entering an invalid live graph.
+Only positive Milestone headings such as `Scope`, `FR`, `包含 FR`, or `候选 FR`
+feed managed Scope; `Out of Scope` and non-goals remain narrative. If multiple
+Milestones disagree on one Work status, migration chooses the safest
+nonterminal/cancellation result and emits provenance. Existing managed Scope
+markers and tables must pass the same structural parser used by normal runtime
+commands.
+
+Each affected source emits one aggregated `inferred-metadata` warning. This is
+provenance, not a user decision list. Explicit facts remain authoritative, and
+the original source bytes remain available in the legacy archive.
+
+For historical Gated Work already closed as `done`, missing modern completion
+Evidence becomes a generated reflection that names every missing gate and the
+migration reason. It does not claim that a review occurred and grants no
+authority. Structural conflicts still block preview.
 
 ## Native Mapping And Legacy Archive
 
-Complete schema 1 artifacts map into the native graph:
+Recognized schema 1 artifacts map into the native graph:
 
 | Schema 1 | Schema 2 |
 |---|---|
-| `reqs/*.md` at legacy level 2 | Tracked Work Item under `work/` |
-| `reqs/*.md` at legacy level 3 | Gated Work Item under `work/` |
-| complete Plan | Plan under `plans/` |
-| complete Milestone | managed Milestone Scope block |
-| complete test/review/research/provider record | typed Evidence |
+| `reqs/*.md` | inferred Tracked/Gated Work Item under `work/` |
+| Plan | Work-bound Plan under `plans/` |
+| Milestone | Milestone plus managed Scope block |
+| test/review/research/provider record | work-bound or topic typed Evidence |
 
-Incomplete historical material and original files used for conversion are
-stored under `.catpaw/legacy/schema-1/`. Its `manifest.json` records source,
+Original files used for conversion and non-artifact legacy material are stored
+under `.catpaw/legacy/schema-1/`. Its `manifest.json` records source,
 destination, disposition, byte length, file mode, and SHA-256 checksum; archive
 directories retain their source modes. This is a read-only migration archive,
 not a sixth schema 2 artifact kind; normal board
@@ -80,20 +93,18 @@ filesystem entries and non-UTF-8 Markdown remain blockers.
 
 Migration stops instead of guessing when it encounters:
 
-- incomplete active Work, Plan, Milestone, or Evidence dependencies;
-- missing completion Evidence for Gated Work closed as `done` in the active dependency
-  closure;
-- active filename/frontmatter identity conflicts or terminal routing conflicts;
-- duplicate IDs, ambiguous bindings, or destination collisions;
+- conflicting or missing canonical Work/Milestone identity;
+- duplicate IDs, unresolved Plan bindings, or destination collisions;
+- malformed, duplicate, missing-pair, or reversed managed Scope markers;
 - broken links or links escaping the project root;
 - unsupported filesystem entries, occupied legacy targets, or stale preimages;
 - known or unknown Markdown that is not valid UTF-8;
 - generated metadata or patch operations that fail shared schema checks.
 
-One incomplete active artifact produces one root finding listing the missing
-fields; derived metadata failures are not repeated as a cascade. Blocked
-analysis returns no migration operations. Resolve the findings in the schema 1
-board, then run the dry-run again.
+Missing lifecycle metadata, stale active routing, absent Evidence binding, and
+historical completion gaps are normalized with warnings instead of becoming
+user metadata tasks. Blocked analysis returns no migration operations. Resolve
+the structural finding, then run the dry-run again.
 
 ## Apply Transaction
 

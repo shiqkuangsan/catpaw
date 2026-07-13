@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.0.4 - 2026-07-13
+
+- Make schema 1 migration zero-touch: every recognized Work, Plan, Milestone,
+  Test, Review, and Research artifact maps into the schema 2 graph without
+  asking users to author machine metadata.
+- Infer missing fields deterministically from explicit metadata, canonical
+  paths and headings, scoped status prose, index/Milestone context, artifact
+  bindings, and conservative defaults; report inference provenance per source.
+- Keep negated or ambiguous status prose nonterminal, require explicit
+  completion signals instead of artifact existence, resolve real metadata/path
+  bindings before stage inference, and merge conflicting Milestone status
+  conservatively.
+- Parse only positive Milestone Scope sections and validate managed Scope
+  markers and tables through one shared contract before graph publication.
+- Preserve the source index narrative outside managed dashboard markers and
+  keep every schema 1 original in the checksummed legacy archive.
+- Normalize historical Gated completion gaps into explicit reflection Evidence
+  so migrated terminal history remains valid without claiming a new review.
+- Keep conflicting identities, duplicates, unsafe paths, undecodable Markdown,
+  destination collisions, and failed staged validation as hard blockers.
+- Add full mapping regression coverage and verify the real `lowcode-qa-agent`
+  preimage at 116 Work, 107 Plan, 13 Milestone, and 136 Evidence artifacts.
+
+Migration note (3.0.3 -> 3.0.4):
+
+```text
+Runtime activation: explicit; source/dist 3.0.4 does not update ~/.catpaw automatically.
+Project impact: board schema remains 2; rerun schema 1 previews produced before 3.0.4 because previously preserved historical artifacts now map into native schema 2 surfaces.
+Required actions: build and verify source/dist, activate the runtime separately, then preview and apply each remaining schema 1 board independently.
+Safety: explicit source facts win, uncertain lifecycle defaults conservatively, inference is reported, and all originals remain checksummed; structural conflicts and filesystem hazards still block.
+Non-goals: no installed-runtime activation, registry mutation, project migration, commit, push, or legacy cleanup is implied by this source release.
+Rollback: keep the installed 3.0.3 runtime and existing boards unchanged until activation and each project apply are separately approved.
+```
+
 ## 3.0.3 - 2026-07-13
 
 - Make schema 1 migration dry-run enforce the schema 2 completion-Evidence

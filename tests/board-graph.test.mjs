@@ -257,6 +257,53 @@ test("builds explicit milestone, plan, and Evidence links to Work Items", async 
   );
 });
 
+test("schema 2 graph reads only managed Milestone Scope when markers exist", async (t) => {
+  const files = schema2Files();
+  files[".catpaw/milestones/MS-001-release.md"] += `
+
+## Historical Candidates
+
+| Work Item | Title | Status | Notes |
+|---|---|---|---|
+| FR-999 | Never created | proposed | narrative only |
+
+## Managed Scope
+
+<!-- catpaw:milestone-scope:start -->
+| Work Item ID | Title | Status | Notes |
+|---|---|---|---|
+| FR-001 | Shared graph | active | current |
+<!-- catpaw:milestone-scope:end -->
+`;
+  const root = await fixture(t, files);
+  const board = await loadBoard({ projectRoot: root });
+  const graph = buildArtifactGraph(board);
+
+  const milestoneEdges = graph.edges.filter((edge) => edge.relation === "milestone-work");
+  assert.deepEqual(milestoneEdges.map((edge) => edge.to.id), ["FR-001"]);
+});
+
+test("schema 2 findings reject malformed managed Milestone Scope markers", async (t) => {
+  const files = schema2Files();
+  files[".catpaw/milestones/MS-001-release.md"] += `
+
+<!-- catpaw:milestone-scope:start -->
+`;
+  const root = await fixture(t, files);
+  const board = await loadBoard({ projectRoot: root });
+  const graph = buildArtifactGraph(board);
+  const findings = collectBoardFindings(board, graph);
+
+  assert.deepEqual(
+    graph.edges.filter((edge) => edge.relation === "milestone-work"),
+    [],
+  );
+  assert.ok(findings.some((item) =>
+    item.code === "malformed-milestone-scope" &&
+    item.filePath === ".catpaw/milestones/MS-001-release.md"
+  ));
+});
+
 test("reports invalid status, stage, and type without normalizing metadata", async (t) => {
   const files = schema2Files();
   files[".catpaw/work/FR-001-shared-graph.md"] = `---

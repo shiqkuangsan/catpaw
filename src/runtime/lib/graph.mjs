@@ -1,7 +1,19 @@
+import {
+  hasMilestoneScopeMarkers,
+  parseMilestoneScope,
+} from "./milestone-scope.mjs";
+
 const WORK_ID_PATTERN = /^(?:FR|BUG|CHORE)-[0-9]{3,}$/;
 const LEGACY_WORK_ID_PATTERN = /^(?:FR|BUG|CHORE)-[0-9]+$/;
 
 export function milestoneWorkIds(body) {
+  if (hasMilestoneScopeMarkers(body)) {
+    try {
+      return parseMilestoneScope(body).rows.map((row) => row.id);
+    } catch {
+      return [];
+    }
+  }
   const ids = [];
   const seen = new Set();
 

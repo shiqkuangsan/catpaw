@@ -7,8 +7,8 @@ separate authorization scopes.
 ```text
 schema 1 board
   -> inventory and dry-run
-  -> classify active closure and historical material
-  -> resolve true blockers
+  -> infer missing metadata with provenance
+  -> resolve structural blockers
   -> stage native graph plus legacy archive
   -> validate graph, checksums, and files
   -> backup complete preimage
@@ -18,25 +18,26 @@ schema 1 board
 
 Building or activating the runtime does not automatically migrate any board.
 
-## Bounded Hybrid Strategy
+## Zero-touch Semantic Strategy
 
-Exhaustive conversion made historical metadata debt a release blocker and
-encouraged agents to invent dates, stages, or bindings. CatPaw instead uses four
-explicit dispositions: convert complete artifacts, apply narrow canonical
-normalizations, preserve incomplete historical material, and block only active
-closure or safety ambiguity.
+The first exhaustive converter turned metadata debt into thousands of blockers.
+The later selective converter avoided those blockers by leaving incomplete
+history outside the native graph, but that made migrated projects appear to
+lose Work, Plans, Milestones, and Evidence. Both behaviors exposed implementation
+details to users.
 
-Active state comes only from the managed Active Work section,
-`plans/active/`, or explicit active/blocked metadata. Prose, Git history, and
-file timestamps are not activity signals. An active Milestone Scope extends the
-required Work closure without reactivating terminal Work. Every active Work Item
-and its live Plan, Milestone, and required Evidence dependency must be complete
-before publication.
+CatPaw 3.0.4 converts every recognized artifact and fills machine metadata
+without user input. Explicit metadata wins, followed by canonical structure,
+scoped status prose/index/Milestone facts, artifact relationships, and
+conservative defaults. Unknown lifecycle state becomes `blocked`; it never
+becomes `done` merely because metadata is absent. Inferred fields are reported
+as provenance rather than as decisions for the user.
 
-Safe normalizations are limited to canonical filename IDs, ID-prefix type,
-exact terminal status aliases, terminal stage `reflect`, and uniquely
-resolvable path bindings. Active dates, stages, modes, bindings, status, and
-accepted gaps are never fabricated.
+Identity conflict or absence, duplicate IDs, unresolved Plan ownership,
+destination collisions, unsafe paths, invalid encoding/source structure, and
+transaction failures remain blockers. Historical Gated completion gaps become
+explicit reflection records naming the unavailable gates; they do not claim an
+Independent Check or grant authority.
 
 ## Target Shape
 
@@ -51,8 +52,8 @@ The native schema 2 graph contains:
 `-- evidence/
 ```
 
-Schema 1 migration may also create `legacy/schema-1/`. It contains originals
-used for conversion and incomplete historical files, plus a deterministic
+Schema 1 migration also creates `legacy/schema-1/`. It contains every original
+used for conversion and non-artifact legacy material, plus a deterministic
 manifest of source/destination, disposition, bytes, mode, and SHA-256. The
 archive is not part of the native graph and is ignored by normal schema 2
 status and mutation commands. Source directory modes are retained in the
@@ -64,10 +65,10 @@ archive as well as file bytes, BOM, and modes.
 catpaw board migrate --project /abs/project
 ```
 
-The planner inventories the complete board, parses metadata and links, detects
-collisions or ambiguous facts, and emits native mappings, warnings, preserved
-legacy counts, and root blockers. It does not write a backup, stage, board file,
-adapter, or registry entry.
+The planner inventories the complete board, parses metadata and links, infers
+missing fields, detects structural conflicts, and emits native mappings,
+aggregated inference warnings, legacy counts, and root blockers. It does not
+write a backup, stage, board file, adapter, or registry entry.
 
 ## Stage And Validate
 
@@ -115,4 +116,4 @@ silently replace a live board with an older copy.
 - [Schema 2 migration note](../../src/runtime/migrations/schema-2.md)
 - [Sync and References](sync-and-references.md)
 - [ADR-0019](../decisions/0019-catpaw-3-hybrid-runtime.md)
-- [ADR-0020](../decisions/0020-selective-schema-1-migration.md)
+- [ADR-0021](../decisions/0021-zero-touch-semantic-schema-1-migration.md)

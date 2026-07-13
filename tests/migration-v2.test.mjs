@@ -19,6 +19,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter } from "../src/runtime/lib/frontmatter.mjs";
+import { parseMilestoneScope } from "../src/runtime/lib/milestone-scope.mjs";
 import { analyzeV1ToV2Migration } from "../src/runtime/lib/migrate-v1-v2.mjs";
 import {
   createPatchPlan,
@@ -432,16 +433,36 @@ function operation(report, type, relativePath) {
   );
 }
 
-test("planner isolates incomplete historical artifacts instead of blocking", async (t) => {
+test("planner infers metadata for historical prose artifacts without user input", async (t) => {
   const root = await fixture(t, historicalProseBoard());
   const boardPath = path.join(root, ".catpaw");
   const before = (await snapshotTree(boardPath)).digest;
 
-  const report = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath,
+    migrationDate: DATE,
+  });
 
-  assert.equal(report.status, "ready");
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
   assert.deepEqual(report.blockers, []);
   assert.equal((await snapshotTree(boardPath)).digest, before);
+  assert.ok(report.mappings.some((item) =>
+    item.from === "reqs/FR-301-old-note.md" &&
+    item.to === "work/FR-301-old-note.md"
+  ));
+  assert.ok(report.mappings.some((item) =>
+    item.from === "plans/archive/FR-301-old-note.md" &&
+    item.to === "plans/FR-301-old-note.md"
+  ));
+  assert.ok(report.mappings.some((item) =>
+    item.from === "milestones/M1-old-phase.md" &&
+    item.to === "milestones/M1-old-phase.md"
+  ));
+  assert.ok(report.mappings.some((item) =>
+    item.from === "research/misc/old-research.md" &&
+    item.to.startsWith("evidence/topics/")
+  ));
   for (const source of [
     "index.md",
     "lessons.md",
@@ -468,6 +489,22 @@ test("planner isolates incomplete historical artifacts instead of blocking", asy
     report.preservedLegacy.find((item) => item.from === "lessons.md").disposition,
     "preserved",
   );
+  for (const source of [
+    "reqs/FR-301-old-note.md",
+    "plans/archive/FR-301-old-note.md",
+    "milestones/M1-old-phase.md",
+    "research/misc/old-research.md",
+  ]) {
+    assert.equal(
+      report.preservedLegacy.find((item) => item.from === source).disposition,
+      "converted",
+      source,
+    );
+  }
+  assert.ok(report.warnings.some((item) =>
+    item.code === "inferred-metadata" &&
+    item.path === "reqs/FR-301-old-note.md"
+  ));
   const manifestWrite = operation(
     report,
     "write-file",
@@ -477,12 +514,286 @@ test("planner isolates incomplete historical artifacts instead of blocking", asy
   assert.equal(manifest.schema, 1);
   assert.deepEqual(manifest.entries, report.preservedLegacy);
   const indexWrite = operation(report, "write-file", "index.md");
+  assert.match(indexWrite.content, /# CatPaw Index/);
   assert.match(indexWrite.content, /legacy\/schema-1\/manifest\.json/);
+  assert.match(indexWrite.content, /<!-- catpaw:active-work:start -->/);
   const patch = await createPatchPlan({ root: boardPath, operations: report.operations });
   assert.equal(patch.status, "ready", JSON.stringify(patch.blockers));
 });
 
-test("migration apply keeps preserved legacy bytes outside schema 2 status", async (t) => {
+test("planner binds body-only nested Evidence from a canonical path segment", async (t) => {
+  const files = historicalProseBoard();
+  files[".catpaw/reviews/FR-301-old-note/summary.md"] = [
+    "# Historical Review",
+    "",
+    "Review evidence without frontmatter or an ID in the basename.",
+  ].join("\n");
+  const root = await fixture(t, files);
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const mapping = report.mappings.find((item) =>
+    item.from === "reviews/FR-301-old-note/summary.md"
+  );
+  assert.equal(mapping.id, "FR-301");
+  assert.match(mapping.to, /^evidence\/FR-301\//);
+  const write = operation(report, "write-file", mapping.to);
+  assert.equal(parseFrontmatter(write.content).data.work, "FR-301");
+});
+
+test("planner shares one scoped status across compact grouped Work IDs", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": frontmatter(
+      { runtime: "2.1.7" },
+      [
+        "# CatPaw Index",
+        "",
+        "## Historical Status",
+        "",
+        "- FR-401/402/403 已完成。",
+      ].join("\n"),
+    ),
+    ".catpaw/reqs/FR-401-first.md": "# FR-401 First\n",
+    ".catpaw/reqs/FR-402-second.md": "# FR-402 Second\n",
+    ".catpaw/reqs/FR-403-third.md": "# FR-403 Third\n",
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  for (const [id, filename] of [
+    ["FR-401", "FR-401-first.md"],
+    ["FR-402", "FR-402-second.md"],
+    ["FR-403", "FR-403-third.md"],
+  ]) {
+    const write = operation(report, "write-file", `work/${filename}`);
+    const metadata = parseFrontmatter(write.content).data;
+    assert.equal(metadata.id, id);
+    assert.equal(metadata.status, "done");
+    assert.equal(metadata.stage, "reflect");
+  }
+});
+
+test("planner never turns negated terminal language into completion", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/reqs/FR-410-negated.md": [
+      "# FR-410 Negated",
+      "",
+      "## 状态",
+      "",
+      "尚未完成，也未取消。",
+    ].join("\n"),
+    ".catpaw/reqs/FR-411-not-done.md": [
+      "# FR-411 Not Done",
+      "",
+      "## Status",
+      "",
+      "Not done and not cancelled.",
+    ].join("\n"),
+    ".catpaw/reqs/FR-412-partial.md": [
+      "# FR-412 Partial",
+      "",
+      "## 状态",
+      "",
+      "尚未完成，已实现部分功能。",
+    ].join("\n"),
+    ".catpaw/reqs/FR-413-active-partial.md": [
+      "# FR-413 Active Partial",
+      "",
+      "## 状态",
+      "",
+      "- 进行中，已实现部分功能。",
+    ].join("\n"),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  for (const [filename, status] of [
+    ["FR-410-negated.md", "blocked"],
+    ["FR-411-not-done.md", "blocked"],
+    ["FR-412-partial.md", "blocked"],
+    ["FR-413-active-partial.md", "active"],
+  ]) {
+    const metadata = parseFrontmatter(
+      operation(report, "write-file", `work/${filename}`).content,
+    ).data;
+    assert.equal(metadata.status, status);
+    assert.equal(metadata.closed, null);
+  }
+});
+
+test("planner keeps an explicit completed table cell terminal despite follow-up wording", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/reqs/FR-414-complete.md": "# FR-414 Complete\n",
+    ".catpaw/milestones/M1-complete.md": [
+      "# M1 Complete",
+      "",
+      "## Scope",
+      "",
+      "| FR | Title | Result |",
+      "|---|---|---|",
+      "| FR-414 | Complete | 已完成：主链路交付；后续优化另行立项 |",
+    ].join("\n"),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const metadata = parseFrontmatter(
+    operation(report, "write-file", "work/FR-414-complete.md").content,
+  ).data;
+  assert.equal(metadata.status, "done");
+});
+
+test("planner uses real bindings for stage without treating draft artifacts as done", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/reqs/FR-420-draft.md": "# FR-420 Draft\n",
+    ".catpaw/plans/archive/draft-plan.md": frontmatter(
+      { req: "FR-420" },
+      "# Draft Plan\n",
+    ),
+    ".catpaw/tests/matrices/draft-matrix.md": frontmatter(
+      { req: "FR-420" },
+      "# Draft Matrix\n\nPending execution.\n",
+    ),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const metadata = parseFrontmatter(
+    operation(report, "write-file", "work/FR-420-draft.md").content,
+  ).data;
+  assert.equal(metadata.status, "blocked");
+  assert.equal(metadata.stage, "test");
+});
+
+test("planner excludes Out of Scope and keeps the positive Milestone Scope", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/reqs/FR-430-excluded.md": "# FR-430 Excluded\n",
+    ".catpaw/reqs/FR-431-included.md": "# FR-431 Included\n",
+    ".catpaw/milestones/M1-scope.md": [
+      "# M1 Scope",
+      "",
+      "## Out of Scope",
+      "",
+      "- FR-430",
+      "",
+      "## Scope",
+      "",
+      "- FR-431",
+    ].join("\n"),
+    ".catpaw/milestones/M2-only-exclusions.md": [
+      "# M2 Only Exclusions",
+      "",
+      "## Out of Scope",
+      "",
+      "- FR-430",
+    ].join("\n"),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const milestone = parseFrontmatter(
+    operation(report, "write-file", "milestones/M1-scope.md").content,
+  );
+  assert.deepEqual(
+    parseMilestoneScope(milestone.body).rows.map((row) => row.id),
+    ["FR-431"],
+  );
+  const exclusions = parseFrontmatter(
+    operation(report, "write-file", "milestones/M2-only-exclusions.md").content,
+  );
+  assert.deepEqual(parseMilestoneScope(exclusions.body).rows, []);
+});
+
+test("planner blocks malformed managed Milestone Scope markers", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/milestones/M1-broken.md": [
+      "# M1 Broken",
+      "",
+      "<!-- catpaw:milestone-scope:start -->",
+    ].join("\n"),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "blocked");
+  assert.ok(report.blockers.some((item) =>
+    item.code === "malformed-milestone-scope" &&
+    item.path === "milestones/M1-broken.md"
+  ));
+  assert.deepEqual(report.operations, []);
+});
+
+test("planner merges conflicting Milestone statuses conservatively", async (t) => {
+  const root = await fixture(t, {
+    ".catpaw/index.md": "# CatPaw Index\n",
+    ".catpaw/reqs/FR-440-shared.md": "# FR-440 Shared\n",
+    ".catpaw/milestones/M1-done.md": frontmatter(
+      { id: "M1", status: "done" },
+      "# M1 Done\n\n## Scope\n\n| FR-440 | Shared | done | |\n",
+    ),
+    ".catpaw/milestones/M2-active.md": frontmatter(
+      { id: "M2", status: "active" },
+      "# M2 Active\n\n## Scope\n\n| FR-440 | Shared | active | |\n",
+    ),
+  });
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+    migrationDate: DATE,
+  });
+
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  const metadata = parseFrontmatter(
+    operation(report, "write-file", "work/FR-440-shared.md").content,
+  ).data;
+  assert.equal(metadata.status, "active");
+  assert.ok(report.warnings.some((item) =>
+    item.code === "conflicting-milestone-status" &&
+    item.path === "reqs/FR-440-shared.md"
+  ));
+});
+
+test("migration apply keeps legacy bytes and exposes inferred artifacts in schema 2", async (t) => {
   const files = historicalProseBoard();
   const originalIndex = Buffer.concat([
     Buffer.from([0xef, 0xbb, 0xbf]),
@@ -537,14 +848,18 @@ test("migration apply keeps preserved legacy bytes outside schema 2 status", asy
   const statusReport = JSON.parse(status.stdout);
   assert.equal(statusReport.schema, 2);
   assert.deepEqual(statusReport.counts.active, {
-    milestones: 0,
-    work: 0,
-    plans: 0,
+    milestones: 1,
+    work: 1,
+    plans: 1,
   });
+  const migratedWork = parseFrontmatter(
+    await readFile(path.join(boardPath, "work/FR-301-old-note.md"), "utf8"),
+  );
+  assert.equal(migratedWork.data.status, "blocked");
   assert.equal(statusReport.findings.length, 0);
 });
 
-test("migration preserves historical Gated Work without complete completion Evidence", async (t) => {
+test("migration converts historical Gated Work and records a completion gap", async (t) => {
   const files = historicalGatedBoard();
   const root = await fixture(t, files);
   const boardPath = path.join(root, ".catpaw");
@@ -561,23 +876,32 @@ test("migration preserves historical Gated Work without complete completion Evid
   assert.equal(report.status, "ready");
   assert.deepEqual(report.blockers, []);
   assert.equal(
-    report.mappings.some((item) => historicalSources.includes(item.from)),
-    false,
+    historicalSources.every((source) => report.mappings.some((item) => item.from === source)),
+    true,
   );
   assert.ok(report.mappings.some((item) =>
     item.from === "reqs/BUG-203-cancelled.md" &&
     item.to === "work/BUG-203-cancelled.md"
   ));
   assert.ok(report.warnings.some((item) =>
-    item.code === "preserved-historical-gated-work" &&
+    item.code === "inferred-completion-gap" &&
     item.path === "reqs/BUG-202-historical.md" &&
     item.message.includes("independent-review-or-provider")
   ));
   for (const source of historicalSources) {
     const archived = report.preservedLegacy.find((item) => item.from === source);
-    assert.equal(archived.disposition, "preserved", source);
-    assert.ok(operation(report, "move-file", archived.to), source);
+    assert.equal(archived.disposition, "converted", source);
+    assert.ok(
+      operation(report, "move-file", archived.to) ??
+        operation(report, "write-file", archived.to),
+      source,
+    );
   }
+  assert.ok(operation(
+    report,
+    "write-file",
+    `evidence/BUG-202/${DATE}-reflection-accepted-gap.md`,
+  ));
 
   const applied = await runCli([
     "board",
@@ -590,13 +914,24 @@ test("migration preserves historical Gated Work without complete completion Evid
 
   assert.equal(applied.code, 0, applied.stderr || applied.stdout);
   for (const source of historicalSources) {
-    assert.equal(await exists(path.join(boardPath, source)), false, source);
+    assert.equal(
+      await exists(path.join(boardPath, source)),
+      source.startsWith("milestones/"),
+      source,
+    );
     assert.equal(
       await readFile(path.join(boardPath, "legacy/schema-1", source), "utf8"),
       files[`.catpaw/${source}`],
       source,
     );
   }
+  assert.equal(
+    await exists(path.join(
+      boardPath,
+      `evidence/BUG-202/${DATE}-reflection-accepted-gap.md`,
+    )),
+    true,
+  );
   const cancelled = parseFrontmatter(
     await readFile(path.join(boardPath, "work/BUG-203-cancelled.md"), "utf8"),
   );
@@ -612,7 +947,7 @@ test("migration preserves historical Gated Work without complete completion Evid
   assert.equal(JSON.parse(status.stdout).findings.length, 0);
 });
 
-test("planner reports one root blocker for an incomplete active Work Item", async (t) => {
+test("planner infers a missing stage for active Work without blocking", async (t) => {
   const files = historicalProseBoard();
   files[".catpaw/index.md"] = frontmatter(
     { runtime: "2.1.7" },
@@ -645,22 +980,17 @@ test("planner reports one root blocker for an incomplete active Work Item", asyn
     boardPath: path.join(root, ".catpaw"),
   });
 
-  assert.equal(report.status, "blocked");
-  assert.deepEqual(report.operations, []);
-  assert.deepEqual(
-    report.blockers.filter((item) => item.path === "reqs/FR-101-active.md"),
-    [{
-      code: "active-work-incomplete",
-      path: "reqs/FR-101-active.md",
-      message: "Active Work Item FR-101 requires explicit valid fields: stage.",
-    }],
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.deepEqual(report.blockers, []);
+  const work = parseFrontmatter(
+    operation(report, "write-file", "work/FR-101-active.md").content,
   );
-  assert.equal(
-    report.blockers.some((item) =>
-      ["invalid-workItem-metadata", "invalid-generated-frontmatter"].includes(item.code)
-    ),
-    false,
-  );
+  assert.equal(work.data.stage, "think");
+  assert.ok(report.warnings.some((item) =>
+    item.code === "inferred-metadata" &&
+    item.path === "reqs/FR-101-active.md" &&
+    item.message.includes("stage")
+  ));
 });
 
 test("planner blocks active Work identity conflicts even when frontmatter is terminal", async (t) => {
@@ -691,12 +1021,12 @@ test("planner blocks active Work identity conflicts even when frontmatter is ter
 
   assert.equal(report.status, "blocked");
   assert.ok(report.blockers.some((item) =>
-    item.code === "active-work-identity-conflict" &&
+    item.code === "work-identity-conflict" &&
     item.path === "reqs/FR-101-active.md"
   ));
 });
 
-test("planner blocks active Milestone identity and terminal-status conflicts", async (t) => {
+test("planner reconciles stale Milestone routing but blocks identity conflicts", async (t) => {
   const terminalFiles = readyBoard();
   terminalFiles[".catpaw/index.md"] += "\n## Active Milestones\n\n- MS-001\n";
   terminalFiles[".catpaw/milestones/MS-001-alpha.md"] = terminalFiles[
@@ -711,9 +1041,10 @@ test("planner blocks active Milestone identity and terminal-status conflicts", a
     boardPath: path.join(terminalRoot, ".catpaw"),
   });
 
-  assert.equal(terminal.status, "blocked");
-  assert.ok(terminal.blockers.some((item) =>
-    item.code === "active-milestone-status-conflict"
+  assert.equal(terminal.status, "ready", JSON.stringify(terminal.blockers));
+  assert.ok(terminal.warnings.some((item) =>
+    item.code === "stale-active-routing" &&
+    item.path === "milestones/MS-001-alpha.md"
   ));
 
   const identityFiles = readyBoard();
@@ -730,15 +1061,15 @@ test("planner blocks active Milestone identity and terminal-status conflicts", a
 
   assert.equal(identity.status, "blocked");
   assert.ok(identity.blockers.some((item) =>
-    item.code === "active-milestone-identity-conflict"
+    item.code === "milestone-identity-conflict"
   ));
 });
 
-test("active Milestone scope reaches Work and suppresses dependency cascades", async (t) => {
+test("active Milestone scope reaches Work while metadata is inferred", async (t) => {
   const files = historicalProseBoard();
   files[".catpaw/index.md"] = frontmatter(
     { runtime: "2.1.7" },
-    "# CatPaw Index\n\n## Active Milestones\n\n- MS-001\n",
+    "# CatPaw Index\n\n## Active Milestones\n\n- MS-002\n",
   );
   files[".catpaw/reqs/FR-101-active.md"] = frontmatter(
     {
@@ -756,9 +1087,9 @@ test("active Milestone scope reaches Work and suppresses dependency cascades", a
     { req: "FR-101", updated: DATE },
     "# Plan: FR-101 Active Through Milestone",
   );
-  files[".catpaw/milestones/MS-001-active.md"] = frontmatter(
+  files[".catpaw/milestones/MS-002-active.md"] = frontmatter(
     {
-      id: "MS-001",
+      id: "MS-002",
       status: "active",
       created: DATE,
       updated: DATE,
@@ -766,7 +1097,7 @@ test("active Milestone scope reaches Work and suppresses dependency cascades", a
       target: "Migration safety",
     },
     [
-      "# MS-001: Active Migration",
+      "# MS-002: Active Migration",
       "",
       "## Scope",
       "",
@@ -782,21 +1113,18 @@ test("active Milestone scope reaches Work and suppresses dependency cascades", a
     boardPath: path.join(root, ".catpaw"),
   });
 
-  assert.equal(report.status, "blocked");
-  assert.deepEqual(
-    report.blockers.filter((item) =>
-      ["reqs/FR-101-active.md", "plans/active/FR-101-active.md", "milestones/MS-001-active.md"]
-        .includes(item.path)
-    ),
-    [{
-      code: "active-work-incomplete",
-      path: "reqs/FR-101-active.md",
-      message: "Active Work Item FR-101 requires explicit valid fields: stage.",
-    }],
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.deepEqual(report.blockers, []);
+  const work = parseFrontmatter(
+    operation(report, "write-file", "work/FR-101-active.md").content,
   );
+  assert.equal(work.data.stage, "plan");
+  const milestone = operation(report, "write-file", "milestones/MS-002-active.md");
+  assert.match(milestone.content, /<!-- catpaw:milestone-scope:start -->/);
+  assert.match(milestone.content, /\| FR-101 \| Active Through Milestone \| active \|/);
 });
 
-test("planner does not extract Work IDs from noncanonical filename prefixes", async (t) => {
+test("planner falls back to a canonical Work ID in the H1", async (t) => {
   const files = historicalProseBoard();
   files[".catpaw/index.md"] = frontmatter(
     { runtime: "2.1.7" },
@@ -812,7 +1140,7 @@ test("planner does not extract Work IDs from noncanonical filename prefixes", as
       updated: DATE,
       closed: "null",
     },
-    "# FR-999: Misleading Filename",
+    "# FR-999 Misleading Filename",
   );
   const root = await fixture(t, files);
 
@@ -821,16 +1149,43 @@ test("planner does not extract Work IDs from noncanonical filename prefixes", as
     boardPath: path.join(root, ".catpaw"),
   });
 
-  assert.equal(report.status, "blocked");
-  assert.ok(report.blockers.some((item) =>
-    item.code === "active-work-incomplete" &&
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.equal(
+    report.mappings.some((item) => item.id === "FR-999"),
+    true,
+  );
+  assert.ok(report.warnings.some((item) =>
+    item.code === "inferred-metadata" &&
     item.path === "reqs/garbage-FR-999-copy.md" &&
     item.message.includes("id")
   ));
-  assert.equal(
-    report.mappings.some((item) => item.id === "FR-999"),
-    false,
+  assert.match(
+    operation(report, "write-file", "index.md").content,
+    /\| FR-999 \| Misleading Filename \|/,
   );
+});
+
+test("planner blocks malformed frontmatter instead of treating it as missing", async (t) => {
+  const files = historicalProseBoard();
+  files[".catpaw/reqs/FR-301-old-note.md"] = [
+    "---",
+    "id: [broken",
+    "---",
+    "# FR-301: Old Note",
+  ].join("\n");
+  const root = await fixture(t, files);
+
+  const report = await analyzeV1ToV2Migration({
+    projectRoot: root,
+    boardPath: path.join(root, ".catpaw"),
+  });
+
+  assert.equal(report.status, "blocked");
+  assert.deepEqual(report.operations, []);
+  assert.ok(report.blockers.some((item) =>
+    item.code === "invalid-frontmatter" &&
+    item.path === "reqs/FR-301-old-note.md"
+  ));
 });
 
 test("planner canonically normalizes terminal Work and path bindings", async (t) => {
@@ -873,14 +1228,18 @@ test("planner canonically normalizes terminal Work and path bindings", async (t)
   const planWrite = operation(report, "write-file", "plans/FR-101-completed.md");
   assert.equal(parseFrontmatter(planWrite.content).data.work, "FR-101");
   for (const code of [
-    "normalized-work-id",
     "normalized-work-type",
     "normalized-work-status",
-    "normalized-work-stage",
     "normalized-plan-binding",
   ]) {
     assert.ok(report.warnings.some((item) => item.code === code), code);
   }
+  assert.ok(report.warnings.some((item) =>
+    item.code === "inferred-metadata" &&
+    item.path === "reqs/FR-101-completed.md" &&
+    item.message.includes("id") &&
+    item.message.includes("stage")
+  ));
 });
 
 test("planner maps a fully explicit schema 1 board without writing", async (t) => {
@@ -1014,7 +1373,7 @@ test("planner blocks duplicate Milestone IDs", async (t) => {
   assert.ok(report.blockers.some((item) => item.code === "duplicate-milestone-id"));
 });
 
-test("planner blocks an active draft Plan and preserves draft Evidence", async (t) => {
+test("planner converts draft Plan and Evidence without treating status as metadata", async (t) => {
   const files = readyBoard();
   files[".catpaw/plans/active/FR-101-alpha.md"] = files[
     ".catpaw/plans/active/FR-101-alpha.md"
@@ -1029,18 +1388,24 @@ test("planner blocks an active draft Plan and preserves draft Evidence", async (
     boardPath: path.join(root, ".catpaw"),
   });
 
-  assert.equal(report.status, "blocked");
-  assert.deepEqual(report.operations, []);
-  assert.ok(report.blockers.some((item) =>
-    item.code === "active-plan-incomplete" && item.message.includes("status")
+  assert.equal(report.status, "ready", JSON.stringify(report.blockers));
+  assert.deepEqual(report.blockers, []);
+  assert.ok(report.mappings.some((item) =>
+    item.from === "plans/active/FR-101-alpha.md"
   ));
-  assert.equal(report.blockers.some((item) => item.path.includes("reviews/")), false);
+  assert.ok(report.mappings.some((item) =>
+    item.from === "reviews/FR-101-alpha/summary.md"
+  ));
   assert.equal(
     report.preservedLegacy.find(
       (item) => item.from === "reviews/FR-101-alpha/summary.md",
     ).disposition,
-    "preserved",
+    "converted",
   );
+  assert.ok(report.warnings.some((item) =>
+    item.code === "dropped-field" &&
+    item.path === "reviews/FR-101-alpha/summary.md"
+  ));
 });
 
 test("planner isolates preserved empty directories under legacy roots", async (t) => {
@@ -1060,7 +1425,7 @@ test("planner isolates preserved empty directories under legacy roots", async (t
   assert.ok(operation(report, "remove-dir", "research/empty"));
 });
 
-test("planner blocks conflicting active Plan bindings and preserves historical Evidence", async (t) => {
+test("planner blocks conflicting Plan and Evidence bindings", async (t) => {
   const files = readyBoard();
   files[".catpaw/plans/active/FR-101-alpha.md"] = files[
     ".catpaw/plans/active/FR-101-alpha.md"
@@ -1078,7 +1443,7 @@ test("planner blocks conflicting active Plan bindings and preserves historical E
   assert.equal(report.status, "blocked");
   assert.deepEqual(report.operations, []);
   assert.ok(report.blockers.some((item) => item.code === "conflicting-plan-work"));
-  assert.equal(report.blockers.some((item) => item.code === "conflicting-evidence-work"), false);
+  assert.equal(report.blockers.some((item) => item.code === "conflicting-evidence-work"), true);
   assert.equal(
     report.preservedLegacy.find(
       (item) => item.from === "reviews/FR-101-alpha/summary.md",
@@ -1265,7 +1630,7 @@ test("planner fatally decodes every known schema 1 Markdown class", async (t) =>
   }
 });
 
-test("planner preserves Evidence with a non-boolean independent fact", async (t) => {
+test("planner normalizes a non-boolean independent fact without dropping Evidence", async (t) => {
   const files = readyBoard();
   files[".catpaw/reviews/FR-101-alpha/summary.md"] = files[
     ".catpaw/reviews/FR-101-alpha/summary.md"
@@ -1280,14 +1645,25 @@ test("planner preserves Evidence with a non-boolean independent fact", async (t)
   assert.equal(report.status, "ready");
   assert.equal(
     report.mappings.some((item) => item.from === "reviews/FR-101-alpha/summary.md"),
-    false,
+    true,
   );
   assert.equal(
     report.preservedLegacy.find(
       (item) => item.from === "reviews/FR-101-alpha/summary.md",
     ).disposition,
-    "preserved",
+    "converted",
   );
+  const review = report.operations.find((item) =>
+    item.type === "write-file" &&
+    item.path.startsWith("evidence/FR-101/") &&
+    item.path.includes("-review-")
+  );
+  assert.equal(parseFrontmatter(review.content).data.independent, false);
+  assert.ok(report.warnings.some((item) =>
+    item.code === "inferred-metadata" &&
+    item.path === "reviews/FR-101-alpha/summary.md" &&
+    item.message.includes("independent")
+  ));
 });
 
 test("planner returns sorted blockers and no operations when facts are ambiguous", async (t) => {
@@ -1302,8 +1678,8 @@ test("planner returns sorted blockers and no operations when facts are ambiguous
   assert.deepEqual(report.operations, []);
   assert.equal((await snapshotTree(boardPath)).digest, before);
   const codes = new Set(report.blockers.map((item) => item.code));
-  assert.equal(codes.has("active-work-incomplete"), true);
-  assert.equal(codes.has("active-plan-incomplete"), false);
+  assert.equal(codes.has("broken-local-link"), true);
+  assert.equal(codes.has("active-work-incomplete"), false);
   assert.equal(
     report.blockers.some((item) =>
       /generated-frontmatter|missing-evidence|substantive-lessons/.test(item.code)
@@ -1616,7 +1992,7 @@ test("blocked board migrate never writes or creates a backup", async (t) => {
   }
 });
 
-test("migration blocks missing completion Evidence in the active dependency closure", async (t) => {
+test("migration records an accepted historical gap for missing completion Evidence", async (t) => {
   const files = readyBoard();
   delete files[".catpaw/tests/matrices/BUG-202-fix.md"];
   delete files[".catpaw/reviews/BUG-202-fix/summary.md"];
@@ -1626,42 +2002,52 @@ test("migration blocks missing completion Evidence in the active dependency clos
   const before = (await snapshotTree(boardPath)).digest;
 
   const analyzed = await analyzeV1ToV2Migration({ projectRoot: root, boardPath });
-  assert.equal(analyzed.status, "blocked");
-  assert.deepEqual(analyzed.operations, []);
-  assert.deepEqual(analyzed.blockers, [{
-    code: "gated-work-missing-completion-evidence",
-    path: "reqs/BUG-202-fix.md",
-    message: "Required Gated Work BUG-202 closed as done is missing usable completion Evidence: test, independent-review-or-provider.",
-  }]);
+  assert.equal(analyzed.status, "ready", JSON.stringify(analyzed.blockers));
+  assert.deepEqual(analyzed.blockers, []);
+  assert.ok(analyzed.warnings.some((item) =>
+    item.code === "inferred-completion-gap" &&
+    item.path === "reqs/BUG-202-fix.md" &&
+    item.message.includes("test, independent-review-or-provider")
+  ));
+  assert.ok(operation(
+    analyzed,
+    "write-file",
+    `evidence/BUG-202/${DATE}-reflection-accepted-gap.md`,
+  ));
+  assert.equal((await snapshotTree(boardPath)).digest, before);
 
-  for (const apply of [false, true]) {
-    const result = await runCli([
-      "board",
-      "migrate",
-      "--project",
-      root,
-      ...(apply ? ["--apply"] : []),
-      "--json",
-    ], {
-      cwd: root,
-      env: { CATPAW_HOME: catpawHome },
-    });
+  const result = await runCli([
+    "board",
+    "migrate",
+    "--project",
+    root,
+    "--apply",
+    "--json",
+  ], {
+    cwd: root,
+    env: { CATPAW_HOME: catpawHome },
+  });
 
-    assert.equal(result.code, 1, result.stderr || result.stdout);
-    assert.equal(result.stderr, "");
-    const report = JSON.parse(result.stdout);
-    assert.equal(report.status, "blocked");
-    assert.equal(report.mode, apply ? "apply" : "dry-run");
-    assert.equal(report.patch, null);
-    assert.equal(report.backupPath, null);
-    assert.ok(report.blockers.some((item) =>
-      item.code === "gated-work-missing-completion-evidence" &&
-      item.path === "reqs/BUG-202-fix.md" &&
-      item.message.includes("test, independent-review-or-provider")
-    ));
-    assert.equal((await snapshotTree(boardPath)).digest, before);
-    assert.equal(await exists(path.join(catpawHome, "backups")), false);
-  }
+  assert.equal(result.code, 0, result.stderr || result.stdout);
+  assert.equal(result.stderr, "");
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "applied");
+  assert.ok(report.backupPath.startsWith(path.join(catpawHome, "backups")));
+  assert.equal(
+    await exists(path.join(
+      boardPath,
+      `evidence/BUG-202/${DATE}-reflection-accepted-gap.md`,
+    )),
+    true,
+  );
+  const status = await runCli([
+    "board",
+    "doctor",
+    "--project",
+    root,
+    "--json",
+  ], { cwd: root });
+  assert.equal(status.code, 0, status.stderr || status.stdout);
 });
 
 test("board migrate rejects doctor-only flags", async (t) => {

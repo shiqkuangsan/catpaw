@@ -6,6 +6,10 @@ import {
   buildArtifactGraph,
   legacyMilestoneWorkIds,
 } from "./graph.mjs";
+import {
+  hasMilestoneScopeMarkers,
+  parseMilestoneScope,
+} from "./milestone-scope.mjs";
 
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
 const ACTIVE_STATUSES = new Set(["active", "draft"]);
@@ -604,6 +608,29 @@ function checkSchema2CompletionEvidence(board) {
   return findings;
 }
 
+function checkSchema2MilestoneScopes(board) {
+  const findings = [];
+  for (const milestone of board.milestones) {
+    if (!hasMilestoneScopeMarkers(milestone.body ?? "")) continue;
+    try {
+      parseMilestoneScope(milestone.body ?? "");
+    } catch (error) {
+      findings.push(
+        finding(
+          "error",
+          "malformed-milestone-scope",
+          milestone.id,
+          "milestone",
+          milestone.path,
+          error.message,
+          "Restore exactly one valid managed Scope block before using this Milestone.",
+        ),
+      );
+    }
+  }
+  return findings;
+}
+
 export function collectBoardFindings(board, graph = buildArtifactGraph(board)) {
   const findings = [...(board.findings ?? [])];
   findings.push(...(graph.duplicates ?? []).map(duplicateWorkItemFinding));
@@ -613,6 +640,7 @@ export function collectBoardFindings(board, graph = buildArtifactGraph(board)) {
     if (edge.resolution === "missing") findings.push(missingWorkItemFinding(edge));
   }
 
+  findings.push(...checkSchema2MilestoneScopes(board));
   findings.push(...checkSchema2CompletionEvidence(board));
 
   return findings;

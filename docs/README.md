@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.0.3
+These documents explain the architecture and decisions behind CatPaw 3.0.4
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 
@@ -75,10 +75,9 @@ name removed v2 paths. They never override the current authority map above.
 
 The current architecture is owned by
 [ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
-and [ADR-0020: Selective Schema 1 Migration](decisions/0020-selective-schema-1-migration.md).
-ADR-0019 defines the compact runtime model; ADR-0020 makes schema 1 conversion
-proportional to active state while preserving incomplete history without
-inventing metadata.
+and [ADR-0021: Zero-touch Semantic Schema 1 Migration](decisions/0021-zero-touch-semantic-schema-1-migration.md).
+ADR-0019 defines the compact runtime model; ADR-0021 makes schema 1 conversion
+complete and zero-touch while retaining provenance and structural blockers.
 
 ## Writing Rules
 

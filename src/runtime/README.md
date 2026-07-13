@@ -41,6 +41,8 @@ Evidence types：`research | review | test | provider | reflection`。
 
 Schema 1 migration 可能额外生成 `legacy/schema-1/`。它是带 checksum manifest 的
 只读迁移归档，不是第六类 artifact；schema 2 的 status、doctor 与 mutation 会忽略它。
+缺失 metadata 由 migration 从明确事实、canonical 结构、限定正文与 artifact graph
+自动推断；普通用户不需要补 YAML，所有原件仍保存在 archive 中。
 
 ## CLI
 

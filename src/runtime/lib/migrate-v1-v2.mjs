@@ -6,6 +6,10 @@ import { TextDecoder } from "node:util";
 
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { completionEvidenceState } from "./completion-evidence.mjs";
+import {
+  hasMilestoneScopeMarkers,
+  parseMilestoneScope,
+} from "./milestone-scope.mjs";
 import { validateMetadata } from "./schema.mjs";
 import {
   managedTableCell,
@@ -50,7 +54,9 @@ const REQUIRED_DIRECTORIES = [
 ];
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
 const ACTIVE_STATUSES = new Set(["active", "blocked"]);
+const WORK_STAGES = new Set(["think", "plan", "build", "review", "test", "ship", "reflect"]);
 const WORK_ID_PATTERN = /^(?:FR|BUG|CHORE)-[0-9]{3,}$/;
+const ISO_DATE_PATTERN = /\b(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])\b/g;
 const LEGACY_ARCHIVE_ROOT = "legacy/schema-1";
 const LEGACY_ROOTS = [
   "reqs",
@@ -103,6 +109,15 @@ function canonicalWorkId(value) {
   return WORK_ID_PATTERN.test(id) ? id : null;
 }
 
+function workIdsInPath(value) {
+  return new Set(
+    String(value ?? "")
+      .split("/")
+      .map(canonicalWorkId)
+      .filter(Boolean),
+  );
+}
+
 function workType(id) {
   if (id?.startsWith("FR-")) return "feature";
   if (id?.startsWith("BUG-")) return "bug";
@@ -143,11 +158,279 @@ function normalizedWorkStatus(value, activeSignal) {
   return null;
 }
 
-function normalizedClosed(value, status) {
-  if (!TERMINAL_STATUSES.has(status)) {
-    return value === undefined || value === null || value === "" ? null : value;
+function isCalendarDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
+}
+
+function datesIn(...values) {
+  return [...new Set(
+    values
+      .filter((value) => typeof value === "string")
+      .flatMap((value) => [...value.matchAll(ISO_DATE_PATTERN)].map((match) => match[0]))
+      .filter(isCalendarDate),
+  )].sort(compareText);
+}
+
+function migrationDateFrom(value, markdown) {
+  if (typeof value === "string" && datesIn(value).includes(value)) return value;
+  return datesIn(...markdown.values()).at(-1) ?? new Date().toISOString().slice(0, 10);
+}
+
+function sectionText(body, headings) {
+  const names = new Set(headings.map((item) => item.toLowerCase()));
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const start = lines.findIndex((line) => {
+    const match = line.trim().match(/^##\s+(.+)$/);
+    return match && names.has(match[1].trim().toLowerCase());
+  });
+  if (start === -1) return "";
+  const end = lines.findIndex(
+    (line, index) => index > start && /^##\s+/.test(line.trim()),
+  );
+  return lines.slice(start + 1, end === -1 ? undefined : end).join("\n").trim();
+}
+
+function statusFromText(value) {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const original = value.toLowerCase();
+  const hasNegatedTerminal = /\b(?:not|never)\s+(?:yet\s+)?(?:done|complete|completed|closed|cancelled|canceled)\b|(?:尚未|还未|未曾|未|没有|并未|不是|并非)(?:已)?(?:完成|关闭|取消|废弃|终结|收口)/.test(original);
+  const hasTerminalTransition = /\b(?:now|finally)\s+(?:done|complete|completed|closed|cancelled|canceled)\b|(?:现(?:在)?|如今|最终)(?:已经|已)(?:完成|关闭|取消|废弃|终结|收口)/.test(original);
+  const suppressTerminal = hasNegatedTerminal && !hasTerminalTransition;
+  const text = original
+    .replace(
+      /\b(?:not|never)\s+(?:yet\s+)?(?:done|complete|completed|closed|cancelled|canceled|active|blocked|paused|deferred)\b/g,
+      "",
+    )
+    .replace(
+      /(?:尚未|还未|未曾|未|没有|并未|不是|并非)(?:已)?(?:完成|关闭|取消|废弃|终结|收口|进行中|推进|暂停|阻塞|后置|延后)/g,
+      "",
+    );
+  const first = text
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-*]\s+/, ""))
+    .find(Boolean) ?? "";
+  if (!suppressTerminal && /^(?:done|completed|closed|已完成|历史完成|完成(?:[，。.]|$))/.test(first)) {
+    return "done";
   }
-  return value;
+  if (!suppressTerminal && /^(?:cancelled|canceled|superseded|已取消|取消|废弃)/.test(first)) {
+    return "cancelled";
+  }
+  if (/^(?:active|in[_ -]?progress|进行中|正在|当前推进|本周优先)/.test(first)) {
+    return "active";
+  }
+  if (/^(?:blocked|paused|deferred|backlog|暂停|后置|延后|后续|尚未启动|下一阶段|待启动|待推进|计划中)/.test(first)) {
+    return "blocked";
+  }
+  if (
+    !suppressTerminal &&
+    /(?:^|\|)\s*(?:(?:done|completed|closed)\s*(?:\||$)|(?:已完成|历史完成)\s*(?:[:：，。;；|]|$))/.test(text)
+  ) {
+    return "done";
+  }
+  if (
+    !suppressTerminal &&
+    /(?:^|\|)\s*(?:(?:cancelled|canceled|superseded)\s*(?:\||$)|(?:已取消|取消|废弃)\s*(?:[:：，。;；|]|$))/.test(text)
+  ) {
+    return "cancelled";
+  }
+  if (!suppressTerminal && /(?:cancelled|canceled|superseded|废弃|取消|取代|不再推进)/.test(text)) {
+    return "cancelled";
+  }
+  if (/(?:\bactive\b|in[_ -]?progress|进行中|实施中|正在(?:推进|收口|实施)|当前推进|本周优先)/.test(text)) {
+    return "active";
+  }
+  if (/(?:blocked|paused|deferred|backlog|暂停|后置|延后|后续|候选|尚未启动|下一阶段|待启动|待推进|计划中)/.test(text)) {
+    return "blocked";
+  }
+  if (!suppressTerminal && /(?:\bdone\b|completed|closed|已完成|历史完成|已收口|已交付|已补|已实现|已新增|已接入|已合入|完成[（(]|完成[。.]?$)/m.test(text)) {
+    return "done";
+  }
+  return null;
+}
+
+function statusNearId(body, id) {
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const matching = lines.filter((line) => {
+    const ids = [...workIdsInText(line)];
+    if (!ids.includes(id)) return false;
+    if (ids.length <= 1) return true;
+    const sharedSequence = workIdGroupsInText(line).some((group) =>
+      group.has(id) && group.size === ids.length
+    );
+    if (sharedSequence) return true;
+    const firstToken = line.match(/\b(?:FR|BUG|CHORE)-[0-9]+\b/i)?.[0] ?? null;
+    return canonicalWorkId(firstToken) === id;
+  });
+  return statusFromText(matching.join("\n"));
+}
+
+function artifactDates(data, body, status, fallback) {
+  const sourceDates = datesIn(body);
+  const created = datesIn(data.created ?? "").at(0) ?? sourceDates.at(0) ?? fallback;
+  const updated = datesIn(data.updated ?? "").at(-1) ?? sourceDates.at(-1) ?? created;
+  const closed = TERMINAL_STATUSES.has(status)
+    ? datesIn(data.closed ?? "").at(-1) ?? updated
+    : null;
+  return { created, updated, closed };
+}
+
+function artifactStatus(data, body) {
+  return normalizedWorkStatus(data.status, false) ??
+    statusFromText(sectionText(body, ["status", "状态"]));
+}
+
+function hasCompletedTestSignal(data, body) {
+  if (artifactStatus(data, body) === "done") return true;
+  const results = String(body ?? "")
+    .replaceAll("\r\n", "\n")
+    .split("\n")
+    .filter((line) => /^\|.*\|$/.test(line.trim()) && !/^\|(?:\s*:?-+:?\s*\|)+$/.test(line.trim()))
+    .map((line) => line.trim().match(/\|\s*([^|]+?)\s*\|$/)?.[1]?.trim() ?? "")
+    .filter((value) => value !== "" && !/^(?:result|status|结果|状态)$/i.test(value));
+  if (results.length === 0) return false;
+  return results.every((value) => {
+    const text = value
+      .toLowerCase()
+      .replace(/\b(?:0|no)\s+(?:failed|failures?)\b/g, "")
+      .replace(/(?:没有|无)失败/g, "");
+    const unresolved = /\b(?:pending|failed?|failure|not\s+run|skipped|todo)\b|失败|未通过|待执行|待验证|未执行|阻塞/.test(text);
+    const completed = /\b(?:passed|successful|success)\b|\bpass\s*[:=]?\s*[0-9]+\b|通过|成功/.test(text);
+    return completed && !unresolved;
+  });
+}
+
+function inferredMode(data, status) {
+  if (data.mode === "gated" || data.level === "L3") return "gated";
+  if (data.mode === "tracked" || data.level === "L2") return "tracked";
+  return TERMINAL_STATUSES.has(status) ? "tracked" : "gated";
+}
+
+function inferredStage(data, status, { hasPlan = false, hasTest = false, hasReview = false } = {}) {
+  if (WORK_STAGES.has(data.stage)) return data.stage;
+  if (TERMINAL_STATUSES.has(status)) return "reflect";
+  if (hasReview) return "review";
+  if (hasTest) return "test";
+  if (hasPlan) return "plan";
+  return "think";
+}
+
+function inferredWarning(artifactPath, fields, details = "") {
+  const suffix = details === "" ? "" : ` ${details}`;
+  return warning(
+    "inferred-metadata",
+    artifactPath,
+    `Inferred schema 2 metadata: ${[...new Set(fields)].sort(compareText).join(", ")}.${suffix}`,
+  );
+}
+
+function workIdsInText(value) {
+  const ids = new Set();
+  const text = String(value ?? "");
+  for (const token of text.matchAll(/\b(?:FR|BUG|CHORE)-[0-9]+\b/gi)) {
+    const id = canonicalWorkId(token[0]);
+    if (id) ids.add(id);
+  }
+  for (const group of workIdGroupsInText(text)) {
+    for (const id of group) ids.add(id);
+  }
+  return ids;
+}
+
+function workIdGroupsInText(value) {
+  const groups = [];
+  const text = String(value ?? "");
+  for (const sequence of text.matchAll(
+    /\b(FR|BUG|CHORE)-([0-9]+)((?:\s*[/、,，]\s*[0-9]+)+)/gi,
+  )) {
+    const group = new Set();
+    const first = canonicalWorkId(`${sequence[1]}-${sequence[2]}`);
+    if (first) group.add(first);
+    for (const suffix of sequence[3].matchAll(/[0-9]+/g)) {
+      const id = canonicalWorkId(`${sequence[1]}-${suffix[0]}`);
+      if (id) group.add(id);
+    }
+    if (group.size > 1) groups.push(group);
+  }
+  return groups;
+}
+
+function workIdFromHeading(body) {
+  const heading = String(body ?? "").match(/^#\s+(.+)$/m)?.[1] ?? "";
+  const ids = workIdsInText(heading);
+  return ids.size === 1 ? [...ids][0] : null;
+}
+
+function inferredWorkId(data, source, body) {
+  return canonicalWorkId(data.id) ??
+    canonicalWorkId(source) ??
+    workIdFromHeading(body);
+}
+
+function inferredMilestoneId(data, source, body) {
+  const heading = String(body ?? "").match(/^#\s+(.+)$/m)?.[1] ?? "";
+  return canonicalMilestoneId(data.id) ??
+    canonicalMilestoneId(source) ??
+    canonicalMilestoneId(heading.match(/\b(?:MS-|M)\d+\b/i)?.[0] ?? "");
+}
+
+function milestoneWorkIds(body) {
+  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
+  const scopedIds = new Set();
+  let foundScope = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].trim().match(/^##\s+(.+)$/);
+    if (!match) continue;
+    if (negativeScopeHeading(match[1])) {
+      foundScope = true;
+      continue;
+    }
+    if (!positiveScopeHeading(match[1])) continue;
+    foundScope = true;
+    const end = lines.findIndex(
+      (line, lineIndex) => lineIndex > index && /^##\s+/.test(line.trim()),
+    );
+    const ids = workIdsInText(lines.slice(index + 1, end === -1 ? undefined : end).join("\n"));
+    for (const id of ids) scopedIds.add(id);
+  }
+  if (foundScope) return scopedIds;
+  return workIdsInText(body);
+}
+
+function negativeScopeHeading(value) {
+  return /^(?:out\s+of\s+scope|not\s+in\s+scope|non-?goals?|excluded?|非目标|范围外|排除|不包含)$/i.test(
+    String(value ?? "").trim(),
+  );
+}
+
+function positiveScopeHeading(value) {
+  const heading = String(value ?? "").trim();
+  return /^(?:managed\s+scope|scope|in\s+scope|work\s+items?|frs?|included?\s+(?:frs?|work\s+items?)|candidate\s+(?:frs?|work\s+items?)|范围|包含\s*fr|候选\s*fr)$/i.test(heading);
+}
+
+function appendManagedScope(body, ids, workById) {
+  if (hasMilestoneScopeMarkers(body)) return body;
+  const rows = [...ids]
+    .filter((id) => workById.has(id))
+    .sort(compareText)
+    .map((id) => {
+      const work = workById.get(id);
+      return `| ${id} | ${managedTableCell(work.title)} | ${work.metadata.status} |  |`;
+    });
+  const block = [
+    "## Managed Scope",
+    "",
+    "<!-- catpaw:milestone-scope:start -->",
+    "| Work Item ID | Title | Status | Notes |",
+    "|---|---|---|---|",
+    ...rows,
+    "<!-- catpaw:milestone-scope:end -->",
+  ].join("\n");
+  return `${String(body ?? "").trimEnd()}\n\n${block}\n`;
 }
 
 function sectionIds(body, heading) {
@@ -191,12 +474,6 @@ function normalizedBinding(data, artifactPath, artifactKind) {
   const rawReq = data?.req ?? null;
   const work = canonicalWorkId(rawWork);
   const req = canonicalWorkId(rawReq);
-  if (rawWork !== null && work === null) {
-    return { value: null, error: `work=${rawWork} is not a canonical Work reference.` };
-  }
-  if (rawReq !== null && req === null) {
-    return { value: null, error: `req=${rawReq} is not a canonical Work reference.` };
-  }
   if (work !== null && req !== null && work !== req) {
     return {
       value: null,
@@ -205,10 +482,34 @@ function normalizedBinding(data, artifactPath, artifactKind) {
       path: artifactPath,
     };
   }
-  const value = work ?? req;
+  const sourceIds = workIdsInPath(artifactPath);
+  if (sourceIds.size > 1) {
+    return {
+      value: null,
+      error: `Conflicting Work identities in path: ${[...sourceIds].join(", ")}.`,
+      code: `conflicting-${artifactKind}-work`,
+      path: artifactPath,
+    };
+  }
+  const source = [...sourceIds][0] ?? null;
+  const explicit = work ?? req;
+  if (explicit !== null && source !== null && explicit !== source) {
+    return {
+      value: null,
+      error: `Conflicting Work identity: metadata=${explicit}, filename=${source}.`,
+      code: `conflicting-${artifactKind}-work`,
+      path: artifactPath,
+    };
+  }
+  const value = explicit ?? source;
   return {
     value,
     normalized: value !== null && ![rawWork, rawReq].includes(value),
+    inferredFields: [
+      ...(rawWork !== null && work === null ? ["work"] : []),
+      ...(rawReq !== null && req === null ? ["req"] : []),
+      ...(explicit === null && source !== null ? ["work"] : []),
+    ],
   };
 }
 
@@ -313,145 +614,11 @@ function headingTitle(body, prefixes = []) {
   return title;
 }
 
-function parseTableRow(line) {
-  if (!line.startsWith("|") || !line.endsWith("|")) return null;
-  const cells = [];
-  let cell = "";
-  for (let index = 1; index < line.length - 1; index += 1) {
-    const character = line[index];
-    if (character === "\\" && index + 1 < line.length - 1) {
-      const escaped = line[index + 1];
-      cell += escaped === "|" || escaped === "\\" ? escaped : `\\${escaped}`;
-      index += 1;
-    } else if (character === "|") {
-      cells.push(cell.trim());
-      cell = "";
-    } else {
-      cell += character;
-    }
-  }
-  cells.push(cell.trim());
-  return cells.length === 4 ? cells : null;
-}
-
-function scopeWorkIds(body) {
-  const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
-  const start = lines.findIndex(
-    (line) => line.trim().toLowerCase() === "## scope",
-  );
-  if (start === -1) return new Set();
-  const end = lines.findIndex(
-    (line, index) => index > start && /^##\s+/.test(line.trim()),
-  );
-  const ids = new Set();
-  for (const line of lines.slice(start + 1, end === -1 ? undefined : end)) {
-    const id = parseTableRow(line.trim())?.[0];
-    if (WORK_ID_PATTERN.test(id ?? "")) ids.add(id);
-  }
-  return ids;
-}
-
-function transformLegacyScope(
-  body,
-  workById,
-  blockedWorkIds,
-  artifactPath,
-  blockers,
-) {
-  if (/<!-- catpaw:milestone-scope:(?:start|end) -->/.test(body)) {
-    blockers.push(
-      finding(
-        "ambiguous-milestone-scope",
-        artifactPath,
-        "Schema 1 Milestone already contains managed Scope markers.",
-      ),
-    );
-    return body;
-  }
-  const scopeHeading = body.match(/^## Scope[ \t]*$/m);
-  if (!scopeHeading) {
-    blockers.push(
-      finding("missing-milestone-scope", artifactPath, "Milestone has no ## Scope section."),
-    );
-    return body;
-  }
-  const sectionStart = scopeHeading.index + scopeHeading[0].length;
-  const remaining = body.slice(sectionStart);
-  const nextHeading = remaining.match(/^##\s+/m);
-  const sectionEnd = nextHeading
-    ? sectionStart + nextHeading.index
-    : body.length;
-  const section = body.slice(sectionStart, sectionEnd);
-  const lines = section.split("\n");
-  const tableStart = lines.findIndex((line) => line.trimStart().startsWith("|"));
-  if (tableStart === -1) {
-    blockers.push(
-      finding("missing-milestone-scope", artifactPath, "Milestone Scope has no table."),
-    );
-    return body;
-  }
-  let tableEnd = tableStart;
-  while (tableEnd < lines.length && lines[tableEnd].trimStart().startsWith("|")) {
-    tableEnd += 1;
-  }
-  const tableLines = lines.slice(tableStart, tableEnd).map((line) => line.trim());
-  const header = parseTableRow(tableLines[0] ?? "");
-  if (
-    !header ||
-    !["req", "work item id"].includes(header[0].toLowerCase()) ||
-    header[1].toLowerCase() !== "title" ||
-    header[2].toLowerCase() !== "status" ||
-    header[3].toLowerCase() !== "notes" ||
-    !/^\|\s*:?-+/.test(tableLines[1] ?? "")
-  ) {
-    blockers.push(
-      finding("malformed-milestone-scope", artifactPath, "Milestone Scope table is malformed."),
-    );
-    return body;
-  }
-
-  const rows = [];
-  const seen = new Set();
-  for (const line of tableLines.slice(2)) {
-    const parsed = parseTableRow(line);
-    const id = parsed?.[0];
-    if (!parsed || !WORK_ID_PATTERN.test(id) || seen.has(id)) {
-      blockers.push(
-        finding("malformed-milestone-scope", artifactPath, "Milestone Scope row is invalid."),
-      );
-      continue;
-    }
-    seen.add(id);
-    const work = workById.get(id);
-    if (!work) {
-      if (blockedWorkIds.has(id)) continue;
-      blockers.push(
-        finding(
-          "missing-milestone-work",
-          artifactPath,
-          `Milestone Scope references missing Work Item ${id}.`,
-        ),
-      );
-      continue;
-    }
-    rows.push({ id, notes: parsed[3], work });
-  }
-  rows.sort((left, right) => compareText(left.id, right.id));
-  const replacement = [
-    "<!-- catpaw:milestone-scope:start -->",
-    "| Work Item ID | Title | Status | Notes |",
-    "|---|---|---|---|",
-    ...rows.map(({ id, notes, work }) =>
-      `| ${id} | ${managedTableCell(work.title)} | ${work.metadata.status} | ${managedTableCell(notes)} |`
-    ),
-    "<!-- catpaw:milestone-scope:end -->",
-  ];
-  const nextLines = [
-    ...lines.slice(0, tableStart),
-    ...replacement,
-    ...lines.slice(tableEnd),
-  ];
-  return `${body.slice(0, sectionStart)}${nextLines.join("\n")}${body.slice(sectionEnd)}`;
+function titleFromPath(relativePath, id = null) {
+  let title = path.posix.basename(relativePath, ".md");
+  if (id) title = title.replace(new RegExp(`^${id}-?`, "i"), "");
+  title = title.replace(/[-_]+/g, " ").trim();
+  return title === "" ? id ?? "Legacy artifact" : title;
 }
 
 function splitDestination(raw) {
@@ -815,6 +982,7 @@ function baseReport(fromSchema) {
 export async function analyzeV1ToV2Migration({
   projectRoot = process.cwd(),
   boardPath = path.join(projectRoot, ".catpaw"),
+  migrationDate = null,
 } = {}) {
   const root = path.resolve(boardPath);
   const projectRootPath = path.resolve(projectRoot);
@@ -1000,14 +1168,58 @@ export async function analyzeV1ToV2Migration({
       parsedCache.set(relativePath, { text, ...parseFrontmatter(text) });
     } catch (error) {
       parsedCache.set(relativePath, { text, error });
+      report.blockers.push(finding("invalid-frontmatter", relativePath, error.message));
     }
   }
   function parsedFile(relativePath) {
     const cached = parsedCache.get(relativePath);
     return cached?.error ? null : cached ?? null;
   }
-  function parseError(relativePath) {
-    return parsedCache.get(relativePath)?.error ?? null;
+  const inferenceDate = migrationDateFrom(migrationDate, knownMarkdown);
+
+  const testPaths = [...inventory.keys()]
+    .filter((item) => /^tests\/matrices\/[^/]+\.md$/.test(item))
+    .sort(compareText);
+  const reviewPaths = [...inventory.keys()]
+    .filter((item) => /^reviews\/.+\.md$/.test(item))
+    .sort(compareText);
+  const researchPaths = [...inventory.keys()]
+    .filter((item) => /^research\/.+\.md$/.test(item))
+    .sort(compareText);
+  function boundWorkIds(paths, artifactKind) {
+    const ids = new Set();
+    for (const source of paths) {
+      const parsed = parsedFile(source);
+      if (!parsed) continue;
+      const binding = normalizedBinding(parsed.data, source, artifactKind);
+      if (!binding.error && binding.value !== null) ids.add(binding.value);
+    }
+    return ids;
+  }
+  const planWorkIds = boundWorkIds(planPaths, "plan");
+  const activePlanPathIds = boundWorkIds(
+    planPaths.filter((item) => item.startsWith("plans/active/")),
+    "plan",
+  );
+  const testWorkIds = boundWorkIds(testPaths, "evidence");
+  const reviewWorkIds = boundWorkIds(reviewPaths, "evidence");
+  const planStatusesByWork = new Map();
+  for (const source of planPaths) {
+    const parsed = parsedFile(source);
+    if (!parsed) continue;
+    const binding = normalizedBinding(parsed.data, source, "plan");
+    const status = artifactStatus(parsed.data, parsed.body);
+    if (binding.error || binding.value === null || status === null) continue;
+    const statuses = planStatusesByWork.get(binding.value) ?? new Set();
+    statuses.add(status);
+    planStatusesByWork.set(binding.value, statuses);
+  }
+  const completedTestWorkIds = new Set();
+  for (const source of testPaths) {
+    const parsed = parsedFile(source);
+    if (!parsed || !hasCompletedTestSignal(parsed.data, parsed.body)) continue;
+    const binding = normalizedBinding(parsed.data, source, "evidence");
+    if (!binding.error && binding.value !== null) completedTestWorkIds.add(binding.value);
   }
 
   const activeIndexWorkIds = sectionIds(indexParsed.body, "Active Work");
@@ -1020,18 +1232,50 @@ export async function analyzeV1ToV2Migration({
     if (binding.value) activePlanWorkIds.add(binding.value);
   }
   const activeMilestoneWorkIds = new Set();
+  const inferredMilestones = [];
+  const inferredMilestoneBySource = new Map();
   for (const source of milestonePaths) {
     const parsed = parsedFile(source);
     if (!parsed) continue;
     const sourceId = canonicalMilestoneId(source);
     const explicitId = canonicalMilestoneId(parsed.data.id);
-    const status = normalizedMilestoneStatus(parsed.data.status);
+    const id = explicitId ?? sourceId;
+    const status = normalizedMilestoneStatus(parsed.data.status) ??
+      statusNearId(indexParsed.body, id) ??
+      statusFromText(sectionText(parsed.body, ["status", "状态"])) ??
+      "blocked";
+    let workIds;
+    if (hasMilestoneScopeMarkers(parsed.body)) {
+      try {
+        workIds = new Set(parseMilestoneScope(parsed.body).rows.map((row) => row.id));
+      } catch (error) {
+        report.blockers.push(
+          finding("malformed-milestone-scope", source, error.message),
+        );
+        workIds = new Set();
+      }
+    } else {
+      workIds = milestoneWorkIds(parsed.body);
+    }
+    const inferred = { source, parsed, sourceId, explicitId, id, status, workIds };
+    inferredMilestones.push(inferred);
+    inferredMilestoneBySource.set(source, inferred);
     const routedActive =
       (sourceId !== null && activeIndexMilestoneIds.has(sourceId)) ||
       (explicitId !== null && activeIndexMilestoneIds.has(explicitId));
     if (!routedActive && !ACTIVE_STATUSES.has(status)) continue;
-    for (const id of scopeWorkIds(parsed.body)) {
-      activeMilestoneWorkIds.add(id);
+    for (const workId of workIds) {
+      activeMilestoneWorkIds.add(workId);
+    }
+  }
+  inferredMilestones.sort((left, right) => compareText(left.id ?? "", right.id ?? ""));
+  const milestoneStatusesByWork = new Map();
+  for (const milestone of inferredMilestones) {
+    for (const id of milestone.workIds) {
+      const status = statusNearId(milestone.parsed.body, id) ?? milestone.status;
+      const statuses = milestoneStatusesByWork.get(id) ?? new Set();
+      statuses.add(status);
+      milestoneStatusesByWork.set(id, statuses);
     }
   }
   const blockedActiveWorkIds = new Set();
@@ -1054,89 +1298,105 @@ export async function analyzeV1ToV2Migration({
       );
     const sourceDependency = sourceId !== null &&
       activeMilestoneWorkIds.has(sourceId);
-    const sourceRequired = sourceRoutedActive || sourceDependency;
-    if (!parsed) {
-      if (sourceRequired) {
-        markBlockedWork(sourceId);
-        report.blockers.push(
-          finding(
-            "active-work-incomplete",
-            source,
-            `Active Work Item ${sourceId} requires valid frontmatter: ${parseError(source)?.message ?? "unknown parse error"}.`,
-          ),
-        );
-      }
-      continue;
-    }
+    if (!parsed) continue;
     const data = parsed.data;
     const explicitId = canonicalWorkId(data.id);
-    const id = explicitId ?? sourceId;
+    const headingId = workIdFromHeading(parsed.body);
+    const identityIds = new Set([explicitId, sourceId, headingId].filter(Boolean));
+    const id = inferredWorkId(data, source, parsed.body);
     const activeSignal = id !== null &&
       (
         activeIndexWorkIds.has(id) ||
         activePlanWorkIds.has(id)
       );
     const dependencySignal = id !== null && activeMilestoneWorkIds.has(id);
-    const status = normalizedWorkStatus(data.status, activeSignal);
     const routedActive = sourceRoutedActive || activeSignal;
     const required = routedActive || sourceDependency || dependencySignal;
-    const active = required || ACTIVE_STATUSES.has(status);
-    if (explicitId !== null && sourceId !== null && explicitId !== sourceId) {
-      if (active) {
-        markBlockedWork(sourceId, explicitId);
-        report.blockers.push(
-          finding(
-            "active-work-identity-conflict",
-            source,
-            `Active Work Item identity conflicts: frontmatter=${explicitId}, filename=${sourceId}.`,
-          ),
-        );
-      }
-      continue;
-    }
-    if (routedActive && TERMINAL_STATUSES.has(status)) {
-      markBlockedWork(sourceId, id);
+    const explicitStatus = normalizedWorkStatus(data.status, activeSignal);
+    const bodyStatus = statusFromText(sectionText(parsed.body, ["status", "状态"]));
+    const indexStatus = id === null ? null : statusNearId(indexParsed.body, id);
+    const milestoneStatuses = id === null
+      ? new Set()
+      : milestoneStatusesByWork.get(id) ?? new Set();
+    const milestoneStatus = ["blocked", "active", "cancelled", "done"]
+      .find((item) => milestoneStatuses.has(item)) ?? null;
+    const planStatuses = id === null
+      ? new Set()
+      : planStatusesByWork.get(id) ?? new Set();
+    const artifactGraphStatus = planStatuses.has("cancelled")
+      ? "cancelled"
+      : planStatuses.has("done") && completedTestWorkIds.has(id)
+        ? "done"
+        : null;
+    const graphStatus = id !== null && activePlanPathIds.has(id) ? "active" : null;
+    const status = explicitStatus ??
+      (TERMINAL_STATUSES.has(bodyStatus) ? bodyStatus : null) ??
+      (TERMINAL_STATUSES.has(indexStatus) ? indexStatus : null) ??
+      bodyStatus ??
+      indexStatus ??
+      milestoneStatus ??
+      artifactGraphStatus ??
+      graphStatus ??
+      (required ? "active" : "blocked");
+    if (identityIds.size > 1) {
+      markBlockedWork(...identityIds);
       report.blockers.push(
         finding(
-          "active-work-status-conflict",
+          "work-identity-conflict",
           source,
-          `Work Item ${id} is terminal in frontmatter but active in canonical schema 1 routing.`,
+          `Work Item identity conflicts across metadata, filename, or heading: ${[...identityIds].join(", ")}.`,
         ),
       );
       continue;
     }
+    if (milestoneStatuses.size > 1) {
+      report.warnings.push(
+        warning(
+          "conflicting-milestone-status",
+          source,
+          `Milestones disagree on ${id} status (${[...milestoneStatuses].sort(compareText).join(", ")}); inferred ${milestoneStatus} conservatively.`,
+        ),
+      );
+    }
+    if (routedActive && TERMINAL_STATUSES.has(status)) {
+      report.warnings.push(
+        warning(
+          "stale-active-routing",
+          source,
+          `Ignored stale schema 1 active routing because Work Item ${id} resolves to ${status}.`,
+        ),
+      );
+    }
     const type = workType(id);
-    const mode = data.level === "L2" ? "tracked" : data.level === "L3" ? "gated" : null;
-    const stage = data.stage === undefined && TERMINAL_STATUSES.has(status)
-      ? "reflect"
-      : data.stage;
+    const mode = inferredMode(data, status);
+    const stage = inferredStage(data, status, {
+      hasPlan: id !== null && planWorkIds.has(id),
+      hasTest: id !== null && testWorkIds.has(id),
+      hasReview: id !== null && reviewWorkIds.has(id),
+    });
     const title = headingTitle(parsed.body, [
-      new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*`),
-    ]);
+      new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?::|\\s+-)?\\s*`),
+    ]) ?? titleFromPath(source, id);
+    const dates = artifactDates(data, parsed.body, status, inferenceDate);
     const metadata = {
       id,
       type,
       mode,
       status,
       stage,
-      created: data.created,
-      updated: data.updated,
-      closed: normalizedClosed(data.closed, status),
+      ...dates,
     };
     const invalidFields = metadataIssueFields("workItem", metadata);
-    if (!title) invalidFields.push("title");
     const fields = [...new Set(invalidFields)].sort(compareText);
     if (fields.length > 0) {
-      if (active) {
-        markBlockedWork(sourceId, id);
-        report.blockers.push(
-          finding(
-            "active-work-incomplete",
-            source,
-            `Active Work Item ${id ?? sourceId ?? "unknown"} requires explicit valid fields: ${fields.join(", ")}.`,
-          ),
-        );
-      }
+      markBlockedWork(sourceId, id);
+      report.blockers.push(
+        finding(
+          "invalid-inferred-work-metadata",
+          source,
+          `Could not produce valid Work metadata after inference: ${fields.join(", ")}.`,
+        ),
+      );
       continue;
     }
     if (workIdSources.has(id)) {
@@ -1150,24 +1410,37 @@ export async function analyzeV1ToV2Migration({
       continue;
     }
     workIdSources.set(id, source);
-    if (data.id !== id) {
+    const inferredFields = [
+      ...(data.id !== id ? ["id"] : []),
+      ...(data.type !== type ? ["type"] : []),
+      ...(data.mode !== mode && !["L2", "L3"].includes(data.level) ? ["mode"] : []),
+      ...(explicitStatus === null ? ["status"] : []),
+      ...(!WORK_STAGES.has(data.stage) ? ["stage"] : []),
+      ...(!isCalendarDate(data.created) ? ["created"] : []),
+      ...(!isCalendarDate(data.updated) ? ["updated"] : []),
+      ...(TERMINAL_STATUSES.has(status) && !isCalendarDate(data.closed) ? ["closed"] : []),
+    ];
+    if (inferredFields.length > 0) {
+      report.warnings.push(inferredWarning(source, inferredFields));
+    }
+    if (data.id !== undefined && data.id !== id) {
       report.warnings.push(
         warning("normalized-work-id", source, `Normalized Work ID ${data.id ?? "<missing>"} -> ${id}.`),
       );
     }
-    if (data.type !== type) {
+    if (data.type !== undefined && data.type !== type) {
       report.warnings.push(
         warning("normalized-work-type", source, `Normalized Work type ${data.type ?? "<missing>"} -> ${type} from ${id}.`),
       );
     }
-    if (data.status !== status) {
+    if (data.status !== undefined && data.status !== status) {
       report.warnings.push(
         warning("normalized-work-status", source, `Normalized Work status ${data.status ?? "<missing>"} -> ${status}.`),
       );
     }
-    if (data.stage !== stage) {
+    if (data.stage !== undefined && data.stage !== stage) {
       report.warnings.push(
-        warning("normalized-work-stage", source, `Normalized terminal Work stage ${data.stage ?? "<missing>"} -> ${stage}.`),
+        warning("normalized-work-stage", source, `Normalized Work stage ${data.stage ?? "<missing>"} -> ${stage}.`),
       );
     }
     if (Object.hasOwn(data, "priority")) {
@@ -1193,58 +1466,53 @@ export async function analyzeV1ToV2Migration({
 
   for (const source of planPaths) {
     const parsed = parsedFile(source);
-    const active = source.startsWith("plans/active/");
     if (!parsed) {
-      if (active) {
-        report.blockers.push(
-          finding(
-            "active-plan-incomplete",
-            source,
-            `Active Plan requires valid frontmatter: ${parseError(source)?.message ?? "unknown parse error"}.`,
-          ),
-        );
-      }
       continue;
     }
     const binding = normalizedBinding(parsed.data, source, "plan");
     if (binding.error) {
-      if (active) {
-        report.blockers.push(
-          finding(
-            binding.code ?? "active-plan-incomplete",
-            source,
-            binding.error,
-          ),
-        );
-      }
+      report.blockers.push(
+        finding(
+          binding.code ?? "conflicting-plan-work",
+          source,
+          binding.error,
+        ),
+      );
       continue;
     }
     const work = binding.value;
-    const metadata = { work, updated: parsed.data.updated };
-    const fields = metadataIssueFields("plan", metadata);
-    if (
-      work !== null &&
-      !workById.has(work) &&
-      !blockedActiveWorkIds.has(work) &&
-      !fields.includes("work")
-    ) {
-      fields.push("work");
+    if (work === null || !workById.has(work)) {
+      report.blockers.push(
+        finding(
+          "plan-work-unresolved",
+          source,
+          "Plan identity could not be bound to a migrated Work Item.",
+        ),
+      );
+      continue;
     }
-    if (parsed.data.status === "draft" && active) fields.push("status");
+    const updated = artifactDates(parsed.data, parsed.body, "active", inferenceDate).updated;
+    const metadata = { work, updated };
+    const fields = metadataIssueFields("plan", metadata);
     const invalidFields = [...new Set(fields)].sort(compareText);
     if (invalidFields.length > 0) {
-      if (active) {
-        report.blockers.push(
-          finding(
-            "active-plan-incomplete",
-            source,
-            `Active Plan requires explicit valid fields: ${invalidFields.join(", ")}.`,
-          ),
-        );
-      }
+      report.blockers.push(
+        finding(
+          "invalid-inferred-plan-metadata",
+          source,
+          `Could not produce valid Plan metadata after inference: ${invalidFields.join(", ")}.`,
+        ),
+      );
       continue;
     }
     if (work !== null && blockedActiveWorkIds.has(work)) continue;
+    const inferredFields = [
+      ...(binding.inferredFields ?? []),
+      ...(!isCalendarDate(parsed.data.updated) ? ["updated"] : []),
+    ];
+    if (inferredFields.length > 0) {
+      report.warnings.push(inferredWarning(source, inferredFields));
+    }
     if (binding.normalized) {
       report.warnings.push(
         warning(
@@ -1276,83 +1544,61 @@ export async function analyzeV1ToV2Migration({
     const sourceId = canonicalMilestoneId(source);
     const parsed = parsedFile(source);
     const sourceActive = sourceId !== null && activeIndexMilestoneIds.has(sourceId);
-    if (!parsed) {
-      if (sourceActive) {
-        report.blockers.push(
-          finding(
-            "active-milestone-incomplete",
-            source,
-            `Active Milestone ${sourceId} requires valid frontmatter.`,
-          ),
-        );
-      }
-      continue;
-    }
+    if (!parsed) continue;
+
     const explicitId = canonicalMilestoneId(parsed.data.id);
-    const id = explicitId ?? sourceId;
-    const activeSignal = id !== null && activeIndexMilestoneIds.has(id);
-    const status = normalizedMilestoneStatus(parsed.data.status);
+    const headingToken = String(parsed.body ?? "")
+      .match(/^#\s+.*?\b((?:MS-|M)\d+)\b/im)?.[1] ?? null;
+    const headingId = canonicalMilestoneId(headingToken);
+    const identityIds = new Set([explicitId, sourceId, headingId].filter(Boolean));
+    const id = inferredMilestoneId(parsed.data, source, parsed.body);
+    const activeSignal = activeIndexMilestoneIds.has(id);
+    const explicitStatus = normalizedMilestoneStatus(parsed.data.status);
+    const status = explicitStatus ??
+      statusNearId(indexParsed.body, id) ??
+      statusFromText(sectionText(parsed.body, ["status", "状态"])) ??
+      "blocked";
     const routedActive = sourceActive || activeSignal;
-    const active = routedActive || ACTIVE_STATUSES.has(status);
-    if (explicitId !== null && sourceId !== null && explicitId !== sourceId) {
-      if (active) {
-        report.blockers.push(
-          finding(
-            "active-milestone-identity-conflict",
-            source,
-            "Active Milestone identity conflicts: frontmatter=" +
-              explicitId + ", filename=" + sourceId + ".",
-          ),
-        );
-      }
-      continue;
-    }
-    if (routedActive && TERMINAL_STATUSES.has(status)) {
+
+    if (identityIds.size > 1) {
       report.blockers.push(
         finding(
-          "active-milestone-status-conflict",
+          "milestone-identity-conflict",
           source,
-          "Milestone " + id +
-            " is terminal in frontmatter but active in canonical schema 1 routing.",
+          `Milestone identity conflicts across metadata, filename, or heading: ${[...identityIds].join(", ")}.`,
         ),
       );
       continue;
     }
+    if (routedActive && TERMINAL_STATUSES.has(status)) {
+      report.warnings.push(
+        warning(
+          "stale-active-routing",
+          source,
+          `Ignored stale schema 1 active routing because Milestone ${id} resolves to ${status}.`,
+        ),
+      );
+    }
+
+    const dates = artifactDates(parsed.data, parsed.body, status, inferenceDate);
     const metadata = {
       id,
       status,
-      created: parsed.data.created,
-      updated: parsed.data.updated,
-      closed: normalizedClosed(parsed.data.closed, status),
+      ...dates,
       target: parsed.data.target ?? null,
     };
     const title = headingTitle(parsed.body, [
       new RegExp(`^${String(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*`),
-    ]);
-    const fields = metadataIssueFields("milestone", metadata);
-    if (!title) fields.push("title");
-    const scopeBlockers = [];
-    const body = fields.length === 0
-      ? transformLegacyScope(
-        parsed.body,
-        workById,
-        blockedActiveWorkIds,
-        source,
-        scopeBlockers,
-      )
-      : parsed.body;
-    if (scopeBlockers.length > 0) fields.push("scope");
-    const invalidFields = [...new Set(fields)].sort(compareText);
+    ]) ?? titleFromPath(source, id);
+    const invalidFields = metadataIssueFields("milestone", metadata);
     if (invalidFields.length > 0) {
-      if (active) {
-        report.blockers.push(
-          finding(
-            "active-milestone-incomplete",
-            source,
-            `Active Milestone ${id ?? sourceId ?? "unknown"} requires explicit valid fields: ${invalidFields.join(", ")}.`,
-          ),
-        );
-      }
+      report.blockers.push(
+        finding(
+          "invalid-inferred-milestone-metadata",
+          source,
+          `Could not produce valid Milestone metadata after inference: ${invalidFields.join(", ")}.`,
+        ),
+      );
       continue;
     }
     if (milestoneIdSources.has(id)) {
@@ -1365,6 +1611,31 @@ export async function analyzeV1ToV2Migration({
       );
       continue;
     }
+
+    const scopeIds = inferredMilestoneBySource.get(source)?.workIds ?? new Set();
+    const unresolvedScopeIds = [...scopeIds].filter((workId) => !workById.has(workId));
+    if (unresolvedScopeIds.length > 0) {
+      report.warnings.push(
+        warning(
+          "unresolved-milestone-reference",
+          source,
+          `Preserved unresolved historical Work references outside managed Scope: ${unresolvedScopeIds.join(", ")}.`,
+        ),
+      );
+    }
+    const inferredFields = [
+      ...(parsed.data.id !== id ? ["id"] : []),
+      ...(explicitStatus === null ? ["status"] : []),
+      ...(!isCalendarDate(parsed.data.created) ? ["created"] : []),
+      ...(!isCalendarDate(parsed.data.updated) ? ["updated"] : []),
+      ...(TERMINAL_STATUSES.has(status) && !isCalendarDate(parsed.data.closed) ? ["closed"] : []),
+      ...(!Object.hasOwn(parsed.data, "target") ? ["target"] : []),
+      ...(scopeIds.size > 0 ? ["scope"] : []),
+    ];
+    if (inferredFields.length > 0) {
+      report.warnings.push(inferredWarning(source, inferredFields));
+    }
+
     milestoneIdSources.set(id, source);
     registerCandidate({
       kind: "milestone",
@@ -1374,44 +1645,86 @@ export async function analyzeV1ToV2Migration({
       id: metadata.id,
       title,
       metadata,
-      body,
+      body: appendManagedScope(parsed.body, scopeIds, workById),
     });
   }
+
+  const evidenceTargets = new Set();
 
   async function addEvidence(source, type, stage, bindingRequired) {
     const parsed = parsedFile(source);
     if (!parsed) return;
-    if (parsed.data.status === "draft") return;
     const binding = normalizedBinding(parsed.data, source, "evidence");
-    if (binding.error) return;
-    const work = binding.value;
-    if (bindingRequired && (work === null || !workById.has(work))) return;
-    if (work !== null && !workById.has(work)) return;
+    if (binding.error) {
+      report.blockers.push(
+        finding(binding.code ?? "conflicting-evidence-work", source, binding.error),
+      );
+      return;
+    }
+    const unresolvedWork = binding.value !== null && !workById.has(binding.value)
+      ? binding.value
+      : null;
+    const work = unresolvedWork === null ? binding.value : null;
     const title = headingTitle(parsed.body, [
       /^Test Matrix:\s*/i,
       /^Review:\s*/i,
       /^Provider Dialogue:\s*/i,
-    ]);
-    const independent = Object.hasOwn(parsed.data, "independent")
-      ? parsed.data.independent
-      : false;
-    const agent = parsed.data.agent ?? null;
+    ]) ?? titleFromPath(source, work);
+    const requestedIndependent = parsed.data.independent === true;
+    const agent = typeof parsed.data.agent === "string" && parsed.data.agent.trim() !== ""
+      ? parsed.data.agent
+      : null;
+    const independent = requestedIndependent && agent !== null;
+    const lens = [
+      "value-scope",
+      "system-contracts",
+      "experience",
+      "security",
+      "performance",
+    ].includes(parsed.data.lens)
+      ? parsed.data.lens
+      : null;
+    const dates = artifactDates(parsed.data, parsed.body, "active", inferenceDate);
     const metadata = {
       type,
       work,
       stage,
-      created: parsed.data.created,
-      updated: parsed.data.updated,
+      created: dates.created,
+      updated: dates.updated,
       independent,
       agent,
-      lens: parsed.data.lens ?? null,
+      lens,
     };
     const fields = metadataIssueFields("evidence", metadata);
-    if (!title) fields.push("title");
-    if (independent && (typeof agent !== "string" || agent.trim() === "")) {
-      fields.push("agent");
+    if (fields.length > 0) {
+      report.blockers.push(
+        finding(
+          "invalid-inferred-evidence-metadata",
+          source,
+          `Could not produce valid Evidence metadata after inference: ${fields.join(", ")}.`,
+        ),
+      );
+      return;
     }
-    if (fields.length > 0) return;
+    const inferredFields = [
+      ...(binding.inferredFields ?? []),
+      ...(unresolvedWork !== null || (bindingRequired && work === null) ? ["work"] : []),
+      ...(!isCalendarDate(parsed.data.created) ? ["created"] : []),
+      ...(!isCalendarDate(parsed.data.updated) ? ["updated"] : []),
+      ...(!Object.hasOwn(parsed.data, "independent") ||
+          typeof parsed.data.independent !== "boolean" ||
+          requestedIndependent !== independent
+        ? ["independent"]
+        : []),
+      ...(requestedIndependent && agent === null ? ["agent"] : []),
+      ...(parsed.data.lens !== undefined && parsed.data.lens !== lens ? ["lens"] : []),
+    ];
+    if (inferredFields.length > 0) {
+      const detail = unresolvedWork === null
+        ? ""
+        : `Unresolved binding ${unresolvedWork} was retained as topic Evidence.`;
+      report.warnings.push(inferredWarning(source, inferredFields, detail));
+    }
     if (binding.normalized) {
       report.warnings.push(
         warning(
@@ -1422,7 +1735,11 @@ export async function analyzeV1ToV2Migration({
       );
     }
     const directory = work === null ? "evidence/topics" : `evidence/${work}`;
-    const target = `${directory}/${parsed.data.created}-${type}-${asciiSlug(title ?? "item")}.md`;
+    const baseTarget = `${directory}/${dates.created}-${type}-${asciiSlug(title)}.md`;
+    const target = evidenceTargets.has(baseTarget)
+      ? baseTarget.replace(/\.md$/, `-${sha256(source).slice(0, 8)}.md`)
+      : baseTarget;
+    evidenceTargets.add(target);
     const known = new Set(["work", "req", "created", "updated", "independent", "agent", "lens"]);
     const dropped = Object.keys(parsed.data).filter((field) => !known.has(field));
     if (dropped.length > 0) {
@@ -1442,19 +1759,10 @@ export async function analyzeV1ToV2Migration({
     });
   }
 
-  const testPaths = [...inventory.keys()]
-    .filter((item) => /^tests\/matrices\/[^/]+\.md$/.test(item))
-    .sort(compareText);
   for (const source of testPaths) await addEvidence(source, "test", "test", true);
 
-  const reviewPaths = [...inventory.keys()]
-    .filter((item) => /^reviews\/.+\.md$/.test(item))
-    .sort(compareText);
   for (const source of reviewPaths) await addEvidence(source, "review", "review", true);
 
-  const researchPaths = [...inventory.keys()]
-    .filter((item) => /^research\/.+\.md$/.test(item))
-    .sort(compareText);
   for (const source of researchPaths) {
     const provider = path.posix.basename(source) === "provider-dialogue.md";
     await addEvidence(source, provider ? "provider" : "research", provider ? "review" : "think", false);
@@ -1463,52 +1771,50 @@ export async function analyzeV1ToV2Migration({
   const evidence = candidates
     .filter((item) => item.artifactKind === "evidence")
     .map((item) => ({ ...item.metadata, path: item.target, body: item.body }));
-  const historicalGatedGaps = new Map();
   for (const work of candidates.filter((item) => item.artifactKind === "workItem")) {
     if (work.metadata.mode !== "gated" || work.metadata.status !== "done") continue;
     const state = completionEvidenceState({ evidence }, work.id);
     if (state.missing.length === 0 || state.acceptedGap) continue;
-    if (work.required) {
-      report.blockers.push(
-        finding(
-          "gated-work-missing-completion-evidence",
-          work.source,
-          `Required Gated Work ${work.id} closed as done is missing usable completion Evidence: ${state.missing.join(", ")}.`,
-        ),
-      );
-    } else {
-      historicalGatedGaps.set(work.id, { work, missing: state.missing });
-    }
-  }
-
-  if (historicalGatedGaps.size > 0) {
-    const preservedIds = new Set(historicalGatedGaps.keys());
-    const preservedSources = new Set();
-    const retained = candidates.filter((candidate) => {
-      const boundToPreservedWork =
-        ["workItem", "plan", "evidence"].includes(candidate.artifactKind) &&
-        preservedIds.has(candidate.id);
-      const referencesPreservedWork =
-        candidate.artifactKind === "milestone" &&
-        [...scopeWorkIds(candidate.body)].some((id) => preservedIds.has(id));
-      if (!boundToPreservedWork && !referencesPreservedWork) return true;
-      preservedSources.add(candidate.source);
-      return false;
+    const date = work.metadata.closed ?? work.metadata.updated;
+    const target = `evidence/${work.id}/${date}-reflection-accepted-gap.md`;
+    const body = [
+      "# Legacy migration completion Evidence gap",
+      "",
+      "## Record",
+      "",
+      "Accepted reason: Zero-touch migration preserves the schema 1 terminal status; historical completion gates were unavailable.",
+      "Missing gates:",
+      ...state.missing.map((item) => `- ${item}`),
+      "",
+    ].join("\n");
+    const metadata = {
+      type: "reflection",
+      work: work.id,
+      stage: "reflect",
+      created: date,
+      updated: date,
+      independent: false,
+      agent: null,
+      lens: null,
+    };
+    registerCandidate({
+      kind: "reflection",
+      artifactKind: "evidence",
+      source: `generated/accepted-gap/${work.id}.md`,
+      target,
+      id: work.id,
+      title: "Legacy migration completion Evidence gap",
+      metadata,
+      body,
+      generated: true,
     });
-    candidates.splice(0, candidates.length, ...retained);
-    for (const id of preservedIds) workById.delete(id);
-    report.warnings = report.warnings.filter(
-      (item) => !preservedSources.has(item.path),
+    report.warnings.push(
+      warning(
+        "inferred-completion-gap",
+        work.source,
+        `Recorded an accepted migration gap for historical Gated Work ${work.id}: ${state.missing.join(", ")}.`,
+      ),
     );
-    for (const [id, { work, missing }] of historicalGatedGaps) {
-      report.warnings.push(
-        warning(
-          "preserved-historical-gated-work",
-          work.source,
-          `Preserved historical Gated Work ${id} and its dependent artifacts because usable completion Evidence is incomplete: ${missing.join(", ")}.`,
-        ),
-      );
-    }
   }
 
   for (const candidate of candidates) registerCandidateTarget(candidate);
@@ -1680,16 +1986,31 @@ export async function analyzeV1ToV2Migration({
   const plans = candidates
     .filter((item) => item.artifactKind === "plan")
     .map((item) => ({ ...item.metadata, boardRelativePath: item.target }));
-  const indexBody = [
-    "# CatPaw Work Board",
-    "",
-    "Schema 1 source material remains available under the isolated legacy archive.",
-    "",
-    "## Legacy Material",
-    "",
-    `- [Schema 1 manifest](${LEGACY_ARCHIVE_ROOT}/manifest.json)`,
-    "",
-  ].join("\n");
+  let indexBody = indexParsed.body.trimEnd();
+  if (!/^#\s+/m.test(indexBody)) indexBody = `# CatPaw Work Board\n\n${indexBody}`.trimEnd();
+  indexBody = rewriteMarkdownLinks(
+    {
+      source: "index.md",
+      target: "index.md",
+      projectRoot: projectRootPath,
+      projectPhysicalRoot,
+      inventory,
+      moveMap,
+      blockers: report.blockers,
+      linkRewrites: report.linkRewrites,
+    },
+    `${indexBody}\n`,
+  );
+  if (!indexBody.includes(`${LEGACY_ARCHIVE_ROOT}/manifest.json`)) {
+    indexBody = [
+      indexBody.trimEnd(),
+      "",
+      "## Legacy Material",
+      "",
+      `- [Schema 1 manifest](${LEGACY_ARCHIVE_ROOT}/manifest.json)`,
+      "",
+    ].join("\n");
+  }
   let indexContent = `${stringifyFrontmatter({ schema: 2 }, ["schema"])}${indexBody}`;
   try {
     indexContent = rebuildDashboard(indexContent, { workItems, milestones, plans });
@@ -1740,7 +2061,7 @@ export async function analyzeV1ToV2Migration({
       path: candidate.target,
       content: rendered.get(candidate.source),
       mode: candidate.target === candidate.source ? "replace" : "create",
-      fileMode: inventory.get(candidate.source).mode,
+      fileMode: inventory.get(candidate.source)?.mode ?? 0o644,
     });
   }
   operations.push({

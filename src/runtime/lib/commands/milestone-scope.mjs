@@ -1,43 +1,15 @@
 import {
   managedTableCell,
-  markerOccurrenceCount,
   workflowError,
 } from "./workflow.mjs";
-
-const SCOPE_START = "<!-- catpaw:milestone-scope:start -->";
-const SCOPE_END = "<!-- catpaw:milestone-scope:end -->";
-const SCOPE_HEADER = "| Work Item ID | Title | Status | Notes |";
-const SCOPE_DIVIDER = "|---|---|---|---|";
-const WORK_ID_PATTERN = /^(?:FR|BUG|CHORE)-[0-9]{3,}$/;
-const WORK_STATUSES = new Set(["active", "blocked", "done", "cancelled"]);
+import {
+  parseMilestoneScope,
+  SCOPE_DIVIDER,
+  SCOPE_HEADER,
+} from "../milestone-scope.mjs";
 
 function scopeError(message) {
   return workflowError("ERR_WORKFLOW_MILESTONE_SCOPE", message);
-}
-
-function parseRow(line) {
-  if (!line.startsWith("|") || !line.endsWith("|")) {
-    throw scopeError("Milestone Scope table is malformed.");
-  }
-  const cells = [];
-  let cell = "";
-  for (let index = 1; index < line.length - 1; index += 1) {
-    const character = line[index];
-    if (character === "\\" && index + 1 < line.length - 1) {
-      cell += character + line[index + 1];
-      index += 1;
-    } else if (character === "|") {
-      cells.push(cell.trim());
-      cell = "";
-    } else {
-      cell += character;
-    }
-  }
-  cells.push(cell.trim());
-  if (cells.length !== 4) {
-    throw scopeError("Milestone Scope table is malformed.");
-  }
-  return cells;
 }
 
 function titleOf(workItem) {
@@ -48,44 +20,7 @@ function titleOf(workItem) {
     .trim() || workItem.id;
 }
 
-export function parseMilestoneScope(body) {
-  const startCount = markerOccurrenceCount(body, SCOPE_START);
-  const endCount = markerOccurrenceCount(body, SCOPE_END);
-  const startIndex = body.indexOf(SCOPE_START);
-  const endIndex = body.indexOf(SCOPE_END);
-  if (startCount !== 1 || endCount !== 1 || endIndex < startIndex) {
-    throw scopeError(
-      "Milestone must contain exactly one ordered Scope marker block.",
-    );
-  }
-
-  const contentStart = startIndex + SCOPE_START.length;
-  const managed = body.slice(contentStart, endIndex).replaceAll("\r\n", "\n");
-  if (!managed.startsWith("\n") || !managed.endsWith("\n")) {
-    throw scopeError("Milestone Scope table is malformed.");
-  }
-  const lines = managed.slice(1, -1).split("\n");
-  if (lines[0] !== SCOPE_HEADER || lines[1] !== SCOPE_DIVIDER) {
-    throw scopeError("Milestone Scope table is malformed.");
-  }
-
-  const rows = [];
-  const seen = new Set();
-  for (const line of lines.slice(2)) {
-    const [id, title, status, notes] = parseRow(line);
-    if (
-      !WORK_ID_PATTERN.test(id) ||
-      title === "" ||
-      !WORK_STATUSES.has(status) ||
-      seen.has(id)
-    ) {
-      throw scopeError("Milestone Scope table is malformed.");
-    }
-    seen.add(id);
-    rows.push({ id, title, status, notes });
-  }
-  return { rows, startIndex, endIndex, contentStart };
-}
+export { parseMilestoneScope } from "../milestone-scope.mjs";
 
 export function refreshMilestoneScope(body, workItems, { addWorkId } = {}) {
   const parsed = parseMilestoneScope(body);

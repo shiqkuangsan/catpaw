@@ -98,11 +98,14 @@ async function runStart(options) {
 
 async function runAdd(options) {
   const inspected = await inspectMutationBoard(options);
+  const preflightFindings = inspected.findings.filter((item) =>
+    item.code !== "malformed-milestone-scope" || item.req !== options.milestone
+  );
   const refusal = schemaRefusal(
     "milestone add",
     options,
     inspected.board,
-    inspected.findings,
+    preflightFindings,
   );
   if (refusal) return refusal;
   const milestone = inspected.board.milestones.find(
