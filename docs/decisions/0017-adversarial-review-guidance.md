@@ -1,6 +1,6 @@
 # ADR-0017: Adversarial Review Guidance
 
-Status: Accepted; integrated into ADR-0019 Independent Checks
+Status: Accepted; integrated into ADR-0019 Independent Checks and amended by ADR-0022
 
 ## Context
 
@@ -33,9 +33,9 @@ not authorize multi-provider fan-out by default.
   completion.
 - CatPaw avoids turning a useful method into a prompt-pack ritual.
 - L0/L1 work remains light unless normal risk triggers escalate it.
-- Providers and roles remain advisory evidence only; they still do not
-  authorize commits, pushes, PRs, deploys, destructive actions, or scope
-  expansion.
+- Agents and Lens output remain advisory evidence only and do not expand
+  authority. Bounded local Git belongs to the primary under ADR-0022; remote,
+  destructive, history-changing, and scope-changing actions remain gated.
 
 ## References
 

@@ -1,6 +1,6 @@
 # ADR-0016: Milestones And Subagent Governance
 
-Status: Accepted; artifact and Agent vocabulary amended by ADR-0019
+Status: Accepted; vocabulary amended by ADR-0019, authority by ADR-0022, dispatch by ADR-0023
 
 ## Context
 
@@ -44,8 +44,9 @@ warns when preferred stance lacks that outcome evidence.
   every task.
 - The skip path remains available for narrow, local, answer-only, explicitly
   single-agent, or privacy-sensitive work.
-- Milestones and providers still do not authorize commit, push, PR, deploy,
-  destructive action, scope expansion, or secret access.
+- Milestones and Agent output do not expand authority. Bounded local Git belongs
+  to the primary under ADR-0022; remote, destructive, history-changing, scope,
+  permission, and secret operations remain explicitly gated.
 
 ## References
 

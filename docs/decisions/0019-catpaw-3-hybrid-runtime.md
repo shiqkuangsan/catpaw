@@ -1,6 +1,6 @@
 # ADR-0019: CatPaw 3 Hybrid Runtime
 
-Status: Accepted
+Status: Accepted; local Git/methods amended by ADR-0022 and Agent dispatch by ADR-0023
 
 Date: 2026-07-11
 
@@ -112,17 +112,21 @@ and source-package splitting remain valid foundations.
 - Existing schema 1 boards require explicit migration before using schema 2.
 - An older installed runtime is a valid `pending activation` state during the
   source-only transition.
-- Agent output, tool success, and independent evidence still cannot authorize
-  commit, push, deployment, destructive action, secret access, or permission
-  expansion.
+- Agent output, tool success, and independent evidence still cannot expand
+  authority. ADR-0022 delegates bounded local Git to the primary while keeping
+  remote, history-changing, destructive, secret, and permission-changing
+  actions explicitly gated.
 
 ## References
 
 - [Runtime policy](../../src/runtime/runtime-policy.md)
 - [Workflow guidance](../../src/runtime/guidance/workflow.md)
+- [Agent Dispatch](../../src/runtime/guidance/agent-dispatch.md)
 - [Independent Checks](../../src/runtime/guidance/independent-checks.md)
 - [Board schema 2](../../src/runtime/schemas/board-v2.json)
 - [CLI entrypoint](../../src/runtime/bin/catpaw.mjs)
 - [ADR-0002](0002-canonical-files-exclude-state.md)
 - [ADR-0005](0005-docs-not-distributed.md)
 - [ADR-0010](0010-source-runtime-package-split.md)
+- [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
+- [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)

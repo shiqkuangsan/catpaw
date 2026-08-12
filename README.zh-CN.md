@@ -10,7 +10,7 @@ lifecycle，选择最轻且安全的执行模式，只持久化有长期价值�
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime 版本：`3.0.5`。项目工作板使用 **board schema 2**。
+Source runtime 版本：`3.2.0`。项目工作板使用 **board schema 2**。
 
 Activation 是 machine-local 状态，source checkout 不能替所有机器断言 current 或
 pending；使用 `node scripts/verify-runtime.mjs` 比较当前机器。Installed runtime
@@ -73,7 +73,13 @@ CatPaw 将判断拆成三个不同问题：
 
 五张 Lens 卡是 Value & Scope、System & Contracts、Experience、Security 和
 Performance。工程、review、测试、发布、调试与复盘属于 lifecycle method，不再
-另建一套角色层级。
+另建一套角色层级。CatPaw 内置紧凑的 root-cause Debugging 与按风险触发的
+RED/GREEN，不要求通用 meta-skill 或逐项设计审批仪式。
+
+Agent 调度按风险触发。每次委派都使用 bounded Task Envelope，并只选择一个临时
+capability：Scout、Builder、Reviewer 或 Verifier。并行要求可变 scope 相互独立、
+输出可组合；有空闲容量本身不是委派理由。这些 prompt contract 不增加角色层级或
+board artifact。
 
 CatPaw 直接管理的 external Agents 只有 `cc`（Claude Code）与 `cx`（Codex）。
 OpenCode 可以作为读取 CatPaw 规则的 host，但不是直接调用目标。边界明确的独立
@@ -86,7 +92,7 @@ Runtime 内部有三个行为表面：
 | Surface | 职责 |
 |---|---|
 | Always-on Rules | 紧凑的路由、安全、进度与授权规则 |
-| On-demand Guidance | Workflow、Milestone、Independent Check、Lens 与 Agent recipe |
+| On-demand Guidance | Workflow、Agent dispatch、engineering methods、Milestone、Independent Check、Lens 与 Agent recipe |
 | Executable Tools | Board graph、schema 校验、dry-run patch、迁移和可观察 Agent session |
 
 存储与 activation 链是另一条轴线：
@@ -153,8 +159,13 @@ Maintainer 从 [`docs/README.md`](docs/README.md) 开始；贡献说明见
 - Runtime 只安装到 `~/.catpaw/`；项目工作板只存项目 artifact。
 - Host adapter 只保留 CatPaw 薄引用，不复制完整 runtime。
 - Agent output 与 CLI result 是 evidence，不是授权。
-- Commit、push、PR、deploy、破坏性操作、secret access、权限扩张与其它外部影响
-  仍需用户明确授权。
+- 在已授权的 change/build task 内，primary integration owner 可创建 non-protected
+  local task branch/worktree，并在 exact review、验证和 credential scan 后 commit
+  仅属于当前任务的改动。
+- Subagent 与 external Agent 不得 stage 或 commit；只向 primary 交付改动或 evidence。
+- Push、PR、deploy/publish、对 protected/base branch 的任何 update（direct commit、
+  merge、cherry-pick、fast-forward）、history rewrite、force、破坏性 Git/cleanup、
+  secret access、权限扩张与其它外部或不可逆影响仍需明确授权。
 
 CatPaw 不隶属于任何模型厂商或同名产品。Attribution 见
 [`NOTICE.md`](NOTICE.md)。

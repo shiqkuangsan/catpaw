@@ -52,6 +52,23 @@ Deterministic merge：
 runtime-policy link 可读且用户内容 byte-preserved。Source changes 不自动 refresh
 adapter，也不把 runtime package 复制进 host config 或 project。
 
+## Superseded Method Package Retirement
+
+只有 installed CatPaw `3.1.0` 或更高版本的 strict activation 已通过，且实际 host adapters are
+current，才可把 Superpowers uninstall 作为独立 global maintenance action 执行。Runtime
+source build、pending activation 或单个 adapter 更新都不满足这个前置条件。
+
+Apply 前 inventory 每个 plugin record、enabled config、skill link、checkout/cache，以及
+Superpowers 建立或使用的目录；preserve all existing project and worktree directories，
+包括 `~/.config/superpowers/worktrees/`。Uninstall must not delete, move, or clean any worktree，
+也不删除其中的 branch、未提交内容或 unique commit。插件卸载只处理已确认的
+plugin-managed config/cache/skill surface；无法证明归属的目录保持原位并报告。
+
+优先使用 host 官方 plugin remove/uninstall 命令。Apply 后分别确认 Codex/Claude 不再
+列出或启用 Superpowers，skill discovery 不再暴露其 skills，既有 worktree list 与
+preimage inventory 一致。卸载不隐含 runtime activation、adapter merge、branch cleanup
+或 project migration。
+
 ## Project Registry
 
 Registry：`~/.catpaw/state/projects.json`。它是 per-machine advisory index，
@@ -68,7 +85,7 @@ Canonical shape：
       "boardPath": "/abs/project/.catpaw",
       "projectRoot": "/abs/project",
       "schema": 2,
-      "runtimeSeen": "3.0.5",
+      "runtimeSeen": "3.2.0",
       "registeredVia": "project-activation | legacy-import | schema-migration",
       "registeredAt": "YYYY-MM-DD",
       "lastSeenAt": "YYYY-MM-DD",

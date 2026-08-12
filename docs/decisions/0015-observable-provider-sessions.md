@@ -1,6 +1,6 @@
 # ADR-0015: Observable Provider Sessions
 
-Status: Accepted; implementation and provider scope amended by ADR-0019
+Status: Accepted; implementation/provider scope amended by ADR-0019 and authority by ADR-0022
 
 ## Context
 
@@ -55,9 +55,9 @@ fallback path before starting long-running work.
   of provider unavailability.
 - Provider availability decisions should inspect process state, session status,
   recent output, provider-native state, or explicit waiting-for-input text.
-- Observable mode does not expand provider permissions and does not authorize
-  commit, push, PR, deploy, destructive action, scope expansion, or secret
-  access.
+- Observable mode does not expand Agent permissions. Bounded local Git belongs
+  to the primary under ADR-0022; remote, destructive, history-changing, scope,
+  permission, and secret operations remain explicitly gated.
 - Quick provider asks can still use non-interactive CLI.
 - Missing tmux, missing secondary provider CLI, or a one-provider user setup
   downgrades verification strength; it does not make ordinary CatPaw work

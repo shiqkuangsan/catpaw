@@ -10,7 +10,7 @@ durable project facts, and uses executable checks for mechanical consistency.
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.0.5`. Project boards use **board schema 2**.
+Source runtime version: `3.2.0`. Project boards use **board schema 2**.
 
 Activation is machine-local. A source checkout cannot declare the installed
 runtime current or pending for every machine: compare it with
@@ -78,6 +78,14 @@ CatPaw separates three concerns:
 The five Lens cards are Value & Scope, System & Contracts, Experience,
 Security, and Performance. Engineering, review, testing, shipping, debugging,
 and reflection remain lifecycle methods instead of a second role hierarchy.
+CatPaw owns compact root-cause Debugging and risk-triggered RED/GREEN guidance;
+it does not require a universal meta-skill or design-approval ritual.
+
+Agent dispatch is risk-based. Each delegated call receives a bounded Task
+Envelope and one temporary capability: Scout, Builder, Reviewer, or Verifier.
+Parallel calls require independent mutable scope and composable outputs;
+available capacity alone is not a reason to dispatch. These prompt contracts do
+not create a new role hierarchy or board artifact.
 
 The only directly callable external Agents managed by CatPaw are `cc` (Claude
 Code) and `cx` (Codex). OpenCode may host CatPaw instructions, but it is not a
@@ -91,7 +99,7 @@ The runtime has three behavior surfaces:
 | Surface | Responsibility |
 |---|---|
 | Always-on Rules | Compact routing, safety, progress, and authority rules |
-| On-demand Guidance | Workflow, Milestones, Independent Checks, Lens cards, and Agent recipes |
+| On-demand Guidance | Workflow, Agent dispatch, engineering methods, Milestones, Independent Checks, Lens cards, and Agent recipes |
 | Executable Tools | Board graph, schema validation, dry-run patches, migration, and observable Agent sessions |
 
 Its storage and activation chain is separate:
@@ -164,9 +172,15 @@ should read [`CONTRIBUTING.md`](CONTRIBUTING.md).
   project artifacts.
 - Thin host adapters reference CatPaw without copying the runtime.
 - Agent output and CLI results are evidence, not authorization.
-- Commit, push, pull request, deploy, destructive operations, secret access,
-  permission expansion, and other external effects still require explicit
-  user authorization.
+- In an authorized change/build task, the primary integration owner may create
+  a non-protected local task branch/worktree and commit only task-owned changes
+  after exact review, verification, and a credential scan.
+- Subagents and external Agents must not stage or commit; they deliver changes
+  or evidence for primary integration.
+- Push, pull request, deploy/publish, any protected/base branch update (direct
+  commit, merge, cherry-pick, fast-forward), history rewrite, force,
+  destructive Git/cleanup, secret access, permission expansion, and other
+  external or irreversible effects require explicit authorization.
 
 CatPaw is not affiliated with any model vendor or similarly named product. See
 [`NOTICE.md`](NOTICE.md) for attribution.

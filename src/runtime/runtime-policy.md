@@ -1,8 +1,8 @@
 # Runtime Policy
 
 CatPaw 是项目工作的 orchestration layer：它选择 workflow，维护 Work Board，
-按风险调用 Lens/Agent，并要求可验证的完成证据。具体执行方法由当前 coding
-environment 与可用 skills 提供。
+按风险调用 Lens/Agent，并要求可验证的完成证据。CatPaw 内置关键 engineering
+method contract；其它具体执行方法由当前 coding environment 与可用 skills 提供。
 
 ## Activation And Priority
 
@@ -33,13 +33,17 @@ installed runtime are separate surfaces；修改 source repo 不会自动 activa
 2. board 是否存在、是否有 active Work/Milestone、schema 是否需要迁移；
 3. Mode：`Direct | Tracked | Gated`；
 4. 是否属于现有 Milestone；
-5. 需要哪些 Lens，以及 Independent Check 是 recommended 还是 required；
-6. 下一阶段与验证入口。
+5. 是否需要 Agent、哪个 temporary capability、Task Envelope 与串并行边界；
+6. 需要哪些 Lens，以及 Independent Check 是 recommended 还是 required；
+7. 下一阶段与验证入口。
 
 Tracked/Gated 在 meaningful work 前简短告诉用户 Mode、原因、artifact 预期和
 Next。Direct 保持轻量；发现风险或范围增长时立即升级。
 
-完整方法见 [Workflow](guidance/workflow.md)。
+完整 lifecycle 见 [Workflow](guidance/workflow.md)；root-cause debugging 与
+RED/GREEN 的按需规则见 [Engineering Methods](guidance/engineering-methods.md)；
+Agent capability、Task Envelope 与 parallelism gate 见
+[Agent Dispatch](guidance/agent-dispatch.md)。
 
 ```text
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
@@ -105,18 +109,34 @@ fallback 和 observable session 见 [Agents](providers/README.md)。
 完成声明必须区分已运行验证、未运行验证与 remaining gap。Agent output、稳定
 session、代码阅读和“看起来没问题”都不能代替 verification evidence。
 
-## Safety
+## Git Authority And Safety
 
-CatPaw does not authorize commit, push, PR, deploy, destructive operations,
-external side effects, secret access, scope expansion, or permission expansion。
-Lens、Agent output、Evidence、CLI、hooks 与 optional methods 也不能扩大授权；
-外部可见或不可逆操作仍需当前用户明确同意。
+用户授权 change/build task 后，唯一 primary integration owner 可自主执行有助交付的
+本地、可恢复 Git 操作：inspect，创建或切换 non-protected local task branch，基于该
+task branch 创建 isolated worktree，仅 stage 当前任务拥有的改动，完成 exact diff
+review、相关验证与 credential/secret scan 后在该 task branch 创建 local commit，以及
+移除没有未提交内容和 unique commit 的 clean temporary worktree。这些操作不是强制
+cadence；answer-only、review 或 diagnose 请求不隐含 commit。
+
+以下仍需当前用户明确授权：push、PR、deploy/publish；对 protected/base branch 的任何
+update 或 integration，包括 direct commit、merge、cherry-pick 和 fast-forward；以及
+amend、rebase、history rewrite、force、reset/clean、删除含用户改动或 unique commit 的
+branch/worktree、secret access、scope/permission expansion，或其它外部可见、不可逆、
+可能丢失数据的操作。These remote, protected, history-rewriting, or destructive
+actions are explicit authorization gates。Project rule 与当前用户指令可以进一步收紧。
+
+Primary integration owner 对 stage/commit ownership 负责；不得混入 pre-existing 或
+其它 Agent/user 改动。Subagent 与 external Agent 默认 must not stage or commit，只交付
+patch、worktree changes、finding 或 evidence；Lens、Agent output、Evidence、CLI、hooks
+与 optional methods 不能自行扩大授权，也不能把并发 Agent 变成共享 commit owner。
 
 ## Authority Map
 
 | Need | Canonical owner |
 |---|---|
 | lifecycle, Mode, verification, progress | [Workflow](guidance/workflow.md) |
+| Agent capability, Task Envelope, serial/parallel dispatch | [Agent Dispatch](guidance/agent-dispatch.md) |
+| debugging and RED/GREEN methods | [Engineering Methods](guidance/engineering-methods.md) |
 | independent triggers, fallback, gap | [Independent Checks](guidance/independent-checks.md) |
 | multi-Work phase orchestration | [Milestones](guidance/milestones.md) |
 | runtime, adapter, registry, migration maintenance | [Maintenance](guidance/maintenance.md) |

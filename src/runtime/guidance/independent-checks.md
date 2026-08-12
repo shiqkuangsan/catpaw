@@ -12,7 +12,9 @@ Lens 决定要补哪一种专业视角。只选择与当前风险有关的 Lens�
 
 Agent 是实际提供判断或执行工作的主体。优先选择成本低且上下文合适的
 current-tool subagent；需要另一模型、用户点名“老二”或当前工具自审不足时，
-按 cc/cx recipe 调用 reciprocal Agent。Agent 不等同于 Lens。
+按 cc/cx recipe 调用 reciprocal Agent。Agent 不等同于 Lens。Capability、Task
+Envelope、mode/lifecycle trigger 与 parallelism 由
+[Agent Dispatch](agent-dispatch.md) 统一规定。
 
 ## Evidence
 
@@ -58,17 +60,16 @@ Independent Check **preferred/recommended**：
 
 Direct Work 默认 inline；当局部改动暴露上述风险时升级 Mode 或执行检查。
 
-## Autonomous Routing
+## Check Fallback
 
-- primary Agent 应在触发条件出现时主动调用，不等待用户提醒。
 - recommended 检查若确实不值得调用，记录 `subagent skipped because ...`。
 - 调用成功但结果偏题、为空或不能支持结论时，记录 `no usable output`，然后换
   current-tool subagent、reciprocal cc/cx Agent，或使用明确的 inline Lens。
 - required 检查不能用 inline 自审冒充独立性。Agent 不可用时记录 gap；只有
   用户明确同意、并逐项列出当前缺失 gate 的 `accepted gap` 才能满足 Gated
   close；旧 gap 不覆盖后来新增的缺口。
-- 多轮技术讨论应保留同一可观察 Agent session，直到结论、blocked 或用户停止；
-  不把“输出暂时稳定”推断为完成。
+- 多轮技术讨论可保留同一可观察 Agent session，但每轮使用更新后的 Task Envelope，
+  直到结论、blocked 或用户停止；不把“输出暂时稳定”推断为完成。
 
 ## Read-only Enforcement
 
@@ -89,6 +90,10 @@ read-only 调用前记录 exact protected scope，结束后执行 side-effect au
 
 ## Authorization
 
-An Independent Check does not authorize commit, push, PR, deploy, destructive
-operations, external side effects, secret access, or permission expansion。它
-只能提出 finding、反驳、方案、patch 或验证建议。
+Independent Check 与 Agent output 不自行 authorize 任何 Git 或外部动作。Bounded
+local branch/worktree/stage/commit 权限只来自当前 authorized task 和 runtime policy，
+并只由唯一 primary integration owner 执行。执行检查的 subagent 或 external Agent
+must not stage or commit；它只能提出 finding、反驳、方案、patch 或验证建议。Push、
+PR、deploy、对 protected/base branch 的任何 update/integration、history-changing 或
+destructive operation、external side effect、secret access 或 permission expansion
+仍需 explicit user authorization。

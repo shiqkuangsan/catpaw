@@ -1,5 +1,68 @@
 # Changelog
 
+## 3.2.0 - 2026-08-13
+
+- Add one canonical Agent dispatch contract with risk-based triggers, bounded
+  Task Envelopes, and temporary Scout, Builder, Reviewer, and Verifier
+  capabilities.
+- Keep capability separate from Agent identity, Lens perspective, provider
+  transport, Evidence, and authorization; no role hierarchy or new board
+  artifact is introduced.
+- Parallelize only independent, composable work without shared mutable scope or
+  ordering dependencies; available capacity alone is not a dispatch trigger.
+- Retain one primary integration owner. Builder subagents and external Agents
+  do not stage or commit, and required review/verification stays non-primary.
+- Route lifecycle, Independent Check, cc/cx transport, public docs, maintainer
+  rationale, manifest, and tests through the new authority.
+
+Migration note (3.1.0 -> 3.2.0):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; Task Envelopes are prompt contracts, so no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately.
+Adapter impact: existing CatPaw 3.1 thin adapters already route subagents through the installed runtime; no adapter refresh is required for this release.
+Non-goals: no registry mutation, board migration, commit, push, PR, deploy, or destructive cleanup is implied.
+Rollback: retain the activation backup until strict installed-runtime verification succeeds.
+```
+
+## 3.1.0 - 2026-08-12
+
+- Replace the blanket Git prompt gate with a tiered authority contract: an
+  authorized change/build task may use local branches, isolated worktrees,
+  task-owned staging, and local commits after exact review, verification, and
+  credential scanning.
+- Keep push, PR changes, deploy/publish, protected/base branch updates,
+  history-changing or force operations, destructive cleanup, unsafe
+  branch/worktree deletion, secrets, and permission expansion explicitly gated.
+- Limit delegated commits to non-protected task branches. Any protected/base
+  update—including direct commit, merge, cherry-pick, or fast-forward—remains
+  explicitly gated.
+- Make one primary integration owner responsible for stage and commit
+  integration; subagents and external Agents do not stage or commit.
+- Add CatPaw-owned Engineering Methods for root-cause Debugging and
+  risk-triggered RED/GREEN while rejecting universal design gates, forced
+  delete-and-restart TDD, and method invocation ledgers.
+- Align runtime policy, workflow, Independent Checks, Agent guidance, adapter
+  snippets, public docs, maintainer rules, manifest, and tests with the new
+  authority model.
+
+Migration note (3.0.5 -> 3.1.0):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, activate the runtime separately, then refresh managed adapters if the tiered Git contract should apply in that host.
+Safety: adapter refresh changes only the managed block; activation preserves state/ and unknown files.
+Non-goals: no commit, push, PR, deploy, protected-branch merge, destructive Git, Superpowers uninstall, registry mutation, or board migration is implied.
+Rollback: retain the previous runtime and adapter backups until strict activation and host smoke checks succeed.
+```
+
+Superpowers retirement note: uninstall only after strict runtime activation and
+current host adapters. Inventory and preserve existing projects/worktrees,
+including `~/.config/superpowers/worktrees/`; plugin cleanup must not delete,
+move, or clean them.
+
 ## 3.0.5 - 2026-07-14
 
 - Describe activation as machine-local instead of hard-coding every source

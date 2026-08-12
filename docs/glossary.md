@@ -33,6 +33,11 @@ The metadata and graph contract in
 [`board-v2.json`](../src/runtime/schemas/board-v2.json). It is independent from
 the runtime package version.
 
+## capability
+
+A temporary responsibility assigned to one Agent call. CatPaw uses Scout,
+Builder, Reviewer, and Verifier; capability is not an identity or authority.
+
 ## Direct / Tracked / Gated
 
 The three workflow modes. Direct is lightweight and normally non-durable;
@@ -125,6 +130,13 @@ not alter dist, the installed runtime, or a project board.
 
 A small managed instruction block in a host rule file that points to CatPaw.
 It does not embed the runtime and requires explicit merge authorization.
+
+## Task Envelope
+
+The bounded, self-contained contract for one delegated Agent call: objective,
+capability, facts, exact scope, constraints, deliverable, verification,
+dependencies, budget, stop condition, and authority. It is not a board artifact
+and cannot expand permission.
 
 ## Work Item
 

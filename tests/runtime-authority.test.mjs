@@ -67,6 +67,8 @@ test("runtime authority surface omits superseded v2 document trees", async () =>
   }
   for (const file of [
     "guidance/workflow.md",
+    "guidance/agent-dispatch.md",
+    "guidance/engineering-methods.md",
     "guidance/independent-checks.md",
     "guidance/milestones.md",
     "guidance/maintenance.md",
@@ -103,6 +105,8 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   const text = await readFile(path.join(RUNTIME, "runtime-policy.md"), "utf8");
   for (const link of [
     "guidance/workflow.md",
+    "guidance/agent-dispatch.md",
+    "guidance/engineering-methods.md",
     "guidance/independent-checks.md",
     "guidance/milestones.md",
     "guidance/maintenance.md",
@@ -115,7 +119,14 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
   assert.match(text, /Direct \| Tracked \| Gated/);
   assert.match(text, /source repo[\s\S]*installed runtime/i);
-  assert.match(text, /does not authorize[\s\S]*commit[\s\S]*push[\s\S]*deploy/i);
+  assert.match(text, /local[\s\S]*branch[\s\S]*worktree[\s\S]*commit/i);
+  assert.match(text, /non-protected[\s\S]*task branch/i);
+  assert.match(text, /primary integration owner[\s\S]*exact[\s\S]*secret/i);
+  assert.match(text, /subagent[\s\S]*external Agent[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.doesNotMatch(text, /primary\/current owner/i);
+  assert.match(text, /push[\s\S]*PR[\s\S]*deploy[\s\S]*explicit/i);
+  assert.match(text, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
+  assert.match(text, /history[\s\S]*(?:rewrite|rewriting)[\s\S]*destructive/i);
   assert.doesNotMatch(text, /CLI Playbook|Migration Operations|Role Selection Matrix/);
 });
 
@@ -138,6 +149,18 @@ test("maintenance guidance preserves install, adapter, registry, and migration c
   }
   assert.match(combined, /do not[\s\S]*automatically[\s\S]*migrate/i);
   assert.match(combined, /preserve[\s\S]*state\/projects\.json/i);
+  assert.match(
+    maintenance,
+    /strict activation[\s\S]*adapters?[\s\S]*current[\s\S]*Superpowers[\s\S]*(?:uninstall|remove)/i,
+  );
+  assert.match(
+    maintenance,
+    /inventory[\s\S]*preserve[\s\S]*existing[\s\S]*(?:project|worktree)/i,
+  );
+  assert.match(
+    maintenance,
+    /(?:must not|不得)[^\n]*(?:delete|move|clean)[^\n]*worktree/i,
+  );
 });
 
 test("migration authority is schema-based and keeps release migrations historical", async () => {
@@ -290,6 +313,9 @@ test("adapter snippets activate the compact policy without copying runtime files
   assert.match(projectAdapter, /project-local `\.catpaw\/` native graph/i);
   assert.match(projectAdapter, /graph-external legacy archive/i);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
+  assert.match(combined, /primary integration owner[\s\S]*non-protected[\s\S]*task branch/i);
+  assert.match(combined, /Subagents?[\s\S]*external Agents?[\s\S]*must not (?:stage|commit)/i);
+  assert.match(combined, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
   assert.doesNotMatch(globalAdapter, /老三|Gemini|third Agent/i);
   assert.doesNotMatch(combined, /commands\/provider\.md|specs\/09-roles\.md/);
 });

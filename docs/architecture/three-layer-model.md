@@ -39,6 +39,8 @@ Guidance is read when a task reaches the corresponding decision:
 | Need | Owner |
 |---|---|
 | Lifecycle and mode behavior | [`workflow.md`](../../src/runtime/guidance/workflow.md) |
+| Agent capability, Task Envelope, and parallelism | [`agent-dispatch.md`](../../src/runtime/guidance/agent-dispatch.md) |
+| Root-cause debugging and RED/GREEN | [`engineering-methods.md`](../../src/runtime/guidance/engineering-methods.md) |
 | Independent triggers and fallback | [`independent-checks.md`](../../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phase progress | [`milestones.md`](../../src/runtime/guidance/milestones.md) |
 | Runtime, adapter, registry, and import maintenance | [`maintenance.md`](../../src/runtime/guidance/maintenance.md) |

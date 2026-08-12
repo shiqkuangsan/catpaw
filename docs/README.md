@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.0.5
+These documents explain the architecture and decisions behind CatPaw 3.2.0
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 
@@ -12,6 +12,8 @@ Current behavior has one owner per concern:
 |---|---|
 | Always-on routing and safety | [`runtime-policy.md`](../src/runtime/runtime-policy.md) |
 | Lifecycle and modes | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
+| Agent capability, Task Envelope, and parallelism | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
+| Debugging and RED/GREEN | [`guidance/engineering-methods.md`](../src/runtime/guidance/engineering-methods.md) |
 | Independent judgment | [`guidance/independent-checks.md`](../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phases | [`guidance/milestones.md`](../src/runtime/guidance/milestones.md) |
 | Runtime and local-state maintenance | [`guidance/maintenance.md`](../src/runtime/guidance/maintenance.md) |
@@ -75,9 +77,15 @@ name removed v2 paths. They never override the current authority map above.
 
 The current architecture is owned by
 [ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
-and [ADR-0021: Zero-touch Semantic Schema 1 Migration](decisions/0021-zero-touch-semantic-schema-1-migration.md).
-ADR-0019 defines the compact runtime model; ADR-0021 makes schema 1 conversion
-complete and zero-touch while retaining provenance and structural blockers.
+and amended by
+[ADR-0022: Tiered Local Git Authority And Engineering Methods](decisions/0022-tiered-local-git-authority-and-engineering-methods.md) and
+[ADR-0023: Task Envelopes And Risk-based Agent Dispatch](decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md).
+[ADR-0021: Zero-touch Semantic Schema 1 Migration](decisions/0021-zero-touch-semantic-schema-1-migration.md)
+owns schema 1 conversion. ADR-0019 defines the compact runtime model; ADR-0021
+makes schema 1 conversion complete and zero-touch while retaining provenance and
+structural blockers; ADR-0022 delegates bounded local Git and adds CatPaw-owned
+engineering methods; ADR-0023 defines temporary capabilities, bounded delegation,
+safe parallelism, and one integration owner.
 
 ## Writing Rules
 

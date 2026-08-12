@@ -1,7 +1,8 @@
 # Claude Code Agent
 
 Claude Code (`cc`) 是 Codex host 的默认 reciprocal Agent。Review/debug 默认
-read-only；prompt 通过 stdin 传入。
+read-only；prompt 通过 stdin 传入。`$PROMPT` 使用完整
+[Task Envelope](../guidance/agent-dispatch.md)。
 
 ## Smoke Test
 
@@ -63,5 +64,9 @@ Read/Glob/Grep，并显式禁止 Edit/Write/NotebookEdit。`send` 不等待结�
 `status`/`read` 查看事实。Stable is not completion，明确的 waiting text 也只表示
 需要检查输入请求。
 
-Claude output does not authorize commit, push, PR, deploy, destructive actions,
-external side effects, secret access, or wider permissions。
+Claude output does not authorize Git or external actions。Bounded local Git
+authority comes only from the current authorized task and runtime policy, with
+stage/commit integration owned solely by the primary integration owner. Claude
+as subagent/external Agent must not stage or commit。Push、PR、deploy、任何
+protected/base branch update、history-changing/destructive actions、secret access
+与 permission expansion 仍需 explicit user authorization。

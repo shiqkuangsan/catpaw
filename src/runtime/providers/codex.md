@@ -2,7 +2,8 @@
 
 Codex (`cx`) 是 Claude Code host 的默认 reciprocal Agent。一次性 review/debug
 使用 read-only sandbox，关闭 approval escalation，并忽略 `config.toml` 与
-execpolicy `.rules`；不要把它描述成关闭全部用户/项目 instructions。
+execpolicy `.rules`；不要把它描述成关闭全部用户/项目 instructions。`$PROMPT`
+使用完整 [Task Envelope](../guidance/agent-dispatch.md)。
 
 ## Smoke Test
 
@@ -59,5 +60,9 @@ filesystem sandbox。
 `send` 不做 blocking wait。Changed/stable、pane output 与 waiting text 都是事实
 观察；stable is not completion。
 
-Codex output does not authorize commit, push, PR, deploy, destructive actions,
-external side effects, secret access, or wider permissions。
+Codex output does not authorize Git or external actions。Bounded local Git
+authority comes only from the current authorized task and runtime policy, with
+stage/commit integration owned solely by the primary integration owner. Codex
+as subagent/external Agent must not stage or commit。Push、PR、deploy、任何
+protected/base branch update、history-changing/destructive actions、secret access
+与 permission expansion 仍需 explicit user authorization。

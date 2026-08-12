@@ -10,6 +10,7 @@ Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 Mode: Direct | Tracked | Gated
 Artifacts: Milestone | Work Item | Plan | Evidence
 Judgment: Lens | Agent | Independent Check
+Delegation: Task Envelope | Scout | Builder | Reviewer | Verifier
 ```
 
 ## Runtime Composition
@@ -17,7 +18,7 @@ Judgment: Lens | Agent | Independent Check
 | Surface | Responsibility |
 |---|---|
 | [runtime-policy.md](runtime-policy.md) | always-on routing 与 safety card |
-| [guidance/](guidance/) | lifecycle、Milestone、Independent Check 与 maintenance |
+| [guidance/](guidance/) | lifecycle、Agent dispatch、engineering methods、Milestone、Independent Check 与 maintenance |
 | [lenses/](lenses/) | 五个按需专业视角 |
 | [providers/](providers/) | cc/cx one-shot 与 observable session recipes |
 | [bin/](bin/), [lib/](lib/) | executable CLI、graph、patch、migration 与 session logic |

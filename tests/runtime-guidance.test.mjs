@@ -62,7 +62,8 @@ test("workflow guidance owns the seven lifecycle stages and three modes", async 
   assert.match(text, /Gated[\s\S]*independent check[\s\S]*Evidence/i);
   assert.match(text, /root cause/i);
   assert.match(text, /verification evidence/i);
-  assert.match(text, /explicit user authorization/i);
+  assert.match(text, /local Git/i);
+  assert.match(text, /push[\s\S]*PR[\s\S]*explicit/i);
 });
 
 test("workflow selects optional execution methods by trigger without ceding orchestration", async () => {
@@ -77,6 +78,102 @@ test("workflow selects optional execution methods by trigger without ceding orch
   assert.match(text, /不创建独立 method ledger[\s\S]*provider-specific artifact/i);
 });
 
+test("Agent dispatch uses temporary capabilities and bounded Task Envelopes", async () => {
+  const text = await runtimeText("guidance/agent-dispatch.md");
+  assert.match(text, /^# Agent Dispatch$/m);
+  for (const heading of [
+    "Separation",
+    "Temporary Capabilities",
+    "Task Envelope",
+    "Dispatch Triggers",
+    "Parallelism Gate",
+    "Delivery And Adoption",
+  ]) {
+    assert.match(text, new RegExp(`^## ${heading}$`, "m"));
+  }
+  for (const capability of ["Scout", "Builder", "Reviewer", "Verifier"]) {
+    assert.match(text, new RegExp(`^### ${capability}$`, "m"));
+  }
+  for (const field of [
+    "objective",
+    "capability",
+    "facts",
+    "read scope",
+    "write scope",
+    "constraints",
+    "deliverable",
+    "verification",
+    "dependency",
+    "budget",
+    "stop condition",
+    "authority",
+  ]) {
+    assert.match(text, new RegExp(field, "i"));
+  }
+  assert.match(text, /temporary[\s\S]*(?:per-call|每次调用)/i);
+  assert.match(text, /one primary capability|一个 primary capability/i);
+  assert.match(text, /Lens[\s\S]*(?:不是|not)[\s\S]*(?:role|capability)/i);
+  assert.match(text, /transport[\s\S]*(?:不是|not)[\s\S]*(?:role|capability)/i);
+  assert.match(text, /Task Envelope[\s\S]*(?:不是|not)[\s\S]*board artifact/i);
+  assert.match(text, /authority[\s\S]*(?:只能收窄|can only narrow)[\s\S]*(?:不能|cannot)[\s\S]*(?:扩张|expand)/i);
+  assert.doesNotMatch(text, /persistent persona|永久 persona|role-card tree|Expert Council/);
+});
+
+test("Agent dispatch is risk-based, lifecycle-aware, and serial by default on overlap", async () => {
+  const text = await runtimeText("guidance/agent-dispatch.md");
+  assert.match(text, /Direct[\s\S]*(?:inline|不委派)/i);
+  assert.match(text, /Direct[^\n]*material unknown[^\n]*Scout/i);
+  assert.match(text, /Direct[^\n]*Independent Check trigger[^\n]*(?:Reviewer|Verifier|升级 Mode)/i);
+  assert.doesNotMatch(text, /(?:Independent Check (?:trigger|risk)|独立检查风险)[^\n]*Scout/i);
+  assert.match(text, /Tracked[\s\S]*(?:material unknown|实质未知)[\s\S]*(?:bounded|边界明确)/i);
+  assert.match(text, /Gated[\s\S]*(?:Reviewer|Verifier)[\s\S]*(?:required|必须)/i);
+  for (const stage of ["Think", "Plan", "Build", "Review", "Test", "Ship", "Reflect"]) {
+    assert.match(text, new RegExp(stage));
+  }
+  assert.match(text, /available slots|空闲槽位/i);
+  assert.match(text, /no shared mutable|不共享可变/i);
+  assert.match(text, /order dependency|顺序依赖/i);
+  assert.match(text, /composable|可独立采用|可组合/i);
+  assert.match(text, /otherwise[\s\S]*serial|否则[\s\S]*串行/i);
+});
+
+test("Agent dispatch preserves one integration owner and independent review", async () => {
+  const text = await runtimeText("guidance/agent-dispatch.md");
+  assert.match(text, /one primary integration owner|唯一 primary integration owner/i);
+  assert.match(text, /Builder[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.match(text, /Reviewer[\s\S]*Verifier[\s\S]*(?:non-primary|非 Primary)/i);
+  assert.match(text, /(?:must not|不得)[\s\S]*(?:same Builder|同一 Builder)/i);
+  assert.match(text, /Primary[\s\S]*(?:reproduce|复现)[\s\S]*(?:adopt|采用)[\s\S]*(?:reject|拒绝)/i);
+  assert.match(text, /Evidence[\s\S]*(?:does not|不能)[\s\S]*authoriz/i);
+});
+
+test("engineering methods keep debugging and RED/GREEN useful without universal ritual", async () => {
+  const text = await runtimeText("guidance/engineering-methods.md");
+  assert.match(text, /^# Engineering Methods$/m);
+  assert.match(text, /^## Debugging$/m);
+  assert.match(text, /reproduce[\s\S]*root cause[\s\S]*hypothesis[\s\S]*verify/i);
+  assert.match(text, /^## RED\/GREEN$/m);
+  assert.match(text, /behavior-sensitive|regression risk/i);
+  assert.match(text, /observe[\s\S]*(?:fail|RED)[\s\S]*(?:minimal|smallest)[\s\S]*(?:pass|GREEN)/i);
+  assert.match(text, /generated|documentation|configuration|explor/i);
+  assert.doesNotMatch(text, /delete.*start over|every conversation|user approval after each/i);
+  assert.match(text, /CatPaw Mode[\s\S]*authorization[\s\S]*artifact/i);
+});
+
+test("workflow delegates local Git safely and keeps remote or destructive actions gated", async () => {
+  const text = await runtimeText("guidance/workflow.md");
+  assert.match(text, /authorized task[\s\S]*local(?: task)? branch[\s\S]*worktree[\s\S]*commit/i);
+  assert.match(text, /primary integration owner[\s\S]*stage[\s\S]*unrelated/i);
+  assert.match(text, /non-protected[\s\S]*task branch/i);
+  assert.match(text, /subagent[\s\S]*external Agent[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.doesNotMatch(text, /primary\/current owner/i);
+  assert.match(text, /credentials|secret/i);
+  assert.match(text, /push[\s\S]*PR[\s\S]*protected[\s\S]*explicit/i);
+  assert.match(text, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
+  assert.match(text, /amend|rebase|history rewrite/i);
+  assert.match(text, /clean[\s\S]*unique commit|unique commit[\s\S]*clean/i);
+});
+
 test("Independent Check guidance separates Lens, Agent, and Evidence", async () => {
   const text = await runtimeText("guidance/independent-checks.md");
   assert.match(text, /^# Independent Checks$/m);
@@ -86,6 +183,7 @@ test("Independent Check guidance separates Lens, Agent, and Evidence", async () 
   assert.match(text, /Gated[\s\S]*required/i);
   assert.match(text, /Tracked[\s\S]*(preferred|recommended)/i);
   assert.match(text, /current-tool subagent/i);
+  assert.match(text, /agent-dispatch\.md/);
   assert.match(text, /skipped because/i);
   assert.match(text, /no usable output/i);
   assert.match(text, /accepted gap/i);
@@ -122,6 +220,9 @@ test("Independent Checks require usable delivery and enforce read-only at the to
 
 test("Agent guidance protects sensitive state and audits observable side effects", async () => {
   const text = await runtimeText("providers/README.md");
+  assert.match(text, /agent-dispatch\.md/);
+  assert.match(text, /Task Envelope/);
+  assert.match(text, /cc\/cx[\s\S]*read-only[\s\S]*external[\s\S]*Builder unavailable/i);
   assert.match(text, /sensitive state/i);
   assert.match(text, /task scope/i);
   assert.match(text, /side-effect\s+audit/i);
@@ -137,7 +238,7 @@ test("Agent guidance protects sensitive state and audits observable side effects
   assert.doesNotMatch(text, /accepted、rejected 或 conflict/i);
 });
 
-test("guidance never turns review or Evidence into external-action authority", async () => {
+test("guidance keeps Agent evidence separate from Git and external authority", async () => {
   const texts = await Promise.all([
     runtimeText("guidance/workflow.md"),
     runtimeText("guidance/independent-checks.md"),
@@ -150,6 +251,7 @@ test("guidance never turns review or Evidence into external-action authority", a
   }
   assert.match(
     combined,
-    /does not authorize[\s\S]*(commit|push)[\s\S]*deploy/i,
+    /Agent output[\s\S]*(?:does not|不能)[\s\S]*authorize/i,
   );
+  assert.match(combined, /push[\s\S]*PR[\s\S]*deploy[\s\S]*explicit/i);
 });

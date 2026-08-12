@@ -13,6 +13,12 @@ callable Agent。
 
 ## Invocation Choice
 
+何时委派、选择 Scout/Builder/Reviewer/Verifier、Task Envelope 与串并行条件由
+[Agent Dispatch](../guidance/agent-dispatch.md) 负责。本文件只拥有 cc/cx transport、
+fallback、session observation 与 transport-specific safety。
+当前 cc/cx profiles 是 read-only，只承载 Scout、Reviewer 或 Verifier；external
+Builder unavailable，不能用 prompt 把 read-only recipe 升级成 write transport。
+
 - current-tool subagent：低成本、局部、并行的 Independent Check。
 - non-interactive cc/cx：一次性 ask、review、debug 或 smoke test。
 - observable Agent session：长时间、多轮、需要区分运行/等待输入/关闭的任务。
@@ -46,15 +52,14 @@ changed/stable 和明确 waiting text。非零 provider exit 是进程失败并�
 fallback；zero exit、空 stdout 或 pane 暂时不变仍不证明任务完成。Stable is an
 observation, not completion。
 
-## Self-Contained Prompt
+## Transport Handoff
 
-Every Agent call needs a self-contained prompt，至少包含：
+Every Agent call carries the complete Task Envelope from
+[Agent Dispatch](../guidance/agent-dispatch.md)。Transport handoff 只补充：
 
-- goal 与当前事实；
-- project/worktree 的绝对路径和允许读取的范围；
-- read-only 或已批准的 bounded write scope；
-- constraints、禁止事项和 acceptance focus；
-- 期望输出结构；
+- project/worktree 的绝对路径与 provider 可见 surface；
+- enforced read-only mechanism，或准确标记 `no-write requested + audited`；
+- session label、观察方式与 fallback；
 - 前一轮 claim、primary critique 与下一轮精确问题（多轮时）。
 
 不要依赖 Agent 的全局记忆、skills、上次会话或项目 customization 来补齐关键
@@ -85,9 +90,13 @@ adoption: accepted | rejected | superseded
 
 判断尚未完成时标为 review pending，并省略 `adoption`。
 未决 conflict 写入 finding 或待决事项，不增加第四种 adoption value。
-Agent output does not authorize commit, push, PR, deploy, destructive operations,
-external side effects, secret access, or permission expansion。Evidence、session
-state 与 Independent Check 也不能扩大授权。
+Agent output does not authorize Git or external actions。Bounded local Git authority
+只来自当前 authorized task 和 runtime policy，并只由唯一 primary integration owner
+负责 stage 与 commit integration。Subagent 与 external Agent must not stage or commit；
+它们只交付 patch、worktree changes 或 evidence。Push、PR、deploy、对 protected/base
+branch 的任何 update/integration、history-changing/destructive operations、external
+side effects、secret access 或 permission expansion 仍需 explicit user authorization。
+Evidence、session state 与 Independent Check 也不能扩大授权。
 
 Agent recipes：
 

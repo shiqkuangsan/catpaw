@@ -20,6 +20,8 @@ const DOCS = [
   "docs/decisions/0019-catpaw-3-hybrid-runtime.md",
   "docs/decisions/0020-selective-schema-1-migration.md",
   "docs/decisions/0021-zero-touch-semantic-schema-1-migration.md",
+  "docs/decisions/0022-tiered-local-git-authority-and-engineering-methods.md",
+  "docs/decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md",
 ];
 
 async function exists(target) {
@@ -35,7 +37,7 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.0\.5/);
+    assert.match(text, /3\.2\.0/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
@@ -67,6 +69,7 @@ test("repository instructions route operations to v3 authorities", async () => {
   for (const authority of [
     "src/runtime/runtime-policy.md",
     "src/runtime/guidance/workflow.md",
+    "src/runtime/guidance/agent-dispatch.md",
     "src/runtime/guidance/independent-checks.md",
     "src/runtime/guidance/milestones.md",
     "src/runtime/guidance/maintenance.md",
@@ -78,6 +81,24 @@ test("repository instructions route operations to v3 authorities", async () => {
   }
   assert.match(text, /Do not install or apply the source runtime unless explicitly requested/i);
   assert.match(text, /callable external Agents[\s\S]*cc[\s\S]*cx/i);
+});
+
+test("ADR-0023 records Task Envelopes and risk-based Agent dispatch", async () => {
+  const text = await readFile(
+    path.join(
+      REPO,
+      "docs/decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md",
+    ),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0023:/m);
+  assert.match(text, /Status: Accepted/i);
+  assert.match(text, /Task Envelope/);
+  assert.match(text, /Scout[\s\S]*Builder[\s\S]*Reviewer[\s\S]*Verifier/);
+  assert.match(text, /temporary[\s\S]*(?:capabilit|能力)/i);
+  assert.match(text, /parallel[\s\S]*(?:mutable|可变)[\s\S]*(?:serial|串行)/i);
+  assert.match(text, /primary integration owner/i);
+  assert.match(text, /no new[\s\S]*(?:artifact|schema)/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {
@@ -127,6 +148,24 @@ test("ADR-0021 supersedes selective migration with zero-touch conversion", async
   assert.match(text, /legacy\/schema-1/);
   assert.match(text, /checksummed/i);
   assert.match(text, /No `recordState: historical`/i);
+});
+
+test("ADR-0022 records tiered local Git authority and CatPaw-owned methods", async () => {
+  const text = await readFile(
+    path.join(
+      REPO,
+      "docs/decisions/0022-tiered-local-git-authority-and-engineering-methods.md",
+    ),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0022:/m);
+  assert.match(text, /Status: Accepted/i);
+  assert.match(text, /local[\s\S]*worktree[\s\S]*commit/i);
+  assert.match(text, /push[\s\S]*PR[\s\S]*explicit/i);
+  assert.match(text, /Debugging[\s\S]*RED\/GREEN/i);
+  assert.match(text, /Superpowers[\s\S]*(?:uninstall|remove|retire)/i);
+  assert.match(text, /activated[\s\S]*adapters?[^\n]*current[\s\S]*Superpowers[\s\S]*(?:uninstall|remove)/i);
+  assert.match(text, /inventory[\s\S]*preserve[\s\S]*existing[\s\S]*worktrees/i);
 });
 
 test("maintainer docs retain durable rationale instead of completed task plans", async () => {

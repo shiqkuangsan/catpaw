@@ -27,6 +27,11 @@ Plan，但仍须理解问题、实施、检查并报告验证结果。
 Work Item 和 Plan，要求 independent check 与完成所需 Evidence；缺口只能由
 用户明确接受。
 
+Mode 决定最低证据，不决定 Agent 数量。Direct 默认 inline；Tracked 只在实质未知、
+边界明确的独立切片或有价值的 non-primary 判断时委派；Gated 要求独立 Reviewer 或
+Verifier，Builder 仍是可选项。Temporary capability、Task Envelope 和串并行条件见
+[Agent Dispatch](agent-dispatch.md)。
+
 先选 lightest safe mode。执行中发现范围、不可逆性或风险上升时立即升级；
 不得通过降级 Mode 绕过 Evidence 或 authorization gate。
 
@@ -34,7 +39,8 @@ Work Item 和 Plan，要求 independent check 与完成所需 Evidence；缺口�
 
 CatPaw 根据当前风险和 lifecycle trigger 选择一个 specific method，例如设计探索、
 RED/GREEN、系统化调试、并行调查或完成前验证；不把方法路由交给 provider 的
-meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
+meta-skill，也不以 skill 文件是否加载衡量方法是否执行。CatPaw-owned Debugging 与
+RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
 
 - 只加载能改变当前动作或证据要求的方法。For the same lifecycle stage and
   unchanged context, do not reload it；trigger、约束或失败假设变化后才重新选择。
@@ -53,6 +59,7 @@ meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
 - Bug 或异常先找 root cause；不要只修表象。
 - 选择 Mode、需要的 Lens，以及 Independent Check 是否 recommended/required。
 - 陌生边界或关键未知量需要持久化时，记录 research Evidence。
+- 只有会改变 scope、contract 或方案的未知量才交给 Scout。
 
 ### Plan
 
@@ -60,24 +67,29 @@ meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
 - Tracked/Gated 维护 Plan；Direct 只需在当前对话中保持清晰步骤。
 - 多个连续 Work Item 共享一个阶段目标时使用 Milestone，不用 Milestone 替代
   Work Item。
+- 每次委派写 bounded Task Envelope；依赖未满足或可变 scope 重叠时保持串行。
 
 ### Build
 
-- 沿既有 ownership boundary 实施，先用测试或可复现失败锁定行为变化。
+- 沿既有 ownership boundary 实施；behavior-sensitive work 按 trigger 使用
+  RED/GREEN，bug 或异常先按 Debugging 证明 root cause。
 - 保持 patch 紧凑；每个可验证单元完成后同步 Work/Plan/Milestone 状态。
 - 发现计划假设错误时返回 Think/Plan，不伪装成正常进展。
+- Builder 只处理 exact exclusive write scope；否则由 Primary integration owner 构建。
 
 ### Review
 
 - 以最可能出错的事实、contract、边界和回归为中心进行 adversarial review。
 - 选择相关 Lens；需要非 primary 判断时按 Independent Check 规则调用 Agent。
 - finding 必须可复现并标明影响；Agent 输出只是证据，不是结论授权。
+- Gated review 使用与 Builder 不同的 non-primary Reviewer 或 Verifier。
 
 ### Test
 
 - 先运行最小相关验证，再按 blast radius 扩展到集成、回归或交互验证。
 - 区分已运行、未运行、失败与环境受限；不要把代码阅读当作 verification evidence。
 - Tracked/Gated 在结果影响 closeout 判断时记录 test Evidence。
+- 关键 acceptance 需要独立复现时使用 Verifier，不让它顺手修改 business code。
 - Evidence 的 Record 必须包含 substantive body；dry-run 可以预览 placeholder，
   `evidence add --apply` 必须提供非空 `--body`。
 - `status: done` 的 Gated Work 必须有 usable test + independent review/provider Evidence，
@@ -87,8 +99,17 @@ meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
 ### Ship
 
 - 汇总 diff、verification evidence、未决风险、回滚或恢复路径。
-- Commit、push、PR、deploy 或其它外部可见操作必须取得 explicit user authorization。
-- Ship readiness 不等于已经执行外部操作。
+- 在 authorized task 内，唯一 primary integration owner 可按 runtime policy 创建
+  non-protected local task branch/worktree，仅 stage 自己拥有的文件，并在 exact scope
+  review、相关验证与 credential/secret scan 后在 task branch 创建 local commit；不得
+  stage unrelated、pre-existing user 或其它 Agent 改动。
+- Subagent 与 external Agent 默认 must not stage or commit；只交付 patch、worktree
+  changes、finding 或 evidence，由 primary integration owner 统一集成。
+- 移除 temporary worktree 前确认它 clean 且没有会变成不可达的 unique commit。
+- Push、PR、deploy/publish；对 protected/base branch 的任何 update/integration，包括
+  direct commit、merge、cherry-pick、fast-forward；以及 amend、rebase、history rewrite、
+  force、reset/clean 和 unsafe branch/worktree deletion 仍需 explicit user authorization。
+- Ship readiness、Agent output 或成功的工具结果都不等于外部动作已授权或执行。
 
 ### Reflect
 
@@ -103,6 +124,6 @@ meta-skill，也不以 skill 文件是否加载衡量方法是否执行。
 连续 Plan 应继续推进，不要求用户反复询问“下一步”；仅在需要决策、外部操作、
 新增授权或真实 blocker 时停下。
 
-CatPaw workflow does not authorize commit, push, PR, deploy, destructive
-operations, or secret access。Review、Lens、Agent output 与 Evidence 也不能
-扩大授权。
+CatPaw workflow 提供上述 bounded local Git 默认权限；Review、Lens、Agent output
+与 Evidence 不能扩大它。Remote、protected、history-changing、destructive、secret
+或 permission-changing 操作仍按明确 authorization 处理。
