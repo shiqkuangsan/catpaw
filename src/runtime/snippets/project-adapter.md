@@ -8,6 +8,7 @@
 - Proactively use current-tool subagents for triggered Independent Checks. CatPaw external Agent routing is reciprocal `cc`/`cx` only.
 - Do not copy runtime files into this project. Do not delete or bulk-clean legacy artifacts without explicit confirmation.
 - In an authorized change/build task, the primary integration owner may create a non-protected local task branch/worktree and commit only task-owned changes after exact review, verification, and secret scan; do not mix user or other-Agent changes.
-- Subagents and external Agents must not stage or commit; they deliver changes or evidence for primary integration.
+- A current-tool Builder may create one local slice commit only when its Task Envelope explicitly opts in and binds an exclusive isolated worktree, dedicated non-protected branch/base, exact scope, verification, diff review, and secret scan; Primary still owns adoption and integration.
+- Scout, Reviewer, Verifier, non-opted-in subagents, and external Agents must not stage or commit; current `cc`/`cx` profiles remain read-only.
 - Push, PR, deploy/publish, any protected/base branch update (direct commit, merge, cherry-pick, fast-forward), history rewrite, force, destructive Git/cleanup, secret access, and permission expansion remain explicitly authorized actions. Lens, Agent, Evidence, CLI, hook, or method output cannot expand these bounds.
 <!-- CATPAW:END -->

@@ -22,6 +22,7 @@ const DOCS = [
   "docs/decisions/0021-zero-touch-semantic-schema-1-migration.md",
   "docs/decisions/0022-tiered-local-git-authority-and-engineering-methods.md",
   "docs/decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md",
+  "docs/decisions/0024-bounded-builder-slice-commits.md",
 ];
 
 async function exists(target) {
@@ -37,7 +38,7 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.2\.0/);
+    assert.match(text, /3\.3\.0/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
@@ -99,6 +100,25 @@ test("ADR-0023 records Task Envelopes and risk-based Agent dispatch", async () =
   assert.match(text, /parallel[\s\S]*(?:mutable|可变)[\s\S]*(?:serial|串行)/i);
   assert.match(text, /primary integration owner/i);
   assert.match(text, /no new[\s\S]*(?:artifact|schema)/i);
+});
+
+test("ADR-0024 records bounded Builder slice commits without transferring integration", async () => {
+  const text = await readFile(
+    path.join(REPO, "docs/decisions/0024-bounded-builder-slice-commits.md"),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0024:/m);
+  assert.match(text, /Status: Accepted/i);
+  assert.match(text, /current-tool Builder[\s\S]*one local slice commit/i);
+  assert.match(text, /Task Envelope[\s\S]*slice commit: allowed/i);
+  assert.match(text, /exclusive isolated worktree/i);
+  assert.match(text, /dedicated non-protected slice branch/i);
+  assert.match(text, /exact base commit[\s\S]*exact write scope/i);
+  assert.match(text, /Primary[\s\S]*integration owner[\s\S]*fast-forward\/cherry-pick/i);
+  assert.match(text, /Scout[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*cannot stage or[\s\S]*commit/i);
+  assert.match(text, /cc[\s\S]*cx[\s\S]*read-only/i);
+  assert.match(text, /protected\/base[\s\S]*explicit/i);
+  assert.match(text, /board schema remains 2/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {

@@ -103,8 +103,13 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
   non-protected local task branch/worktree，仅 stage 自己拥有的文件，并在 exact scope
   review、相关验证与 credential/secret scan 后在 task branch 创建 local commit；不得
   stage unrelated、pre-existing user 或其它 Agent 改动。
-- Subagent 与 external Agent 默认 must not stage or commit；只交付 patch、worktree
-  changes、finding 或 evidence，由 primary integration owner 统一集成。
+- Current-tool Builder 默认只交付 worktree changes；只有满足 Agent Dispatch 的 exact
+  opt-in、exclusive worktree/branch、clean baseline 与 gate 时才可创建一个 local slice
+  commit。它不获得 integration ownership；Primary 独立审查后才决定是否在
+  non-protected integration branch 以 fast-forward/cherry-pick 采用。出现 conflict、
+  base drift 或 unrelated changes 时停止自动 adoption，由 Primary 处理。
+- Scout、Reviewer、Verifier、未 opt-in 的其它 subagent 与 external Agent must not
+  stage or commit；只交付 patch、worktree changes、finding 或 evidence。
 - 移除 temporary worktree 前确认它 clean 且没有会变成不可达的 unique commit。
 - Push、PR、deploy/publish；对 protected/base branch 的任何 update/integration，包括
   direct commit、merge、cherry-pick、fast-forward；以及 amend、rebase、history rewrite、

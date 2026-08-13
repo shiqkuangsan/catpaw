@@ -10,7 +10,7 @@ durable project facts, and uses executable checks for mechanical consistency.
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.2.0`. Project boards use **board schema 2**.
+Source runtime version: `3.3.0`. Project boards use **board schema 2**.
 
 Activation is machine-local. A source checkout cannot declare the installed
 runtime current or pending for every machine: compare it with
@@ -175,8 +175,12 @@ should read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - In an authorized change/build task, the primary integration owner may create
   a non-protected local task branch/worktree and commit only task-owned changes
   after exact review, verification, and a credential scan.
-- Subagents and external Agents must not stage or commit; they deliver changes
-  or evidence for primary integration.
+- A current-tool Builder may create one local slice commit only under an exact
+  Task Envelope opt-in bound to an exclusive isolated worktree, dedicated
+  non-protected branch/base, exact scope, verification, diff review, and secret
+  scan. The primary remains the sole integration owner.
+- Scout, Reviewer, Verifier, non-opted-in subagents, and external Agents must
+  not stage or commit; current `cc`/`cx` profiles remain read-only.
 - Push, pull request, deploy/publish, any protected/base branch update (direct
   commit, merge, cherry-pick, fast-forward), history rewrite, force,
   destructive Git/cleanup, secret access, permission expansion, and other

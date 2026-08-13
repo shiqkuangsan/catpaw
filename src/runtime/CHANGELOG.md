@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.3.0 - 2026-08-13
+
+- Allow an exact-opt-in current-tool Builder to create one local slice commit
+  in a Primary-created exclusive isolated worktree and dedicated non-protected
+  branch.
+- Require exact branch/base/write scope, clean baseline, staged diff review,
+  relevant verification, credential/secret scan, commit identity, and clean
+  handoff; omission of `slice commit: allowed` remains no-commit.
+- Preserve one Primary integration owner. Builder commits are handoff
+  candidates; Primary independently audits and may adopt them only onto a
+  non-protected integration branch.
+- Keep Scout, Reviewer, Verifier, non-opted-in subagents, and reciprocal cc/cx
+  external profiles unable to stage/commit. All protected/base, remote,
+  history-changing, destructive, secret, and permission-expanding actions stay
+  explicitly gated.
+- Add ADR-0024 and executable positive/negative authority contracts without
+  changing board schema or adding an Agent invocation artifact.
+
+Migration note (3.2.0 -> 3.3.0):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately if Builder slice commits should become available.
+Adapter impact: refresh managed global/project blocks separately to expose the concise Builder exception in host instructions.
+Safety: current cc/cx profiles remain read-only; protected/base integration and every push/PR/deploy/destructive action remain explicit gates.
+Non-goals: no activation, adapter refresh, registry mutation, project migration, push, PR, deploy, or destructive cleanup is implied.
+Rollback: retain the 3.2.0 activation/adapter backups until strict 3.3.0 verification succeeds.
+```
+
 ## 3.2.0 - 2026-08-13
 
 - Add one canonical Agent dispatch contract with risk-based triggers, bounded

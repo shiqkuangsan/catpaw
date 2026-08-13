@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 3.2.0 Hybrid Runtime.
+This repository is the versioned source for CatPaw 3.3.0 Hybrid Runtime.
 
 ## Repository Role
 
@@ -111,8 +111,12 @@ the user has explicitly requested and completed installation.
   non-protected local task branch/worktree and commit only task-owned changes
   after exact diff review, relevant verification, and a credential scan. This
   permission is optional and never includes unrelated user or Agent changes.
-- Subagents and external Agents must not stage or commit; they deliver changes
-  or evidence for primary integration.
+- A current-tool Builder may create one local slice commit only under an exact
+  Task Envelope opt-in, exclusive isolated worktree, dedicated non-protected
+  branch/base, clean baseline, exact scope, verification, diff review, and
+  credential scan. It never becomes the integration owner.
+- Scout, Reviewer, Verifier, non-opted-in subagents, and external Agents must
+  not stage or commit; current cc/cx profiles remain read-only.
 - Push, pull-request changes, deploy/publish, any protected/base branch update
   (direct commit, merge, cherry-pick, fast-forward), amend, rebase/history
   rewrite, force, reset/clean, unsafe branch/worktree deletion, and other

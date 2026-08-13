@@ -26,10 +26,32 @@ finding、选项、风险和 remaining unknown；不修改实现。
 ### Builder
 
 用于边界明确的实现切片。必须有 exact、exclusive write scope，并交付 patch/worktree
-changes、已运行验证和 handoff。Builder 或执行它的 subagent/external Agent must not
-stage or commit；唯一 primary integration owner 负责读取、采用与 Git integration。
-只有 host 能把写入限制在 declared scope 或 isolated worktree 时才委派 Builder；否则
-由 Primary 构建。当前 cc/cx transport 是 read-only，不提供 external Builder。
+changes、已运行验证和 handoff。默认只交付 working-tree changes，不 stage/commit。
+
+Current-tool Builder 只有同时满足下列条件时才可获得一次 `slice commit` authority：
+
+- 当前请求已经授权 change/build，且项目规则没有收紧该能力；
+- Primary 预先创建并验证 exclusive isolated worktree 与 dedicated non-protected
+  slice branch，记录 exact base commit；Builder 不自行创建、切换或删除 branch/worktree；
+- Task Envelope 明确写 `slice commit: allowed`、绝对 worktree、exact branch/base、
+  exact write scope 与 verification；省略或写 `forbidden` 时不得 stage/commit；
+- baseline clean 且没有 user/other-Agent changes；Builder 只 stage exact scope，完成
+  exact staged diff review、relevant verification 与 credential/secret scan；
+- 每个 Envelope 最多创建一个 local slice commit，并返回 base/head/commit hash、
+  committed paths、verification 与 clean worktree status。
+
+Slice commit 不转移 integration ownership。Builder 不得 push、创建/修改 PR、merge、
+cherry-pick、amend、rebase、reset/clean、force、删除 branch/worktree、访问 secret，或
+更新 protected/base branch；也不得 fetch/pull、stash、tag，或执行 exact stage + one
+commit 之外的任何 Git mutation/remote Git operation。出现 baseline drift、scope
+overlap、conflict、额外文件或验证失败立即停止。Primary 独立审查 commit diff 与 handoff 后才可 reject、保留，或在
+non-protected integration branch 上采用；protected/base integration 仍需用户明确授权。
+Primary 的采用动作可使用已复核的 fast-forward/cherry-pick；若发生 conflict、base
+drift 或 unrelated changes，停止自动 adoption，不把 conflict resolution 退回 Builder。
+
+只有 host 能把写入隔离在 declared scope/worktree 且 Primary 能执行 post-handoff
+side-effect audit 时才委派 Builder。当前 cc/cx transport 是 read-only，不提供 external
+Builder，也不继承此 exception。
 
 ### Reviewer
 
@@ -58,7 +80,7 @@ verification: <commands, checks, or reproduction expected>
 dependency: <inputs, ordering, concurrency boundary>
 budget: <time, calls, or context bound>
 stop condition: <done, blocked, conflict, or uncertainty threshold>
-authority: <explicitly allowed actions; everything else remains forbidden>
+authority: <explicitly allowed actions; Builder must state slice commit: allowed | forbidden>
 ```
 
 Envelope 只携带完成任务所需事实。不得依赖 Agent 的全局记忆、上次 session、skills
@@ -90,7 +112,8 @@ critique 和缩小后的下一问题。`authority` 只能收窄已有授权，�
 - outputs 可独立采用或 composable，失败一个不会污染另一个；
 - 预期节省时间明显大于 Task Envelope、context 和 integration overhead。
 
-多个 Builder 还必须拥有互斥的 exact write scope 或 isolated worktree。Read-only
+多个 Builder 必须各自拥有 dedicated branch + isolated worktree，并具有互斥的 exact
+write scope；任何 commit 仍只是各自 slice handoff。Read-only
 Scout/Reviewer/Verifier 可以读取同一事实源，但不得产生共享 mutation。任一条件不满足，
 otherwise use serial execution；先产出上游事实，再给下游新的 Envelope。
 
@@ -100,9 +123,12 @@ otherwise use serial execution；先产出上游事实，再给下游新的 Enve
 delivery/adoption 分类由 [Independent Checks](independent-checks.md) 负责。Primary
 必须读取最终输出、复现关键 finding，并明确 adopt、reject 或用更新事实 supersede。
 
-始终只有 one primary integration owner。Primary 负责冲突消解、scope adoption、
-最终验证，以及授权范围内的 stage/commit；并发 Agent 不能共享该 ownership。Agent
-output、session 状态、Lens 与 Evidence 都不能自行 authorize Git、external action、
-secret access 或 permission expansion。
+始终只有 one primary integration owner。Current-tool Builder 可在 exact opt-in 下成为
+自己那一个 local commit 的 slice commit owner，但 Primary 仍负责冲突消解、scope
+adoption、最终验证与 integration。Primary 采用前检查 base/head、exact commit diff、
+verification、secret scan 和 clean status；冲突或 drift 由 Primary 停止/处理，不能让
+Builder 扩大 scope。并发 Agent 不能共享 integration ownership。Agent output、session
+状态、Lens 与 Evidence 都不能自行 authorize Git、external action、secret access 或
+permission expansion。
 
 cc/cx 的 transport、fallback 和 observable session 见 [Agents](../providers/README.md)。

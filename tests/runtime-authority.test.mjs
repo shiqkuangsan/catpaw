@@ -122,7 +122,9 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   assert.match(text, /local[\s\S]*branch[\s\S]*worktree[\s\S]*commit/i);
   assert.match(text, /non-protected[\s\S]*task branch/i);
   assert.match(text, /primary integration owner[\s\S]*exact[\s\S]*secret/i);
-  assert.match(text, /subagent[\s\S]*external Agent[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.match(text, /current-tool Builder[\s\S]*slice commit[\s\S]*exclusive isolated worktree/i);
+  assert.match(text, /slice commit owner[\s\S]*(?:不是|not)[\s\S]*integration owner/i);
+  assert.match(text, /Scout[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*external Agent[\s\S]*must not[\s\S]*(?:stage|commit)/i);
   assert.doesNotMatch(text, /primary\/current owner/i);
   assert.match(text, /push[\s\S]*PR[\s\S]*deploy[\s\S]*explicit/i);
   assert.match(text, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
@@ -314,7 +316,9 @@ test("adapter snippets activate the compact policy without copying runtime files
   assert.match(projectAdapter, /graph-external legacy archive/i);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
   assert.match(combined, /primary integration owner[\s\S]*non-protected[\s\S]*task branch/i);
-  assert.match(combined, /Subagents?[\s\S]*external Agents?[\s\S]*must not (?:stage|commit)/i);
+  assert.match(combined, /current-tool Builder[\s\S]*Task Envelope[\s\S]*exclusive isolated worktree/i);
+  assert.match(combined, /Scout[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*external Agents?[\s\S]*must not (?:stage|commit)/i);
+  assert.match(combined, /cc[\s\S]*cx[\s\S]*read-only/i);
   assert.match(combined, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
   assert.doesNotMatch(globalAdapter, /老三|Gemini|third Agent/i);
   assert.doesNotMatch(combined, /commands\/provider\.md|specs\/09-roles\.md/);

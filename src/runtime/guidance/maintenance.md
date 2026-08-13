@@ -85,7 +85,7 @@ Canonical shape：
       "boardPath": "/abs/project/.catpaw",
       "projectRoot": "/abs/project",
       "schema": 2,
-      "runtimeSeen": "3.2.0",
+      "runtimeSeen": "3.3.0",
       "registeredVia": "project-activation | legacy-import | schema-migration",
       "registeredAt": "YYYY-MM-DD",
       "lastSeenAt": "YYYY-MM-DD",

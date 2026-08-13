@@ -118,6 +118,11 @@ review、相关验证与 credential/secret scan 后在该 task branch 创建 loc
 移除没有未提交内容和 unique commit 的 clean temporary worktree。这些操作不是强制
 cadence；answer-only、review 或 diagnose 请求不隐含 commit。
 
+Primary 对 Builder slice commit 完成独立审查与 adoption 后，可把它 fast-forward 或
+cherry-pick 到 non-protected integration branch；目标 branch、base/head 与 exact commit
+必须先复核。发生 conflict、scope drift 或 unrelated changes 时停止自动 adoption，由
+Primary 在原任务边界内重新判断。该能力不覆盖 protected/base integration gate。
+
 以下仍需当前用户明确授权：push、PR、deploy/publish；对 protected/base branch 的任何
 update 或 integration，包括 direct commit、merge、cherry-pick 和 fast-forward；以及
 amend、rebase、history rewrite、force、reset/clean、删除含用户改动或 unique commit 的
@@ -125,10 +130,18 @@ branch/worktree、secret access、scope/permission expansion，或其它外部�
 可能丢失数据的操作。These remote, protected, history-rewriting, or destructive
 actions are explicit authorization gates。Project rule 与当前用户指令可以进一步收紧。
 
-Primary integration owner 对 stage/commit ownership 负责；不得混入 pre-existing 或
-其它 Agent/user 改动。Subagent 与 external Agent 默认 must not stage or commit，只交付
-patch、worktree changes、finding 或 evidence；Lens、Agent output、Evidence、CLI、hooks
-与 optional methods 不能自行扩大授权，也不能把并发 Agent 变成共享 commit owner。
+Primary integration owner 对最终 adoption、冲突处理与 integration ownership 负责；
+不得混入 pre-existing 或其它 Agent/user 改动。Current-tool Builder 默认不获得 Git
+authority；只有 Primary 按 [Agent Dispatch](guidance/agent-dispatch.md) 在 Task Envelope
+中显式委派 `slice commit`，且 exclusive isolated worktree、dedicated non-protected
+slice branch、clean baseline、exact scope 与 verification/secret-scan gate 全部成立时，
+Builder 才可 stage exact task-owned changes 并创建一个 local slice commit。Builder
+除此以外没有 Git mutation 或 remote Git authority；它只是 slice commit owner，不是
+integration owner。Primary 必须独立审查 commit diff，再决定 reject、保留或在
+non-protected integration branch 上采用。Scout、Reviewer、
+Verifier、未显式 opt-in 的其它 subagent 与所有 external Agent must not stage or commit。
+Lens、Agent output、Evidence、CLI、hooks 与 optional methods 不能自行扩大授权，也不能
+把并发 Agent 变成共享 integration owner。
 
 ## Authority Map
 

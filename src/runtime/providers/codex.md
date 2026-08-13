@@ -62,7 +62,9 @@ filesystem sandbox。
 
 Codex output does not authorize Git or external actions。Bounded local Git
 authority comes only from the current authorized task and runtime policy, with
-stage/commit integration owned solely by the primary integration owner. Codex
-as subagent/external Agent must not stage or commit。Push、PR、deploy、任何
+commit integration owned solely by the primary integration owner. The
+current-tool Builder slice-commit exception does not apply to this external
+read-only profile；Codex as reciprocal external Agent must not stage or commit。
+Push、PR、deploy、任何
 protected/base branch update、history-changing/destructive actions、secret access
 与 permission expansion 仍需 explicit user authorization。

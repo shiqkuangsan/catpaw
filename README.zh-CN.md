@@ -10,7 +10,7 @@ lifecycle，选择最轻且安全的执行模式，只持久化有长期价值�
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime 版本：`3.2.0`。项目工作板使用 **board schema 2**。
+Source runtime 版本：`3.3.0`。项目工作板使用 **board schema 2**。
 
 Activation 是 machine-local 状态，source checkout 不能替所有机器断言 current 或
 pending；使用 `node scripts/verify-runtime.mjs` 比较当前机器。Installed runtime
@@ -162,7 +162,11 @@ Maintainer 从 [`docs/README.md`](docs/README.md) 开始；贡献说明见
 - 在已授权的 change/build task 内，primary integration owner 可创建 non-protected
   local task branch/worktree，并在 exact review、验证和 credential scan 后 commit
   仅属于当前任务的改动。
-- Subagent 与 external Agent 不得 stage 或 commit；只向 primary 交付改动或 evidence。
+- Current-tool Builder 只有在 Task Envelope exact opt-in，并绑定 exclusive isolated
+  worktree、dedicated non-protected branch/base、exact scope、验证、diff review 与
+  secret scan 时才可创建一个 local slice commit；Primary 仍是唯一 integration owner。
+- Scout、Reviewer、Verifier、未 opt-in subagent 与 external Agent 不得 stage/commit；
+  当前 `cc`/`cx` profile 仍为 read-only。
 - Push、PR、deploy/publish、对 protected/base branch 的任何 update（direct commit、
   merge、cherry-pick、fast-forward）、history rewrite、force、破坏性 Git/cleanup、
   secret access、权限扩张与其它外部或不可逆影响仍需明确授权。

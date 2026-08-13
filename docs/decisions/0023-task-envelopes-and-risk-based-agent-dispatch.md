@@ -1,6 +1,6 @@
 # ADR-0023: Task Envelopes And Risk-based Agent Dispatch
 
-Status: Accepted
+Status: Accepted; Builder slice commits refined by ADR-0024
 
 Date: 2026-08-13
 

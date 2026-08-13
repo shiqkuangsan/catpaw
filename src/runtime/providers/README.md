@@ -91,9 +91,11 @@ adoption: accepted | rejected | superseded
 判断尚未完成时标为 review pending，并省略 `adoption`。
 未决 conflict 写入 finding 或待决事项，不增加第四种 adoption value。
 Agent output does not authorize Git or external actions。Bounded local Git authority
-只来自当前 authorized task 和 runtime policy，并只由唯一 primary integration owner
-负责 stage 与 commit integration。Subagent 与 external Agent must not stage or commit；
-它们只交付 patch、worktree changes 或 evidence。Push、PR、deploy、对 protected/base
+只来自当前 authorized task 和 runtime policy，且唯一 primary integration owner 负责
+最终 commit integration。Agent Dispatch 允许 exact opt-in 的 current-tool Builder 在
+exclusive worktree 创建一个 local slice commit，但当前 cc/cx external profiles 是
+read-only，must not stage or commit；它们只交付 patch、worktree changes 或 evidence。
+Push、PR、deploy、对 protected/base
 branch 的任何 update/integration、history-changing/destructive operations、external
 side effects、secret access 或 permission expansion 仍需 explicit user authorization。
 Evidence、session state 与 Independent Check 也不能扩大授权。

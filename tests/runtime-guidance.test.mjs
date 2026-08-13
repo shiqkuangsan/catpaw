@@ -137,10 +137,20 @@ test("Agent dispatch is risk-based, lifecycle-aware, and serial by default on ov
   assert.match(text, /otherwise[\s\S]*serial|否则[\s\S]*串行/i);
 });
 
-test("Agent dispatch preserves one integration owner and independent review", async () => {
+test("Agent dispatch delegates one bounded Builder slice commit without sharing integration", async () => {
   const text = await runtimeText("guidance/agent-dispatch.md");
   assert.match(text, /one primary integration owner|唯一 primary integration owner/i);
-  assert.match(text, /Builder[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.match(text, /Builder[\s\S]*slice commit: allowed/i);
+  assert.match(text, /exclusive isolated worktree/i);
+  assert.match(text, /dedicated non-protected[\s\S]*exact base commit[\s\S]*exact write scope/i);
+  assert.match(text, /baseline clean[\s\S]*staged diff review[\s\S]*(?:credential|secret) scan/i);
+  assert.match(text, /每个 Envelope 最多[\s\S]*一个 local slice commit/i);
+  assert.match(text, /base\/head\/commit hash[\s\S]*clean worktree status/i);
+  assert.match(text, /Builder[\s\S]*(?:不得|cannot)[\s\S]*push[\s\S]*amend[\s\S]*rebase[\s\S]*reset\/clean/i);
+  assert.match(text, /fetch\/pull[\s\S]*stash[\s\S]*tag[\s\S]*任何 Git mutation\/remote Git operation/i);
+  assert.match(text, /Primary[\s\S]*fast-forward\/cherry-pick/i);
+  assert.match(text, /non-protected integration branch/i);
+  assert.match(text, /cc\/cx[\s\S]*read-only[\s\S]*(?:不提供|does not provide) external[\s\S]*Builder/i);
   assert.match(text, /Reviewer[\s\S]*Verifier[\s\S]*(?:non-primary|非 Primary)/i);
   assert.match(text, /(?:must not|不得)[\s\S]*(?:same Builder|同一 Builder)/i);
   assert.match(text, /Primary[\s\S]*(?:reproduce|复现)[\s\S]*(?:adopt|采用)[\s\S]*(?:reject|拒绝)/i);
@@ -165,7 +175,8 @@ test("workflow delegates local Git safely and keeps remote or destructive action
   assert.match(text, /authorized task[\s\S]*local(?: task)? branch[\s\S]*worktree[\s\S]*commit/i);
   assert.match(text, /primary integration owner[\s\S]*stage[\s\S]*unrelated/i);
   assert.match(text, /non-protected[\s\S]*task branch/i);
-  assert.match(text, /subagent[\s\S]*external Agent[\s\S]*(?:must not|不得)[\s\S]*(?:stage|commit)/i);
+  assert.match(text, /current-tool Builder[\s\S]*exact[\s\S]*opt-in[\s\S]*local slice/i);
+  assert.match(text, /Scout[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*external Agent[\s\S]*must not[\s\S]*(?:stage|commit)/i);
   assert.doesNotMatch(text, /primary\/current owner/i);
   assert.match(text, /credentials|secret/i);
   assert.match(text, /push[\s\S]*PR[\s\S]*protected[\s\S]*explicit/i);

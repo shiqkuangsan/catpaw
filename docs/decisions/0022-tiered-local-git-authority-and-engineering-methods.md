@@ -1,6 +1,6 @@
 # ADR-0022: Tiered Local Git Authority And Engineering Methods
 
-Status: Accepted; Agent dispatch clarified by ADR-0023
+Status: Accepted; Agent dispatch clarified by ADR-0023 and Builder slice commits refined by ADR-0024
 
 Date: 2026-08-12
 

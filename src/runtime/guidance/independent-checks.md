@@ -91,9 +91,11 @@ read-only 调用前记录 exact protected scope，结束后执行 side-effect au
 ## Authorization
 
 Independent Check 与 Agent output 不自行 authorize 任何 Git 或外部动作。Bounded
-local branch/worktree/stage/commit 权限只来自当前 authorized task 和 runtime policy，
-并只由唯一 primary integration owner 执行。执行检查的 subagent 或 external Agent
-must not stage or commit；它只能提出 finding、反驳、方案、patch 或验证建议。Push、
+local branch/worktree/stage/commit 权限只来自当前 authorized task 和 runtime policy；
+最终 integration 只由唯一 primary integration owner 执行。Agent Dispatch 中的
+current-tool Builder slice-commit exception 不适用于 Independent Check。执行检查的
+Reviewer/Verifier subagent 或 external Agent must not stage or commit；它只能提出
+finding、反驳、方案、patch 或验证建议。Push、
 PR、deploy、对 protected/base branch 的任何 update/integration、history-changing 或
 destructive operation、external side effect、secret access 或 permission expansion
 仍需 explicit user authorization。
