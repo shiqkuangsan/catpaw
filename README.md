@@ -2,15 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw is a lightweight workflow runtime for coding agents. It keeps one
-development lifecycle, selects the lightest safe operating mode, records only
-durable project facts, and uses executable checks for mechanical consistency.
+CatPaw is an advisory orchestration runtime for coding agents. It keeps one
+development lifecycle, selects the lightest safe operating mode, exposes
+structured subagent roles and collaboration guidance, records only durable
+project facts, and uses executable checks for mechanical consistency.
 
 ```text
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime version: `3.3.0`. Project boards use **board schema 2**.
+Source runtime version: `3.4.0`. Project boards use **board schema 2**.
 
 Activation is machine-local. A source checkout cannot declare the installed
 runtime current or pending for every machine: compare it with
@@ -81,16 +82,23 @@ and reflection remain lifecycle methods instead of a second role hierarchy.
 CatPaw owns compact root-cause Debugging and risk-triggered RED/GREEN guidance;
 it does not require a universal meta-skill or design-approval ritual.
 
-Agent dispatch is risk-based. Each delegated call receives a bounded Task
-Envelope and one temporary capability: Scout, Builder, Reviewer, or Verifier.
-Parallel calls require independent mutable scope and composable outputs;
-available capacity alone is not a reason to dispatch. These prompt contracts do
-not create a new role hierarchy or board artifact.
+CatPaw provides advisory orchestration to the Agent Executor. Its structured
+Role Catalog defines Scout, Architect, Builder, Reviewer, Verifier, and
+Integrator as composable responsibility contracts. One Agent may hold several
+roles, and several Agents may instantiate one role; required independence still
+requires a distinct actor. A bounded Task Envelope carries exact context,
+scope, deliverable, verification, and authority for each material delegation.
 
-The only directly callable external Agents managed by CatPaw are `cc` (Claude
-Code) and `cx` (Codex). OpenCode may host CatPaw instructions, but it is not a
-direct invocation target. Current-tool subagents remain the preferred
-low-cost option for bounded independent work.
+The Executor chooses Agents, models, transports, role composition, count,
+order/parallelism, fallback, integration owner, and final adoption. CatPaw
+supplies collaboration patterns and concurrency hazards, but does not generate
+a mandatory team graph. Its hard boundary is no concurrent write to one shared
+mutable surface; competing candidates may modify the same logical scope in
+separate worktrees.
+
+CatPaw's built-in reciprocal read-only transports are `cc` (Claude Code) and
+`cx` (Codex). They are not the Executor's complete Agent roster. OpenCode may
+host CatPaw instructions, but it is not a CatPaw-managed direct transport.
 
 ## Hybrid Runtime
 
@@ -99,7 +107,7 @@ The runtime has three behavior surfaces:
 | Surface | Responsibility |
 |---|---|
 | Always-on Rules | Compact routing, safety, progress, and authority rules |
-| On-demand Guidance | Workflow, Agent dispatch, engineering methods, Milestones, Independent Checks, Lens cards, and Agent recipes |
+| On-demand Guidance | Workflow, Agent orchestration, engineering methods, Milestones, Independent Checks, Lens cards, and Agent recipes |
 | Executable Tools | Board graph, schema validation, dry-run patches, migration, and observable Agent sessions |
 
 Its storage and activation chain is separate:
@@ -108,8 +116,9 @@ Its storage and activation chain is separate:
 source -> dist -> installed -> project board
 ```
 
-Agents make contextual decisions, the CLI records and verifies deterministic
-state, and users authorize writes or external effects. See the
+The Agent Executor makes contextual orchestration and adoption decisions, the
+CLI records and verifies deterministic state, and users authorize writes or
+external effects. See the
 [Hybrid Runtime decision](docs/decisions/0019-catpaw-3-hybrid-runtime.md).
 
 ## Quick Start From Source
@@ -139,6 +148,7 @@ catpaw board init|status|doctor|migrate
 catpaw work start|close
 catpaw milestone start|add|close
 catpaw evidence add
+catpaw agent roles|role
 catpaw agent check|open|send|status|read|close
 ```
 
@@ -172,15 +182,24 @@ should read [`CONTRIBUTING.md`](CONTRIBUTING.md).
   project artifacts.
 - Thin host adapters reference CatPaw without copying the runtime.
 - Agent output and CLI results are evidence, not authorization.
-- In an authorized change/build task, the primary integration owner may create
-  a non-protected local task branch/worktree and commit only task-owned changes
-  after exact review, verification, and a credential scan.
-- A current-tool Builder may create one local slice commit only under an exact
-  Task Envelope opt-in bound to an exclusive isolated worktree, dedicated
-  non-protected branch/base, exact scope, verification, diff review, and secret
-  scan. The primary remains the sole integration owner.
-- Scout, Reviewer, Verifier, non-opted-in subagents, and external Agents must
-  not stage or commit; current `cc`/`cx` profiles remain read-only.
+- In an authorized change/build task, the Agent Executor designates one
+  accountable integration owner per mutable surface. If the Executor retains
+  that ownership, it may use a non-protected local task branch/worktree and
+  bounded local commits for exact task-owned changes after review,
+  verification, and a credential scan.
+- A delegated integration owner may write only its assigned isolated surface;
+  integration ownership alone grants no Git authority. Candidate/reconciliation
+  commits require the Builder Role plus a complete Builder Git Envelope. After
+  the Executor decides adoption, exact clean inbound fast-forward/cherry-pick
+  requires an Integration Git Envelope bound to the assigned non-protected
+  surface, target/base, commit list, and verification.
+- A current-tool Builder may create an Executor-chosen bounded local commit
+  series only under an exact Task Envelope opt-in bound to one isolated
+  worktree, dedicated non-protected branch/base, exact scope, verification,
+  diff review, and secret scan. The Executor still owns final adoption.
+- Scout, Architect, Reviewer, Verifier, non-opted-in Agents, and current
+  `cc`/`cx` profiles must not stage or commit. Integrator/integration ownership
+  alone grants no Git authority.
 - Push, pull request, deploy/publish, any protected/base branch update (direct
   commit, merge, cherry-pick, fast-forward), history rewrite, force,
   destructive Git/cleanup, secret access, permission expansion, and other

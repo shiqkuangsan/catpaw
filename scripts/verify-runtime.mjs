@@ -461,6 +461,20 @@ async function verifyCliBehavior(label, root, manifest, record, options = {}) {
     } catch {
       // The check below reports the malformed output.
     }
+    const roles = status.ok
+      ? subprocess(process.execPath, [
+          cli,
+          "agent",
+          "roles",
+          "--json",
+        ], { env, timeout: smokeTimeoutMs() })
+      : { ok: false, detail: "status failed", stdout: "" };
+    let rolesReport = null;
+    try {
+      rolesReport = roles.stdout ? JSON.parse(roles.stdout) : null;
+    } catch {
+      // The check below reports the malformed output.
+    }
     const initOk = initialized.ok &&
       initReport?.schema === manifest.boardSchemaVersion &&
       ["applied", "noop"].includes(initReport?.status);
@@ -468,16 +482,25 @@ async function verifyCliBehavior(label, root, manifest, record, options = {}) {
       statusReport?.schema === manifest.boardSchemaVersion &&
       Array.isArray(statusReport?.findings) &&
       !statusReport.findings.some((item) => item.severity === "error");
-    const ok = initOk && statusOk;
+    const rolesOk = roles.ok &&
+      rolesReport?.command === "agent roles" &&
+      rolesReport?.decisionOwner === "agent-executor" &&
+      Array.isArray(rolesReport?.roles) &&
+      rolesReport.roles.length === 6;
+    const ok = initOk && statusOk && rolesOk;
     const detail = ok
-      ? "board init/status schema 2 smoke"
+      ? "board init/status schema 2 and Agent Role Catalog smoke"
       : !initialized.ok
         ? initialized.detail
         : !initOk
           ? "init returned unusable schema 2 output"
           : !status.ok
             ? status.detail
-            : "status returned unusable schema 2 output";
+            : !statusOk
+              ? "status returned unusable schema 2 output"
+              : !roles.ok
+                ? roles.detail
+                : "Agent Role Catalog returned unusable output";
     record(
       `${label} CLI behavior`,
       ok,

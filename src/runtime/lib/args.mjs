@@ -16,7 +16,16 @@ const COMMANDS = Object.freeze({
   work: Object.freeze(["start", "close"]),
   milestone: Object.freeze(["start", "add", "close"]),
   evidence: Object.freeze(["add"]),
-  agent: Object.freeze(["check", "open", "send", "status", "read", "close"]),
+  agent: Object.freeze([
+    "roles",
+    "role",
+    "check",
+    "open",
+    "send",
+    "status",
+    "read",
+    "close",
+  ]),
 });
 
 const VALUE_OPTIONS = new Set([
@@ -31,6 +40,7 @@ const VALUE_OPTIONS = new Set([
   "--type",
   "--stage",
   "--agent",
+  "--role",
   "--lens",
   "--body",
   "--milestone",
@@ -479,6 +489,27 @@ function parseEvidenceOptions(command, parsed) {
 
 function parseAgentOptions(command, parsed) {
   const { values, seen } = parsed;
+  if (command === "roles") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--json"]),
+      "agent roles",
+    );
+    return { role: null };
+  }
+  if (command === "role") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--json", "--role"]),
+      "agent role",
+    );
+    requireOption(values, "role");
+    const role = values.role.trim();
+    if (!/^[a-z][a-z0-9-]*$/.test(role)) {
+      throw new CliUsageError("--role must be a lowercase role id");
+    }
+    return { role };
+  }
   const common = ["--project", "--json", "--agent", "--host"];
   const allowed = new Set(
     command === "check"

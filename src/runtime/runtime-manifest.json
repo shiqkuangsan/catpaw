@@ -1,6 +1,6 @@
 {
   "name": "catpaw-runtime",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "runtimePath": "~/.catpaw",
   "boardSchemaVersion": 2,
   "released": "2026-08-13",
@@ -12,6 +12,7 @@
     "CHANGELOG.md",
     "runtime-policy.md",
     "bin/",
+    "catalog/",
     "guidance/",
     "lenses/",
     "lib/",
@@ -28,6 +29,7 @@
       "work start|close",
       "milestone start|add|close",
       "evidence add",
+      "agent roles|role",
       "agent check|open|send|status|read|close"
     ]
   },

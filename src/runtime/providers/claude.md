@@ -65,9 +65,10 @@ Read/Glob/Grep，并显式禁止 Edit/Write/NotebookEdit。`send` 不等待结�
 需要检查输入请求。
 
 Claude output does not authorize Git or external actions。Bounded local Git
-authority comes only from the current authorized task and runtime policy, with
-commit integration owned solely by the primary integration owner. The
-current-tool Builder slice-commit exception does not apply to this external
+authority comes only from the current authorized task, runtime policy, and exact
+Task Envelope. The Agent Executor decides final adoption and assigns one
+accountable integration owner per mutable surface. The current-tool Builder
+local-commit exception does not apply to this external
 read-only profile；Claude as reciprocal external Agent must not stage or commit。
 Push、PR、deploy、任何
 protected/base branch update、history-changing/destructive actions、secret access

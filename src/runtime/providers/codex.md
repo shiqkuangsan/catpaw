@@ -52,7 +52,7 @@ catpaw agent close  --agent cx --label contract-review --project /abs/project
 
 Interactive Codex 当前没有 `exec --ignore-user-config` 的完全等价启动 flag；
 CatPaw observable profile 因而只保证 `--sandbox read-only`、
-`--ask-for-approval never` 与 captured output。Prompt 仍须自包含，primary Agent
+`--ask-for-approval never` 与 captured output。Prompt 仍须自包含，Agent Executor
 必须把 customization 影响视为潜在噪音。One-shot 额外隔离 config 与 execpolicy
 `.rules`，但同样不承诺忽略 `AGENTS.md`；需要更强隔离时使用受控输入副本或外部
 filesystem sandbox。
@@ -61,9 +61,10 @@ filesystem sandbox。
 观察；stable is not completion。
 
 Codex output does not authorize Git or external actions。Bounded local Git
-authority comes only from the current authorized task and runtime policy, with
-commit integration owned solely by the primary integration owner. The
-current-tool Builder slice-commit exception does not apply to this external
+authority comes only from the current authorized task, runtime policy, and exact
+Task Envelope. The Agent Executor decides final adoption and assigns one
+accountable integration owner per mutable surface. The current-tool Builder
+local-commit exception does not apply to this external
 read-only profile；Codex as reciprocal external Agent must not stage or commit。
 Push、PR、deploy、任何
 protected/base branch update、history-changing/destructive actions、secret access

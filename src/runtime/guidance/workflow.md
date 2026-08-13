@@ -27,10 +27,10 @@ Plan，但仍须理解问题、实施、检查并报告验证结果。
 Work Item 和 Plan，要求 independent check 与完成所需 Evidence；缺口只能由
 用户明确接受。
 
-Mode 决定最低证据，不决定 Agent 数量。Direct 默认 inline；Tracked 只在实质未知、
-边界明确的独立切片或有价值的 non-primary 判断时委派；Gated 要求独立 Reviewer 或
-Verifier，Builder 仍是可选项。Temporary capability、Task Envelope 和串并行条件见
-[Agent Dispatch](agent-dispatch.md)。
+Mode 决定最低证据，不决定 Agent、Role、数量、model/transport 或串并行 topology。
+Gated 要求独立 Reviewer 或 Verifier；其它团队组成由 Agent Executor 根据当前上下文
+决定。Role Catalog、Task Envelope、advisory scheduling 与 concurrency contract 见
+[Agent Orchestration](agent-dispatch.md)。
 
 先选 lightest safe mode。执行中发现范围、不可逆性或风险上升时立即升级；
 不得通过降级 Mode 绕过 Evidence 或 authorization gate。
@@ -44,8 +44,9 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
 
 - 只加载能改变当前动作或证据要求的方法。For the same lifecycle stage and
   unchanged context, do not reload it；trigger、约束或失败假设变化后才重新选择。
-- Optional method cannot choose CatPaw Mode, artifact path, branch/worktree、commit
-  cadence 或 authorization；这些仍由 CatPaw 和当前用户指令决定。
+- Optional method cannot choose CatPaw Mode, artifact path 或 authorization。Agent
+  Executor 在当前用户/项目边界内决定 branch/worktree topology 与 commit cadence；
+  optional method 不能替它做 adoption 或扩大权限。
 - 方法输出仅在影响 Plan、finding、verification 或 reusable lesson 时写入现有
   Evidence；不创建独立 method ledger、重复 plan 或 provider-specific artifact。
 - 评估方法价值看是否真正执行、交付是否 usable、结论是否吸收并验证，而不是
@@ -59,7 +60,8 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
 - Bug 或异常先找 root cause；不要只修表象。
 - 选择 Mode、需要的 Lens，以及 Independent Check 是否 recommended/required。
 - 陌生边界或关键未知量需要持久化时，记录 research Evidence。
-- 只有会改变 scope、contract 或方案的未知量才交给 Scout。
+- Agent Executor 可使用一个或多个 Scout、Architect、其它可用 Role 或 inline 调查；
+  以信息增益、来源独立性和 handoff cost 为调度信号，不以 stage 固定 Role。
 
 ### Plan
 
@@ -67,7 +69,8 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
 - Tracked/Gated 维护 Plan；Direct 只需在当前对话中保持清晰步骤。
 - 多个连续 Work Item 共享一个阶段目标时使用 Milestone，不用 Milestone 替代
   Work Item。
-- 每次委派写 bounded Task Envelope；依赖未满足或可变 scope 重叠时保持串行。
+- 每次实质委派写 bounded Task Envelope；记录真实依赖和 mutable-surface ownership，
+  由 Executor 选择串行、并行、competing candidates 或其它 topology。
 
 ### Build
 
@@ -75,7 +78,8 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
   RED/GREEN，bug 或异常先按 Debugging 证明 root cause。
 - 保持 patch 紧凑；每个可验证单元完成后同步 Work/Plan/Milestone 状态。
 - 发现计划假设错误时返回 Think/Plan，不伪装成正常进展。
-- Builder 只处理 exact exclusive write scope；否则由 Primary integration owner 构建。
+- Writer 必须有 exact isolated mutable surface。多个 Builder 可以在独立 worktree 对同一
+  logical scope 产出 competing candidates；不得并发写同一个 mutable surface。
 
 ### Review
 
@@ -99,16 +103,22 @@ RED/GREEN contract 见 [Engineering Methods](engineering-methods.md)。
 ### Ship
 
 - 汇总 diff、verification evidence、未决风险、回滚或恢复路径。
-- 在 authorized task 内，唯一 primary integration owner 可按 runtime policy 创建
-  non-protected local task branch/worktree，仅 stage 自己拥有的文件，并在 exact scope
-  review、相关验证与 credential/secret scan 后在 task branch 创建 local commit；不得
-  stage unrelated、pre-existing user 或其它 Agent 改动。
-- Current-tool Builder 默认只交付 worktree changes；只有满足 Agent Dispatch 的 exact
-  opt-in、exclusive worktree/branch、clean baseline 与 gate 时才可创建一个 local slice
-  commit。它不获得 integration ownership；Primary 独立审查后才决定是否在
-  non-protected integration branch 以 fast-forward/cherry-pick 采用。出现 conflict、
-  base drift 或 unrelated changes 时停止自动 adoption，由 Primary 处理。
-- Scout、Reviewer、Verifier、未 opt-in 的其它 subagent 与 external Agent must not
+- 在 authorized task 内，Agent Executor 自己保留 integration ownership 时，可按 runtime
+  policy 创建 non-protected local task branch/worktree，仅 stage 当前任务拥有的文件，
+  并在 exact scope review、相关验证与 credential/secret scan 后创建 bounded local
+  commits；不得 stage unrelated、pre-existing user 或其它 Agent 改动。
+- 被委派的 integration owner 可写 assigned isolated surface，但 integration ownership
+  本身不授予 Git。Candidate/reconciliation commit 需要 Builder Role 与 Builder Git
+  Envelope；Executor 决定 adoption 后，exact inbound fast-forward/cherry-pick 需要绑定
+  exact target/base/commits 的 Integration Git Envelope。
+- Current-tool Builder 默认只交付 worktree changes；只有满足 Agent Orchestration 的
+  exact opt-in、exclusive worktree/branch、clean baseline 与 Git Envelope 时才可创建
+  bounded local commit series。它不获得 integration ownership；Agent Executor 审查后
+  才决定 adoption，并指示 integration owner 是否在 non-protected integration branch
+  采用。被委派的 owner 仅可按 Integration Git Envelope 执行 clean inbound adoption；
+  出现 conflict、base drift、reconciliation edit 或 unrelated changes 时停止自动 adoption。
+- Scout、Architect、Reviewer、Verifier、未 opt-in 的其它 Agent 与 CatPaw 当前 cc/cx
+  external profiles must not
   stage or commit；只交付 patch、worktree changes、finding 或 evidence。
 - 移除 temporary worktree 前确认它 clean 且没有会变成不可达的 unique commit。
 - Push、PR、deploy/publish；对 protected/base branch 的任何 update/integration，包括

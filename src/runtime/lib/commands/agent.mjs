@@ -7,6 +7,10 @@ import {
   agentSessionName,
   getAgentProfile,
 } from "../provider-profiles.mjs";
+import {
+  findCatalogRole,
+  loadRoleCatalog,
+} from "../role-catalog.mjs";
 
 const OUTPUT_HASH_OPTION = "@catpaw-output-hash";
 const BASELINE_LINES_OPTION = "@catpaw-baseline-line-hashes";
@@ -233,6 +237,25 @@ function invocationFallback(localSurface) {
   return "non-interactive-cli-or-current-tool-subagent-or-inline-gap";
 }
 
+function invocationFallbackOptions(localSurface) {
+  if (!localSurface.cli) {
+    return ["current-tool-subagent", "inline-with-explicit-gap"];
+  }
+  return [
+    "non-interactive-cli",
+    "current-tool-subagent",
+    "inline-with-explicit-gap",
+  ];
+}
+
+function fallbackFields(localSurface) {
+  return {
+    fallback: invocationFallback(localSurface),
+    fallbackOptions: invocationFallbackOptions(localSurface),
+    decisionOwner: "agent-executor",
+  };
+}
+
 function baseReport(options, profile) {
   return {
     command: `agent ${options.command}`,
@@ -244,14 +267,13 @@ function baseReport(options, profile) {
 
 function unavailable(options, profile, reason) {
   const localSurface = detectLocalSurface(profile);
-  const fallback = invocationFallback(localSurface);
   return {
     exitCode: 1,
     report: {
       ...baseReport(options, profile),
       localSurface,
       providerAccess: "unverified",
-      fallback,
+      ...fallbackFields(localSurface),
       label: options.label,
       session: agentSessionName({
         agent: profile.key,
@@ -261,14 +283,13 @@ function unavailable(options, profile, reason) {
       status: "unavailable",
       reason,
       completion: "unknown",
-      nextAction: `Use ${fallback}.`,
+      nextAction: "The Agent Executor selects a reported fallback option or records a gap.",
     },
   };
 }
 
 function endedSession(options, profile, session, state, output = null) {
   const localSurface = detectLocalSurface(profile);
-  const fallback = invocationFallback(localSurface);
   const failed = state.exitCode !== 0;
   const status = failed ? "failed" : "exited";
   const reason = state.exitCode === null
@@ -280,7 +301,7 @@ function endedSession(options, profile, session, state, output = null) {
       ...baseReport(options, profile),
       localSurface,
       providerAccess: failed ? "failed" : "unverified",
-      fallback,
+      ...fallbackFields(localSurface),
       label: options.label,
       session,
       status,
@@ -293,24 +314,23 @@ function endedSession(options, profile, session, state, output = null) {
           outputSha256: sha256(output),
         }),
       completion: "unknown",
-      nextAction: `Inspect retained output with agent read, then close/reopen or use ${fallback}.`,
+      nextAction: "Inspect retained output; then the Agent Executor selects a reported fallback option or records a gap.",
     },
   };
 }
 
 function runCheck(options, profile) {
   const localSurface = detectLocalSurface(profile);
-  const fallback = invocationFallback(localSurface);
   return {
     exitCode: 0,
     report: {
       ...baseReport(options, profile),
       localSurface,
       providerAccess: "unverified",
-      fallback,
+      ...fallbackFields(localSurface),
       nextAction: localSurface.observable
-        ? `Local observable session surface is available; provider access remains unverified. If invocation fails, use ${fallback}.`
-        : `Provider access remains unverified. Use ${fallback}.`,
+        ? "Local observable session surface is available; if invocation fails, the Agent Executor selects a reported fallback option or records a gap."
+        : "Provider access remains unverified; the Agent Executor selects a reported fallback option or records a gap.",
     },
   };
 }
@@ -418,7 +438,6 @@ function sessionOrReport(options, profile) {
   });
   if (!hasSession(session)) {
     const localSurface = detectLocalSurface(profile);
-    const fallback = invocationFallback(localSurface);
     return {
       result: {
         exitCode: 1,
@@ -429,10 +448,10 @@ function sessionOrReport(options, profile) {
           status: "closed",
           localSurface,
           providerAccess: "unverified",
-          fallback,
+          ...fallbackFields(localSurface),
           reason: "Observable session does not exist; provider exit status is unavailable.",
           completion: "unknown",
-          nextAction: `Run agent open first or use ${fallback}.`,
+          nextAction: "Run agent open first, or let the Agent Executor select a reported fallback option.",
         },
       },
     };
@@ -576,6 +595,8 @@ function runRead(options, profile) {
           providerExitCode: ended.providerExitCode,
           reason: ended.reason,
           fallback: ended.fallback,
+          fallbackOptions: ended.fallbackOptions,
+          decisionOwner: ended.decisionOwner,
         }),
       linesRequested: options.lines,
       output,
@@ -584,7 +605,7 @@ function runRead(options, profile) {
       completion: "unknown",
       nextAction: ended === null
         ? "Evaluate the output; do not infer completion from stability."
-        : "Evaluate retained output, then close/reopen or use the reported fallback.",
+        : "Evaluate retained output; then the Agent Executor selects a reported fallback option or records a gap.",
     },
   };
 }
@@ -660,6 +681,40 @@ function runClose(options, profile) {
 }
 
 export async function runAgentCommand(options) {
+  if (options.command === "roles") {
+    const catalog = await loadRoleCatalog();
+    return {
+      exitCode: 0,
+      report: {
+        command: "agent roles",
+        catalogVersion: catalog.catalogVersion,
+        decisionOwner: catalog.decisionOwner,
+        composition: catalog.composition,
+        roles: catalog.roles,
+        nextAction: "The Agent Executor may compose these roles for the current task.",
+      },
+    };
+  }
+  if (options.command === "role") {
+    const catalog = await loadRoleCatalog();
+    const role = findCatalogRole(catalog, options.role);
+    if (role === null) {
+      throw agentError(
+        "ERR_AGENT_ROLE_NOT_FOUND",
+        `Unknown Agent role: ${options.role}. Available roles: ${catalog.roles.map((item) => item.id).join(", ")}.`,
+      );
+    }
+    return {
+      exitCode: 0,
+      report: {
+        command: "agent role",
+        catalogVersion: catalog.catalogVersion,
+        decisionOwner: catalog.decisionOwner,
+        role,
+        nextAction: "The Agent Executor decides whether and how to assign this role.",
+      },
+    };
+  }
   const profile = getAgentProfile(options.agent, {
     projectRoot: options.projectRoot,
   });
@@ -673,6 +728,50 @@ export async function runAgentCommand(options) {
 }
 
 export function renderAgentReport(report) {
+  if (report.command === "agent roles") {
+    return [
+      "Agent Role Catalog",
+      `Catalog version: ${report.catalogVersion}`,
+      `Decision owner: ${report.decisionOwner}`,
+      "Roles:",
+      ...report.roles.map((role) => `- ${role.id} (${role.title}): ${role.intent}`),
+      "Use agent role --role <id> to inspect one complete responsibility contract.",
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
+  if (report.command === "agent role") {
+    const role = report.role;
+    const section = (title, values) => [
+      `${title}:`,
+      ...values.map((value) => `- ${value}`),
+    ];
+    return [
+      `Agent Role: ${role.title} (${role.id})`,
+      `Catalog version: ${report.catalogVersion}`,
+      `Decision owner: ${report.decisionOwner}`,
+      `Intent: ${role.intent}`,
+      ...section("Use when", role.useWhen),
+      ...section("Avoid when", role.avoidWhen),
+      ...section("Required inputs", role.requiredInputs),
+      ...section("Deliverables", role.deliverables),
+      ...section("Evidence obligations", role.evidenceObligations),
+      ...section("Authority ceiling", role.authorityCeiling),
+      `Default writes: ${role.defaultSideEffects.writes}`,
+      `Default Git: ${role.defaultSideEffects.git}`,
+      `Concurrency: ${role.concurrencyProfile.mode} — ${role.concurrencyProfile.hardConstraint}`,
+      `Required-check eligible: ${role.independenceEligibility.requiredCheck ? "yes" : "no"}`,
+      ...section("Independence conditions", role.independenceEligibility.conditions.length > 0
+        ? role.independenceEligibility.conditions
+        : ["none"]),
+      ...section("Handoff edges", role.handoffEdges),
+      ...section("Stop and escalation", role.stopAndEscalation),
+      ...section("Compatible Lenses", role.compatibleLenses),
+      ...section("Anti-patterns", role.antiPatterns),
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
   if (report.command === "agent check") {
     const localSurface = report.localSurface;
     return [
@@ -685,6 +784,8 @@ export function renderAgentReport(report) {
       `Provider access: ${report.providerAccess}`,
       "No model, authentication, or subscription check was performed.",
       `Invocation fallback: ${report.fallback}`,
+      `Fallback options: ${report.fallbackOptions.join(", ")}`,
+      `Decision owner: ${report.decisionOwner}`,
       `Next: ${report.nextAction}`,
       "",
     ].join("\n");
@@ -706,6 +807,10 @@ export function renderAgentReport(report) {
     lines.push(`Provider exit: ${report.providerExitCode ?? "unknown"}`);
   }
   if (report.fallback) lines.push(`Fallback: ${report.fallback}`);
+  if (report.fallbackOptions) {
+    lines.push(`Fallback options: ${report.fallbackOptions.join(", ")}`);
+  }
+  if (report.decisionOwner) lines.push(`Decision owner: ${report.decisionOwner}`);
   if (report.output !== undefined) lines.push("--- output ---", report.output);
   lines.push(`Completion: ${report.completion}`, `Next: ${report.nextAction}`, "");
   return lines.join("\n");

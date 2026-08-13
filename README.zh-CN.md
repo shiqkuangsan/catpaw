@@ -2,15 +2,15 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw 是一个面向 coding agent 的轻量 workflow runtime。它保留一条稳定的开发
-lifecycle，选择最轻且安全的执行模式，只持久化有长期价值的项目事实，并用可执行
-检查保证机械一致性。
+CatPaw 是一个面向 coding agent 的 advisory orchestration runtime。它保留一条稳定的
+开发 lifecycle，选择最轻且安全的执行模式，提供结构化 subagent Role 与协作指导，
+只持久化有长期价值的项目事实，并用可执行检查保证机械一致性。
 
 ```text
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
-Source runtime 版本：`3.3.0`。项目工作板使用 **board schema 2**。
+Source runtime 版本：`3.4.0`。项目工作板使用 **board schema 2**。
 
 Activation 是 machine-local 状态，source checkout 不能替所有机器断言 current 或
 pending；使用 `node scripts/verify-runtime.mjs` 比较当前机器。Installed runtime
@@ -76,14 +76,20 @@ Performance。工程、review、测试、发布、调试与复盘属于 lifecycl
 另建一套角色层级。CatPaw 内置紧凑的 root-cause Debugging 与按风险触发的
 RED/GREEN，不要求通用 meta-skill 或逐项设计审批仪式。
 
-Agent 调度按风险触发。每次委派都使用 bounded Task Envelope，并只选择一个临时
-capability：Scout、Builder、Reviewer 或 Verifier。并行要求可变 scope 相互独立、
-输出可组合；有空闲容量本身不是委派理由。这些 prompt contract 不增加角色层级或
-board artifact。
+CatPaw 向 Agent Executor 提供 advisory orchestration。结构化 Role Catalog 将 Scout、
+Architect、Builder、Reviewer、Verifier 和 Integrator 定义为可组合的责任 contract。
+一个 Agent 可以承担多个 Role，同一 Role 也可由多个 Agent 实例化；required
+independence 仍要求不同 actor。每次实质委派用 bounded Task Envelope 携带 exact
+context、scope、deliverable、verification 与 authority。
 
-CatPaw 直接管理的 external Agents 只有 `cc`（Claude Code）与 `cx`（Codex）。
-OpenCode 可以作为读取 CatPaw 规则的 host，但不是直接调用目标。边界明确的独立
-检查优先使用 current-tool subagent。
+Executor 选择 Agent、model、transport、Role composition、数量、顺序/并行、fallback、
+integration owner 与 final adoption。CatPaw 提供协作 pattern 和 concurrency hazard，
+但不生成 mandatory team graph。Hard boundary 是不同 Agent 不得并发写同一个 mutable
+surface；位于独立 worktree 的 competing candidates 可以修改同一 logical scope。
+
+CatPaw 内置的 reciprocal read-only transports 是 `cc`（Claude Code）与 `cx`
+（Codex），但它们不是 Executor 可用 Agent 的完整 roster。OpenCode 可以作为读取
+CatPaw 规则的 host，但不是 CatPaw 管理的直接 transport。
 
 ## Hybrid Runtime
 
@@ -92,7 +98,7 @@ Runtime 内部有三个行为表面：
 | Surface | 职责 |
 |---|---|
 | Always-on Rules | 紧凑的路由、安全、进度与授权规则 |
-| On-demand Guidance | Workflow、Agent dispatch、engineering methods、Milestone、Independent Check、Lens 与 Agent recipe |
+| On-demand Guidance | Workflow、Agent orchestration、engineering methods、Milestone、Independent Check、Lens 与 Agent recipe |
 | Executable Tools | Board graph、schema 校验、dry-run patch、迁移和可观察 Agent session |
 
 存储与 activation 链是另一条轴线：
@@ -101,8 +107,9 @@ Runtime 内部有三个行为表面：
 source -> dist -> installed -> project board
 ```
 
-Agent 负责语境判断，CLI 负责确定性记录与校验，用户负责授权写入和外部影响。设计
-依据见 [Hybrid Runtime ADR](docs/decisions/0019-catpaw-3-hybrid-runtime.md)。
+Agent Executor 负责语境调度与 adoption 判断，CLI 负责确定性记录与校验，用户负责
+授权写入和外部影响。设计依据见
+[Hybrid Runtime ADR](docs/decisions/0019-catpaw-3-hybrid-runtime.md)。
 
 ## 从 Source 开始
 
@@ -129,6 +136,7 @@ catpaw board init|status|doctor|migrate
 catpaw work start|close
 catpaw milestone start|add|close
 catpaw evidence add
+catpaw agent roles|role
 catpaw agent check|open|send|status|read|close
 ```
 
@@ -159,14 +167,21 @@ Maintainer 从 [`docs/README.md`](docs/README.md) 开始；贡献说明见
 - Runtime 只安装到 `~/.catpaw/`；项目工作板只存项目 artifact。
 - Host adapter 只保留 CatPaw 薄引用，不复制完整 runtime。
 - Agent output 与 CLI result 是 evidence，不是授权。
-- 在已授权的 change/build task 内，primary integration owner 可创建 non-protected
-  local task branch/worktree，并在 exact review、验证和 credential scan 后 commit
-  仅属于当前任务的改动。
-- Current-tool Builder 只有在 Task Envelope exact opt-in，并绑定 exclusive isolated
-  worktree、dedicated non-protected branch/base、exact scope、验证、diff review 与
-  secret scan 时才可创建一个 local slice commit；Primary 仍是唯一 integration owner。
-- Scout、Reviewer、Verifier、未 opt-in subagent 与 external Agent 不得 stage/commit；
-  当前 `cc`/`cx` profile 仍为 read-only。
+- 在已授权的 change/build task 内，Agent Executor 为每个 mutable surface 指定一个
+  accountable integration owner。Executor 自己保留该 ownership 时，可在 non-protected
+  local task branch/worktree 上为 exact task-owned changes 创建 bounded local commits，
+  但必须先完成 review、验证与 credential scan。
+- 被委派的 integration owner 只能写 assigned isolated surface；integration ownership
+  本身不授予 Git。Candidate/reconciliation commit 需要 Builder Role 与完整 Builder Git
+  Envelope；Executor 决定 adoption 后，exact clean inbound fast-forward/cherry-pick 需要
+  绑定 assigned non-protected surface、target/base、commit list 与验证的 Integration Git
+  Envelope。
+- Current-tool Builder 只有在 Task Envelope exact opt-in，并绑定一个 exclusive isolated
+  worktree、dedicated non-protected branch/base、exact scope、验证、diff review 与 secret
+  scan 时才可创建 Executor 选择的 bounded local commit series；final adoption 仍由
+  Executor 决定。
+- Scout、Architect、Reviewer、Verifier、未 opt-in Agent 与当前 `cc`/`cx` profiles
+  不得 stage/commit；Integrator/integration ownership 本身不授予 Git。
 - Push、PR、deploy/publish、对 protected/base branch 的任何 update（direct commit、
   merge、cherry-pick、fast-forward）、history rewrite、force、破坏性 Git/cleanup、
   secret access、权限扩张与其它外部或不可逆影响仍需明确授权。

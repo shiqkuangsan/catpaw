@@ -1,6 +1,6 @@
 # ADR-0023: Task Envelopes And Risk-based Agent Dispatch
 
-Status: Accepted; Builder slice commits refined by ADR-0024
+Status: Accepted; orchestration ownership and Role Catalog amended by ADR-0025
 
 Date: 2026-08-13
 
@@ -65,6 +65,16 @@ external Agents never inherit Git integration authority. A required Reviewer or
 Verifier must be non-primary and cannot be the same Builder checking its own
 slice.
 
+## Amendment By ADR-0025
+
+The fixed Primary-owned dispatch language above is retained as decision history.
+The current contract gives the Agent Executor contextual ownership of Agent,
+model, transport, Role composition, topology, fallback, integration ownership,
+and final adoption. Temporary capabilities are now published as a composable
+Role Catalog. Scheduling rules are advisory; the hard concurrency boundary is
+no concurrent write to one shared mutable surface. See ADR-0025 and the current
+Agent Orchestration guidance.
+
 ## Consequences
 
 - Strong models can receive compact, outcome-specific context without a fixed
@@ -85,3 +95,4 @@ slice.
 - [Agent transports](../../src/runtime/providers/README.md)
 - [ADR-0019](0019-catpaw-3-hybrid-runtime.md)
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
+- [ADR-0025](0025-executor-owned-advisory-orchestration.md)

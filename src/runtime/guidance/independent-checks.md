@@ -10,11 +10,11 @@ Lens 决定要补哪一种专业视角。只选择与当前风险有关的 Lens�
 
 ## Agent
 
-Agent 是实际提供判断或执行工作的主体。优先选择成本低且上下文合适的
-current-tool subagent；需要另一模型、用户点名“老二”或当前工具自审不足时，
-按 cc/cx recipe 调用 reciprocal Agent。Agent 不等同于 Lens。Capability、Task
-Envelope、mode/lifecycle trigger 与 parallelism 由
-[Agent Dispatch](agent-dispatch.md) 统一规定。
+Agent 是实际提供判断或执行工作的主体。Agent Executor 根据独立性、上下文、成本、
+可用 transport 与 enforcement 选择 current-tool subagent、reciprocal cc/cx 或其它
+可用 actor；CatPaw 不固定 provider 优先级。Agent 不等同于 Lens。Role Catalog、Task
+Envelope、collaboration patterns 与 concurrency contract 由
+[Agent Orchestration](agent-dispatch.md) 统一规定。
 
 ## Evidence
 
@@ -32,14 +32,14 @@ adoption: accepted | rejected | superseded
 verification: <command, Evidence path, or remaining gap>
 ```
 
-`delivery` 只描述 Agent output 是否完整可用；`adoption` 只由 Primary Agent 在读取、
-核实输出后给出。Primary Agent 尚未完成判断时在正文标为 review pending，并省略
+`delivery` 只描述 Agent output 是否完整可用；`adoption` 只由 Agent Executor 在读取、
+核实输出后给出。Executor 尚未完成判断时在正文标为 review pending，并省略
 `adoption`。未决 conflict 保留为 finding 或待决事项，不增加第四种 adoption value。
 
 `ACK`、process/session started、`task_complete`、closed edge 或 exit zero are not a
-usable deliverable。Primary Agent 必须读取最终输出、复现重要 finding，并把
+usable deliverable。Agent Executor 必须读取最终输出、复现重要 finding，并把
 accepted/rejected/superseded 与验证依据说清楚。Partial/empty/failed 必须进入
-fallback，不能满足 required Independent Check。Parent 在读取结果后关闭
+Executor-selected fallback，不能满足 required Independent Check。Parent 在读取结果后关闭
 child/session；re-review 应携带前次 finding、修复事实和缩小后的验证范围。
 
 ## Trigger
@@ -58,13 +58,15 @@ Independent Check **preferred/recommended**：
 - 测试薄弱、不可运行，或需要独立 verification plan；
 - 非平凡 UI、协议、文档规则或迁移设计变更。
 
-Direct Work 默认 inline；当局部改动暴露上述风险时升级 Mode 或执行检查。
+Direct Work 也可使用多个 Agent；Mode 不决定调用数量。当局部改动暴露上述风险时
+升级 Mode 或执行检查。
 
 ## Check Fallback
 
 - recommended 检查若确实不值得调用，记录 `subagent skipped because ...`。
-- 调用成功但结果偏题、为空或不能支持结论时，记录 `no usable output`，然后换
-  current-tool subagent、reciprocal cc/cx Agent，或使用明确的 inline Lens。
+- 调用成功但结果偏题、为空或不能支持结论时，记录 `no usable output`。CatPaw 提供
+  current-tool、reciprocal cc/cx、其它可用 actor、缩小任务与 inline gap 等选项；
+  Agent Executor 选择下一 surface，不按固定 fallback ladder 自动路由。
 - required 检查不能用 inline 自审冒充独立性。Agent 不可用时记录 gap；只有
   用户明确同意、并逐项列出当前缺失 gate 的 `accepted gap` 才能满足 Gated
   close；旧 gap 不覆盖后来新增的缺口。
@@ -84,16 +86,17 @@ scope。可用控制包括：
 
 如果环境不能阻断写入，调用只能标为 `no-write requested + audited`，不能满足
 read-only gate。涉及用户状态、配置、凭据、生产数据或其它 sensitive surface 时，
-不委派该读取；由 primary 在已授权工具中查询后提供最小事实。每次 enforced
+不委派该读取；由 Executor 在已授权工具中查询后提供最小事实。每次 enforced
 read-only 调用前记录 exact protected scope，结束后执行 side-effect audit；发现
 意外修改立即停止、保留现场并报告，不能用 usable output 抵消副作用。
 
 ## Authorization
 
 Independent Check 与 Agent output 不自行 authorize 任何 Git 或外部动作。Bounded
-local branch/worktree/stage/commit 权限只来自当前 authorized task 和 runtime policy；
-最终 integration 只由唯一 primary integration owner 执行。Agent Dispatch 中的
-current-tool Builder slice-commit exception 不适用于 Independent Check。执行检查的
+local branch/worktree/stage/commit 权限只来自当前 authorized task、runtime policy 与
+exact Task Envelope；final adoption 只由 Agent Executor 决定，integration 由其指定的
+accountable owner 执行。Agent Orchestration 中的 current-tool Builder Git exception
+不适用于 Independent Check。执行检查的
 Reviewer/Verifier subagent 或 external Agent must not stage or commit；它只能提出
 finding、反驳、方案、patch 或验证建议。Push、
 PR、deploy、对 protected/base branch 的任何 update/integration、history-changing 或

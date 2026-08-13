@@ -23,6 +23,7 @@ const DOCS = [
   "docs/decisions/0022-tiered-local-git-authority-and-engineering-methods.md",
   "docs/decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md",
   "docs/decisions/0024-bounded-builder-slice-commits.md",
+  "docs/decisions/0025-executor-owned-advisory-orchestration.md",
 ];
 
 async function exists(target) {
@@ -38,7 +39,7 @@ async function exists(target) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.3\.0/);
+    assert.match(text, /3\.4\.0/);
     assert.match(text, /board schema 2/i);
     assert.match(text, /Direct[\s\S]*Tracked[\s\S]*Gated/);
     assert.match(text, /Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect/);
@@ -65,7 +66,7 @@ test("public notice keeps attribution without a removed source-evidence claim", 
   assert.doesNotMatch(text, /source-evidence/i);
 });
 
-test("repository instructions route operations to v3 authorities", async () => {
+test("repository instructions route operations to v3.4 authorities", async () => {
   const text = await readFile(path.join(REPO, "AGENTS.md"), "utf8");
   for (const authority of [
     "src/runtime/runtime-policy.md",
@@ -81,10 +82,12 @@ test("repository instructions route operations to v3 authorities", async () => {
     assert.match(text, new RegExp(authority.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(text, /Do not install or apply the source runtime unless explicitly requested/i);
-  assert.match(text, /callable external Agents[\s\S]*cc[\s\S]*cx/i);
+  assert.match(text, /CatPaw-managed[\s\S]*cc[\s\S]*cx[\s\S]*not[\s\S]*complete roster/i);
+  assert.match(text, /Agent Executor[\s\S]*Role composition[\s\S]*final adoption/i);
+  assert.match(text, /delegated integration owner[\s\S]*Builder Git[\s\S]*Integration Git Envelope/i);
 });
 
-test("ADR-0023 records Task Envelopes and risk-based Agent dispatch", async () => {
+test("ADR-0023 retains history while routing current orchestration to ADR-0025", async () => {
   const text = await readFile(
     path.join(
       REPO,
@@ -93,32 +96,44 @@ test("ADR-0023 records Task Envelopes and risk-based Agent dispatch", async () =
     "utf8",
   );
   assert.match(text, /^# ADR-0023:/m);
-  assert.match(text, /Status: Accepted/i);
+  assert.match(text, /Status: Accepted;[\s\S]*amended by ADR-0025/i);
   assert.match(text, /Task Envelope/);
-  assert.match(text, /Scout[\s\S]*Builder[\s\S]*Reviewer[\s\S]*Verifier/);
-  assert.match(text, /temporary[\s\S]*(?:capabilit|能力)/i);
-  assert.match(text, /parallel[\s\S]*(?:mutable|可变)[\s\S]*(?:serial|串行)/i);
-  assert.match(text, /primary integration owner/i);
-  assert.match(text, /no new[\s\S]*(?:artifact|schema)/i);
+  assert.match(text, /Amendment By ADR-0025[\s\S]*Agent Executor[\s\S]*Role Catalog/i);
+  assert.match(text, /advisory[\s\S]*no concurrent write[\s\S]*shared mutable surface/i);
 });
 
-test("ADR-0024 records bounded Builder slice commits without transferring integration", async () => {
+test("ADR-0024 retains history while routing current commit cadence to ADR-0025", async () => {
   const text = await readFile(
     path.join(REPO, "docs/decisions/0024-bounded-builder-slice-commits.md"),
     "utf8",
   );
   assert.match(text, /^# ADR-0024:/m);
-  assert.match(text, /Status: Accepted/i);
-  assert.match(text, /current-tool Builder[\s\S]*one local slice commit/i);
-  assert.match(text, /Task Envelope[\s\S]*slice commit: allowed/i);
-  assert.match(text, /exclusive isolated worktree/i);
-  assert.match(text, /dedicated non-protected slice branch/i);
-  assert.match(text, /exact base commit[\s\S]*exact write scope/i);
-  assert.match(text, /Primary[\s\S]*integration owner[\s\S]*fast-forward\/cherry-pick/i);
-  assert.match(text, /Scout[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*cannot stage or[\s\S]*commit/i);
-  assert.match(text, /cc[\s\S]*cx[\s\S]*read-only/i);
-  assert.match(text, /protected\/base[\s\S]*explicit/i);
+  assert.match(text, /Status: Accepted;[\s\S]*amended by ADR-0025/i);
+  assert.match(text, /Amendment By ADR-0025[\s\S]*bounded local commit series/i);
+  assert.match(text, /delegated integration owner[\s\S]*Builder Role[\s\S]*Integration Git[\s\S]*Envelope/i);
+  assert.match(text, /Agent Executor[\s\S]*final adoption/i);
   assert.match(text, /board schema remains 2/i);
+});
+
+test("ADR-0025 records Executor-owned advisory orchestration and hard bounds", async () => {
+  const text = await readFile(
+    path.join(
+      REPO,
+      "docs/decisions/0025-executor-owned-advisory-orchestration.md",
+    ),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0025:/m);
+  assert.match(text, /Status: Accepted/i);
+  assert.match(text, /Agent Executor[\s\S]*models[\s\S]*transports[\s\S]*parallelism[\s\S]*final adoption/i);
+  assert.match(text, /Hard runtime contracts[\s\S]*Advisory orchestration[\s\S]*Executor decisions/i);
+  assert.match(text, /Scout[\s\S]*Architect[\s\S]*Builder[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*Integrator/);
+  assert.match(text, /one Agent may carry\s+multiple\s+roles[\s\S]*several Agents may instantiate the same role/i);
+  assert.match(text, /no concurrent write[\s\S]*shared mutable\s+surface/i);
+  assert.match(text, /bounded series of local commits[\s\S]*Executor chooses useful commit\s+cadence/i);
+  assert.match(text, /agent roles[\s\S]*agent role --role <id>/i);
+  assert.match(text, /does not add `agent plan`[\s\S]*automatic adoption[\s\S]*invocation ledger/i);
+  assert.match(text, /Board schema remains 2/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {

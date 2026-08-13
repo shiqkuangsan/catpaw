@@ -1,8 +1,8 @@
 # CatPaw Runtime
 
-CatPaw 是 coding-agent 项目的轻量 workflow orchestrator。它保留一条稳定
+CatPaw 是 coding-agent 项目的 advisory orchestration runtime。它保留一条稳定
 lifecycle，按风险选择 Mode，把持久状态留在项目 Work Board，把机械一致性留给
-Node CLI。
+Node CLI，并向 Agent Executor 提供结构化 Role 与协作指导。
 
 ```text
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
@@ -10,7 +10,8 @@ Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 Mode: Direct | Tracked | Gated
 Artifacts: Milestone | Work Item | Plan | Evidence
 Judgment: Lens | Agent | Independent Check
-Delegation: Task Envelope | Scout | Builder | Reviewer | Verifier
+Orchestration: Agent Executor | Role Catalog | Task Envelope
+Roles: Scout | Architect | Builder | Reviewer | Verifier | Integrator
 ```
 
 ## Runtime Composition
@@ -18,7 +19,8 @@ Delegation: Task Envelope | Scout | Builder | Reviewer | Verifier
 | Surface | Responsibility |
 |---|---|
 | [runtime-policy.md](runtime-policy.md) | always-on routing 与 safety card |
-| [guidance/](guidance/) | lifecycle、Agent dispatch、engineering methods、Milestone、Independent Check 与 maintenance |
+| [catalog/](catalog/) | machine-readable Agent Role Catalog |
+| [guidance/](guidance/) | lifecycle、Agent orchestration、engineering methods、Milestone、Independent Check 与 maintenance |
 | [lenses/](lenses/) | 五个按需专业视角 |
 | [providers/](providers/) | cc/cx one-shot 与 observable session recipes |
 | [bin/](bin/), [lib/](lib/) | executable CLI、graph、patch、migration 与 session logic |
@@ -54,8 +56,13 @@ catpaw board init|status|doctor|migrate
 catpaw work start|close
 catpaw milestone start|add|close
 catpaw evidence add
+catpaw agent roles|role
 catpaw agent check|open|send|status|read|close
 ```
+
+`agent roles` 与 `agent role --role <id>` 只读发现 responsibility contracts；
+CatPaw 不生成 mandatory team graph。Agent Executor 选择 Agent/model/transport、Role
+composition、数量、topology、fallback、integration owner 与 final adoption。
 
 `agent send` 非阻塞；`agent status` 只报告 open/closed、changed/stable 与明确的
 waiting text，不推断完成。

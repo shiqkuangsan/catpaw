@@ -353,6 +353,12 @@ test("agent check reports local surface without claiming provider access", async
     report.fallback,
     "non-interactive-cli-or-current-tool-subagent-or-inline-gap",
   );
+  assert.deepEqual(report.fallbackOptions, [
+    "non-interactive-cli",
+    "current-tool-subagent",
+    "inline-with-explicit-gap",
+  ]);
+  assert.equal(report.decisionOwner, "agent-executor");
 
   const rendered = await runCli(["agent", "check", "--agent", "cc"], box);
   assert.equal(rendered.code, 0, rendered.stderr || rendered.stdout);
@@ -363,6 +369,8 @@ test("agent check reports local surface without claiming provider access", async
     /No model, authentication, or subscription check was performed\./,
   );
   assert.doesNotMatch(rendered.stdout, /fallback:\s*none/i);
+  assert.match(rendered.stdout, /Fallback options:/);
+  assert.match(rendered.stdout, /Decision owner: agent-executor/);
 
   const providerCalls = await readProviderCalls(box.providerCallsPath);
   assert.deepEqual(providerCalls, []);
@@ -649,6 +657,12 @@ test("capability gaps are reported without requiring tmux or another subscriptio
   });
   assert.equal(noTmuxReport.providerAccess, "unverified");
   assert.equal(noTmuxReport.fallback, "non-interactive-cli");
+  assert.deepEqual(noTmuxReport.fallbackOptions, [
+    "non-interactive-cli",
+    "current-tool-subagent",
+    "inline-with-explicit-gap",
+  ]);
+  assert.equal(noTmuxReport.decisionOwner, "agent-executor");
   const noTmuxOpen = await runCli([
     "agent",
     "open",
@@ -677,6 +691,11 @@ test("capability gaps are reported without requiring tmux or another subscriptio
     noCliReport.fallback,
     "current-tool-subagent-or-inline-gap",
   );
+  assert.deepEqual(noCliReport.fallbackOptions, [
+    "current-tool-subagent",
+    "inline-with-explicit-gap",
+  ]);
+  assert.equal(noCliReport.decisionOwner, "agent-executor");
   const noCliOpen = await runCli([
     "agent",
     "open",

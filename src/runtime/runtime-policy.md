@@ -1,7 +1,8 @@
 # Runtime Policy
 
-CatPaw 是项目工作的 orchestration layer：它选择 workflow，维护 Work Board，
-按风险调用 Lens/Agent，并要求可验证的完成证据。CatPaw 内置关键 engineering
+CatPaw 是项目工作的 advisory orchestration runtime：它选择 workflow，维护 Work
+Board，提供 Role Catalog、协作指导与 hard contract，并要求可验证的完成证据。
+Agent Executor 负责上下文团队调度与 final adoption。CatPaw 内置关键 engineering
 method contract；其它具体执行方法由当前 coding environment 与可用 skills 提供。
 
 ## Activation And Priority
@@ -33,7 +34,7 @@ installed runtime are separate surfaces；修改 source repo 不会自动 activa
 2. board 是否存在、是否有 active Work/Milestone、schema 是否需要迁移；
 3. Mode：`Direct | Tracked | Gated`；
 4. 是否属于现有 Milestone；
-5. 是否需要 Agent、哪个 temporary capability、Task Envelope 与串并行边界；
+5. Agent Executor 是否需要 Agent、如何组合 Role、Task Envelope 与串并行 topology；
 6. 需要哪些 Lens，以及 Independent Check 是 recommended 还是 required；
 7. 下一阶段与验证入口。
 
@@ -42,8 +43,8 @@ Next。Direct 保持轻量；发现风险或范围增长时立即升级。
 
 完整 lifecycle 见 [Workflow](guidance/workflow.md)；root-cause debugging 与
 RED/GREEN 的按需规则见 [Engineering Methods](guidance/engineering-methods.md)；
-Agent capability、Task Envelope 与 parallelism gate 见
-[Agent Dispatch](guidance/agent-dispatch.md)。
+Role Catalog、Task Envelope、协作模式与 concurrency contract 见
+[Agent Orchestration](guidance/agent-dispatch.md)。
 
 ```text
 Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
@@ -83,19 +84,21 @@ Milestone，再按授权连续推进。见 [Milestones](guidance/milestones.md)�
 
 Gated Work 和 security/release/migration/external/destructive risk 要求非 primary
 判断。Tracked Work 遇到陌生边界、跨共享文件、弱测试、协议一致性或非平凡 UI
-时默认主动调用 current-tool subagent；若跳过，记录 `subagent skipped because`。
+时默认建议 non-primary check；Agent Executor 选择 current-tool、reciprocal 或其它
+可用 actor。若跳过 recommended check，记录 `subagent skipped because`。
 
-检查返回偏题、为空或不可用时记录 `no usable output` 并走 fallback。Required
-检查缺失时只能记录 gap；Gated close 需要用户明确 accepted gap，且记录必须枚举
-并覆盖当前缺失的 gate。完整规则见
+检查返回偏题、为空或不可用时记录 `no usable output`，提供 fallback options，由
+Agent Executor 选择下一 surface。Required 检查缺失时只能记录 gap；Gated close 需要
+用户明确 accepted gap，且记录必须枚举并覆盖当前缺失的 gate。完整规则见
 [Independent Checks](guidance/independent-checks.md)。
 
 Optional methods 按当前 trigger 选择，不能接管 Mode、artifact 或 authorization；
 Agent 只有在工具级边界预防性阻断写入时才能称为 `read-only`，prompt 或事后审计
 不能替代该边界。
 
-CatPaw 管理的 reciprocal external Agents 只有 `cc` 与 `cx`；具体 profile、
-fallback 和 observable session 见 [Agents](providers/README.md)。
+CatPaw 内置管理的 reciprocal read-only transport adapters 只有 `cc` 与 `cx`；它们
+不是 Executor 可用 Agent 的完整 roster。具体 profile、fallback options 和 observable
+session 见 [Agents](providers/README.md)。
 
 ## Progress And Completion
 
@@ -111,17 +114,34 @@ session、代码阅读和“看起来没问题”都不能代替 verification ev
 
 ## Git Authority And Safety
 
-用户授权 change/build task 后，唯一 primary integration owner 可自主执行有助交付的
-本地、可恢复 Git 操作：inspect，创建或切换 non-protected local task branch，基于该
-task branch 创建 isolated worktree，仅 stage 当前任务拥有的改动，完成 exact diff
-review、相关验证与 credential/secret scan 后在该 task branch 创建 local commit，以及
-移除没有未提交内容和 unique commit 的 clean temporary worktree。这些操作不是强制
-cadence；answer-only、review 或 diagnose 请求不隐含 commit。
+用户授权 change/build task 后，Agent Executor 可保留或通过 exact Task Envelope
+显式指定一个 integration owner。每个 mutable integration surface 同一时间只能有一个
+accountable writer。Executor 自己保留 integration ownership 时，可执行有助交付的本地、
+可恢复 Git 操作：inspect，创建或切换 non-protected local task branch，创建 isolated
+worktree，仅 stage 当前任务拥有的改动，完成 exact diff review、相关验证与
+credential/secret scan 后创建 bounded local commits，以及移除没有未提交内容和 unique
+commit 的 clean temporary worktree。这些操作不是强制 cadence；answer-only、review 或
+diagnose 请求不隐含 commit。
 
-Primary 对 Builder slice commit 完成独立审查与 adoption 后，可把它 fast-forward 或
-cherry-pick 到 non-protected integration branch；目标 branch、base/head 与 exact commit
-必须先复核。发生 conflict、scope drift 或 unrelated changes 时停止自动 adoption，由
-Primary 在原任务边界内重新判断。该能力不覆盖 protected/base integration gate。
+被委派的 integration owner 只能写 assigned isolated surface。Integration ownership
+本身不是 Git grant，也不放宽 Role ceiling、user/project authority 或 transport
+enforcement。创建 candidate/reconciliation commit 需要 Builder Role 与 Builder Git
+Envelope；把 Executor 已采用的 exact commits 引入 assigned non-protected integration
+surface，则需要下述 Integration Git Envelope。
+
+Agent Executor 对 Builder candidate 完成审查并决定 adoption 后，可指示 integration
+owner 把 exact commits fast-forward 或 cherry-pick 到 non-protected integration branch；
+目标 branch、base/head 与 commit list 必须先复核。发生 conflict、scope drift 或
+unrelated changes 时停止自动 adoption，由 Executor 在原任务边界内重新判断。该能力
+不覆盖 protected/base integration gate。
+
+被委派的 integration owner 执行上述 adoption mutation 前，Task Envelope 必须明确
+`integration adoption: allowed`，并绑定 assigned absolute worktree、non-protected target
+branch/base、exact inbound commit list、allowed fast-forward/cherry-pick、verification 与
+stop conditions。该 Integration Git Envelope 只允许 clean inbound adoption；出现 conflict、
+需要 reconciliation edit 或新建其它 commit 时立即停止。Reconciliation edit/commit 需另行
+承担 Builder Role 与完整 Builder Git Envelope。Executor 自己保留 integration ownership
+时沿用 task-local Git authority，但仍必须先决定 adoption 并复核同样的 target 与 commits。
 
 以下仍需当前用户明确授权：push、PR、deploy/publish；对 protected/base branch 的任何
 update 或 integration，包括 direct commit、merge、cherry-pick 和 fast-forward；以及
@@ -130,25 +150,28 @@ branch/worktree、secret access、scope/permission expansion，或其它外部�
 可能丢失数据的操作。These remote, protected, history-rewriting, or destructive
 actions are explicit authorization gates。Project rule 与当前用户指令可以进一步收紧。
 
-Primary integration owner 对最终 adoption、冲突处理与 integration ownership 负责；
-不得混入 pre-existing 或其它 Agent/user 改动。Current-tool Builder 默认不获得 Git
-authority；只有 Primary 按 [Agent Dispatch](guidance/agent-dispatch.md) 在 Task Envelope
-中显式委派 `slice commit`，且 exclusive isolated worktree、dedicated non-protected
-slice branch、clean baseline、exact scope 与 verification/secret-scan gate 全部成立时，
-Builder 才可 stage exact task-owned changes 并创建一个 local slice commit。Builder
-除此以外没有 Git mutation 或 remote Git authority；它只是 slice commit owner，不是
-integration owner。Primary 必须独立审查 commit diff，再决定 reject、保留或在
-non-protected integration branch 上采用。Scout、Reviewer、
-Verifier、未显式 opt-in 的其它 subagent 与所有 external Agent must not stage or commit。
-Lens、Agent output、Evidence、CLI、hooks 与 optional methods 不能自行扩大授权，也不能
-把并发 Agent 变成共享 integration owner。
+Integration owner 对 reconciliation、冲突处理、final verification 与 clean handoff
+负责；不得混入 pre-existing 或其它 Agent/user 改动。Final adoption 只由 Agent
+Executor 决定。Current-tool Builder 默认不获得 Git authority；只有 Executor 按
+[Agent Orchestration](guidance/agent-dispatch.md) 在 Task Envelope 中显式委派
+`local commits: allowed`，且 exclusive isolated worktree、dedicated non-protected
+branch、clean baseline、exact scope 与 verification/secret-scan gate 全部成立时，
+Builder 才可 stage exact task-owned changes 并创建 bounded local commit series。
+Commit cadence 由 Executor 选择，但不能越过同一 Envelope、branch/worktree、scope 或
+authority ceiling。Builder 不因 commit grant 自动成为 integration owner，Executor 必须
+审查 candidate 后决定 reject、保留或采用。仅承担 Integrator Role 或 integration
+ownership 不获得 commit authority；candidate/reconciliation commit 需要 Builder Role 与
+Builder Git Envelope，exact inbound adoption 需要 Integration Git Envelope。Scout、Architect、Reviewer、Verifier、
+未 opt-in Agent 与 CatPaw 当前 cc/cx external profiles must not stage or commit。Lens、
+Role、Agent output、Evidence、CLI、hooks 与 optional methods 不能扩大授权，也不能把并发
+Agent 变成共享 integration owner。
 
 ## Authority Map
 
 | Need | Canonical owner |
 |---|---|
 | lifecycle, Mode, verification, progress | [Workflow](guidance/workflow.md) |
-| Agent capability, Task Envelope, serial/parallel dispatch | [Agent Dispatch](guidance/agent-dispatch.md) |
+| Role Catalog, Task Envelope, advisory scheduling, concurrency | [Agent Orchestration](guidance/agent-dispatch.md) |
 | debugging and RED/GREEN methods | [Engineering Methods](guidance/engineering-methods.md) |
 | independent triggers, fallback, gap | [Independent Checks](guidance/independent-checks.md) |
 | multi-Work phase orchestration | [Milestones](guidance/milestones.md) |

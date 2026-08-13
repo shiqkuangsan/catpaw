@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.4.0 - 2026-08-13
+
+- Make the Agent Executor the contextual owner of Agent/model/transport, Role
+  composition, count, order/parallelism, fallback, integration-owner selection,
+  and final adoption decisions.
+- Add a machine-readable six-role catalog for Scout, Architect, Builder,
+  Reviewer, Verifier, and Integrator, plus read-only `agent roles` and
+  `agent role --role <id>` discovery.
+- Replace minimum-call, fixed stage-role, serial-default, and provider fallback
+  decisions with advisory scheduling signals and collaboration patterns,
+  including competing proposals, isolated build slices, tournaments, reciprocal
+  critique, and isolated fan-in.
+- Keep no concurrent write to one shared mutable surface, required non-primary
+  checks, Evidence semantics, authorization ceilings, and explicit integration
+  accountability as hard runtime contracts.
+- Let an exact-opt-in current-tool Builder create an Executor-chosen bounded
+  local commit series in one validated isolated non-protected Git surface;
+  adoption, protected/base, remote, history-changing, destructive, secret, and
+  permission-expanding actions remain separately gated.
+- Report provider `fallbackOptions` and `decisionOwner: agent-executor` while
+  retaining the scalar `fallback` compatibility field.
+- Add ADR-0025 and executable Role Catalog/CLI/orchestration contracts without
+  changing board schema or persisting transient team/scheduler state.
+
+Migration note (3.3.0 -> 3.4.0):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately to expose Role discovery and Executor-owned orchestration.
+Adapter impact: refresh managed global/project blocks separately if hosts should receive the concise Executor/Role/Git contract.
+Compatibility: provider reports retain scalar fallback in 3.4 while adding fallbackOptions and decisionOwner.
+Non-goals: no automatic scheduler, invocation ledger, activation, adapter/registry mutation, fleet refresh, push, PR, deploy, or destructive cleanup is implied.
+Rollback: retain the verified 3.3.0 runtime and adapter backups until strict 3.4.0 activation and host smoke checks succeed.
+```
+
 ## 3.3.0 - 2026-08-13
 
 - Allow an exact-opt-in current-tool Builder to create one local slice commit

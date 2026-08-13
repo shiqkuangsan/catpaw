@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 3.3.0 Hybrid Runtime.
+This repository is the versioned source for CatPaw 3.4.0 Hybrid Runtime.
 
 ## Repository Role
 
@@ -25,7 +25,7 @@ Read the smallest canonical source that owns the operation:
 |---|---|
 | Always-on routing, progress, safety | `src/runtime/runtime-policy.md` |
 | Lifecycle and Direct/Tracked/Gated selection | `src/runtime/guidance/workflow.md` |
-| Agent capabilities, Task Envelopes, dispatch and parallelism | `src/runtime/guidance/agent-dispatch.md` |
+| Role Catalog, Task Envelopes, advisory orchestration and concurrency | `src/runtime/guidance/agent-dispatch.md` |
 | Root-cause debugging and RED/GREEN | `src/runtime/guidance/engineering-methods.md` |
 | Subagent triggers, fallback, accepted gaps | `src/runtime/guidance/independent-checks.md` |
 | Multi-Work phase objectives | `src/runtime/guidance/milestones.md` |
@@ -51,6 +51,7 @@ AI-INSTALL.md
 CHANGELOG.md
 runtime-policy.md
 bin/
+catalog/
 guidance/
 lenses/
 lib/
@@ -78,9 +79,11 @@ need updates.
 - A legacy project tree must be inventoried and preserved unless the user
   separately authorizes exact cleanup targets.
 
-Callable external Agents are limited to `cc` and `cx`. OpenCode may be a host
-for CatPaw instructions, but it is not a direct invocation target. Prefer a
-current-tool subagent for bounded independent checks when appropriate.
+CatPaw-managed reciprocal external transports are limited to read-only `cc` and
+`cx` profiles; they are not the Agent Executor's complete roster. OpenCode may
+host CatPaw instructions, but CatPaw does not invoke it directly. The Executor
+chooses available Agents, models, transports, Role composition, topology,
+fallback, integration ownership, and final adoption within current authority.
 
 ## Development And Verification
 
@@ -107,16 +110,22 @@ the user has explicitly requested and completed installation.
 
 ## Safety
 
-- In an authorized change/build task, the primary integration owner may create a
-  non-protected local task branch/worktree and commit only task-owned changes
-  after exact diff review, relevant verification, and a credential scan. This
-  permission is optional and never includes unrelated user or Agent changes.
-- A current-tool Builder may create one local slice commit only under an exact
-  Task Envelope opt-in, exclusive isolated worktree, dedicated non-protected
-  branch/base, clean baseline, exact scope, verification, diff review, and
-  credential scan. It never becomes the integration owner.
-- Scout, Reviewer, Verifier, non-opted-in subagents, and external Agents must
-  not stage or commit; current cc/cx profiles remain read-only.
+- The Agent Executor designates one accountable owner for each mutable
+  integration surface. If the Executor retains that ownership in an authorized
+  change/build task, it may create a non-protected local task branch/worktree
+  and bounded local commits for exact task-owned changes after diff review,
+  relevant verification, and a credential scan.
+- A delegated integration owner may write only its assigned isolated surface.
+  Integration ownership alone grants no Git authority. Candidate or
+  reconciliation commits require the Builder Role and a complete Builder Git
+  Envelope; exact clean inbound adoption after the Executor's decision requires
+  an Integration Git Envelope bound to the assigned non-protected surface,
+  target/base, commit list, allowed fast-forward/cherry-pick, and verification.
+- An opted-in current-tool Builder may create an Executor-chosen bounded local
+  commit series within one Git Envelope. It does not gain final adoption or
+  protected/base integration authority.
+- Scout, Architect, Reviewer, Verifier, non-opted-in Agents, and current `cc`/
+  `cx` profiles must not stage or commit.
 - Push, pull-request changes, deploy/publish, any protected/base branch update
   (direct commit, merge, cherry-pick, fast-forward), amend, rebase/history
   rewrite, force, reset/clean, unsafe branch/worktree deletion, and other
@@ -136,6 +145,9 @@ Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
 ```
 
 It uses Direct, Tracked, and Gated modes; five focused Lens cards; Agents that
-perform work; and Independent Checks for non-primary judgment. CatPaw-owned
-engineering methods remain inside lifecycle guidance but outside the artifact
-and authorization model; other optional methods remain external.
+perform work; and Independent Checks for non-primary judgment. CatPaw publishes
+hard contracts, a composable Role Catalog, and advisory collaboration patterns;
+the Agent Executor owns contextual team formation, scheduling, fallback,
+integration ownership, and final adoption. CatPaw-owned engineering methods
+remain inside lifecycle guidance but outside the artifact and authorization
+model; other optional methods remain external.

@@ -39,7 +39,8 @@ Guidance is read when a task reaches the corresponding decision:
 | Need | Owner |
 |---|---|
 | Lifecycle and mode behavior | [`workflow.md`](../../src/runtime/guidance/workflow.md) |
-| Agent capability, Task Envelope, and parallelism | [`agent-dispatch.md`](../../src/runtime/guidance/agent-dispatch.md) |
+| Role Catalog, Task Envelope, advisory scheduling, and concurrency | [`agent-dispatch.md`](../../src/runtime/guidance/agent-dispatch.md) |
+| Machine-readable Agent role contracts | [`roles.json`](../../src/runtime/catalog/roles.json) |
 | Root-cause debugging and RED/GREEN | [`engineering-methods.md`](../../src/runtime/guidance/engineering-methods.md) |
 | Independent triggers and fallback | [`independent-checks.md`](../../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phase progress | [`milestones.md`](../../src/runtime/guidance/milestones.md) |
@@ -59,6 +60,7 @@ mechanical behavior:
 - deterministic status and doctor findings;
 - dry-run patch planning and atomic apply;
 - Work, Milestone, and Evidence mutations;
+- read-only Agent Role Catalog discovery;
 - schema migration staging and validation;
 - observable external Agent session operations.
 
@@ -74,9 +76,9 @@ cannot reliably choose scope, tradeoffs, useful Lens combinations, or when
 evidence changes the plan. CatPaw therefore assigns:
 
 ```text
-Agent -> contextual judgment
-CLI   -> deterministic record and verification
-User  -> authorization and accepted risk
+Agent Executor -> contextual orchestration and final adoption
+CLI            -> deterministic discovery, record, and verification
+User           -> authorization and accepted risk
 ```
 
 The separate storage and activation chain is described in
@@ -89,4 +91,6 @@ The separate storage and activation chain is described in
 - Guidance may call tools, but cannot weaken tool safety.
 - Tools may report gaps, but cannot invent acceptance.
 - Lens or Agent output is evidence, not authority.
+- Role Catalog and scheduling guidance are advisory; the Executor owns topology.
+- Concurrent Agents do not write one shared mutable surface.
 - Loading CatPaw does not imply installation, migration, or external action.

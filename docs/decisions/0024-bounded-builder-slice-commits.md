@@ -1,6 +1,6 @@
 # ADR-0024: Bounded Builder Slice Commits
 
-Status: Accepted
+Status: Accepted; commit cadence amended by ADR-0025
 
 Date: 2026-08-13
 
@@ -71,6 +71,17 @@ commit. A Builder cannot satisfy the required independent review of its own
 slice. Reciprocal `cc`/`cx` profiles remain read-only and do not receive the
 exception; external Builder remains unavailable.
 
+## Amendment By ADR-0025
+
+The one-commit cadence and Primary-owned adoption language above are retained as
+decision history. The current contract permits an opted-in Builder to create an
+Agent Executor-chosen bounded local commit series inside one unchanged Git
+Envelope. A delegated integration owner needs Builder Role plus Builder Git
+Envelope for candidate/reconciliation commits, or an exact Integration Git
+Envelope for clean inbound adoption after the Executor's decision. The Agent
+Executor still owns final adoption; protected/base and external actions remain
+explicit authorization gates.
+
 ## Consequences
 
 - Strong current-tool Builders can hand off an auditable commit instead of an
@@ -93,3 +104,4 @@ exception; external Builder remains unavailable.
 - [Agent transports](../../src/runtime/providers/README.md)
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
+- [ADR-0025](0025-executor-owned-advisory-orchestration.md)

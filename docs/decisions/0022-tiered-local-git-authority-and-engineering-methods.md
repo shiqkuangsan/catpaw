@@ -1,6 +1,6 @@
 # ADR-0022: Tiered Local Git Authority And Engineering Methods
 
-Status: Accepted; Agent dispatch clarified by ADR-0023 and Builder slice commits refined by ADR-0024
+Status: Accepted; integration ownership and commit cadence amended by ADR-0025
 
 Date: 2026-08-12
 
@@ -99,3 +99,4 @@ worktrees; it must not delete, move, or clean a worktree as plugin cleanup.
 - [Independent Checks](../../src/runtime/guidance/independent-checks.md)
 - [ADR-0019](0019-catpaw-3-hybrid-runtime.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
+- [ADR-0025](0025-executor-owned-advisory-orchestration.md)

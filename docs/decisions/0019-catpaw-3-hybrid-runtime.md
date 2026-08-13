@@ -1,6 +1,6 @@
 # ADR-0019: CatPaw 3 Hybrid Runtime
 
-Status: Accepted; local Git/methods amended by ADR-0022 and Agent dispatch by ADR-0023
+Status: Accepted; local Git/methods amended by ADR-0022 and orchestration by ADR-0025
 
 Date: 2026-07-11
 
@@ -59,9 +59,9 @@ Keep five Lens cards: Value & Scope, System & Contracts, Experience, Security,
 and Performance. Lifecycle methods own engineering, review, testing, shipping,
 debugging, and reflection behavior.
 
-Callable external Agents are limited to `cc` and `cx`. OpenCode may host a
-CatPaw adapter but is not a direct invocation target. Current-tool subagents
-remain first-class for bounded independent work.
+CatPaw-managed reciprocal external transports are limited to read-only `cc` and
+`cx`; they are not the complete Agent roster available to the Agent Executor.
+OpenCode may host a CatPaw adapter but is not a CatPaw-managed invocation target.
 
 ### Three runtime surfaces
 
@@ -71,8 +71,9 @@ remain first-class for bounded independent work.
 - **Executable Tools** own schema, graph, dry-run patch, atomic mutation,
   migration, and observable session mechanics.
 
-Agents make contextual decisions, tools record and verify deterministic state,
-and users authorize writes, external effects, and accepted risk.
+The Agent Executor makes contextual orchestration and final adoption decisions,
+tools expose, record, and verify deterministic state, and users authorize
+writes, external effects, and accepted risk.
 
 ### Explicit activation chain
 
@@ -121,7 +122,7 @@ and source-package splitting remain valid foundations.
 
 - [Runtime policy](../../src/runtime/runtime-policy.md)
 - [Workflow guidance](../../src/runtime/guidance/workflow.md)
-- [Agent Dispatch](../../src/runtime/guidance/agent-dispatch.md)
+- [Agent Orchestration](../../src/runtime/guidance/agent-dispatch.md)
 - [Independent Checks](../../src/runtime/guidance/independent-checks.md)
 - [Board schema 2](../../src/runtime/schemas/board-v2.json)
 - [CLI entrypoint](../../src/runtime/bin/catpaw.mjs)
@@ -130,3 +131,4 @@ and source-package splitting remain valid foundations.
 - [ADR-0010](0010-source-runtime-package-split.md)
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
+- [ADR-0025](0025-executor-owned-advisory-orchestration.md)
