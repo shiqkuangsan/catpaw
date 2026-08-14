@@ -1,8 +1,17 @@
 # ADR-0026: User-Facing Concept Consolidation
 
-Status: Accepted
+Status: Accepted; CLI facade amended by ADR-0027
 
 Date: 2026-08-13
+
+## Current Interpretation
+
+The three user concepts, visible flow, task intents, and schema 2 compatibility
+remain current. ADR-0027 owns the layered CLI facade: daily commands use
+`status`, `work`, `proof`, and optional `milestone`; intent discovery uses
+`intent list|show`; reciprocal provider sessions use the advanced `transport`
+namespace. The commands below describe the first consolidation step and remain
+compatible where stated.
 
 ## Context
 
@@ -124,6 +133,7 @@ activation, adapter update, registry mutation, or fleet refresh is implied.
 
 ## References
 
+- [ADR-0027: Layered CLI Facade](0027-layered-cli-facade.md)
 - [Runtime policy](../../src/runtime/runtime-policy.md)
 - [Workflow](../../src/runtime/guidance/workflow.md)
 - [Agent collaboration](../../src/runtime/guidance/agent-dispatch.md)

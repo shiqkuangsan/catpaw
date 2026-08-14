@@ -26,7 +26,7 @@ writable `build` task. A prompt cannot upgrade a read-only transport.
 These are options, not a fixed priority. Independence, context, cost, latency,
 and enforcement determine the useful surface.
 
-Run `agent check` first. It checks only local binary and tmux availability; it
+Run `transport check` first. It checks only local binary and tmux availability; it
 does not invoke a model or validate authentication, compatibility, subscription,
 or provider access. Reports keep provider access `unverified`, list fallback
 options, and identify `primary-agent` as the decision owner. A missing provider
@@ -36,13 +36,16 @@ required independent Proof remains unavailable.
 ## Observable CLI
 
 ```text
-catpaw agent check  --agent <cc|cx>
-catpaw agent open   --agent <cc|cx> --label <purpose> --project <path>
-catpaw agent send   --agent <cc|cx> --label <purpose> --project <path> --prompt <text>
-catpaw agent status --agent <cc|cx> --label <purpose> --project <path>
-catpaw agent read   --agent <cc|cx> --label <purpose> --project <path> --lines <n>
-catpaw agent close  --agent <cc|cx> --label <purpose> --project <path>
+catpaw transport check  --agent <cc|cx>
+catpaw transport open   --agent <cc|cx> --label <purpose> --project <path>
+catpaw transport send   --agent <cc|cx> --label <purpose> --project <path> --prompt <text>
+catpaw transport status --agent <cc|cx> --label <purpose> --project <path>
+catpaw transport read   --agent <cc|cx> --label <purpose> --project <path> --lines <n>
+catpaw transport close  --agent <cc|cx> --label <purpose> --project <path>
 ```
+
+`agent check|open|send|status|read|close` remains a 3.x compatibility surface.
+Use `--prompt-file <path|->` when the prompt should come from a file or stdin.
 
 The session key combines Agent, absolute project path, and label. `send` is
 non-blocking. Sessions retain process exit state; `status` reports open, failed,

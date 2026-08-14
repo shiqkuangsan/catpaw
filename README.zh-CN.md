@@ -96,18 +96,24 @@ CatPaw 管理的 reciprocal read-only transport 是 `cc`（Claude Code）和 `cx
 首选命令：
 
 ```text
+catpaw status
 catpaw board init|status|doctor|migrate
-catpaw work start [--high-risk]|close
-catpaw milestone start|add|close
-catpaw proof add
-catpaw agent intents|intent
-catpaw agent check|open|send|status|read|close
+catpaw work start|show|update|finish|cancel
+catpaw milestone start|show|add|finish|cancel
+catpaw proof add|list|show
+catpaw intent list|show
+catpaw transport check|open|send|status|read|close
 ```
 
-Board mutation 默认 dry-run，只有显式 `--apply` 才写入。`proof add` 底层仍写入
-schema 2 typed Evidence。旧调用方可以继续使用 `evidence add` 和
-`work start --mode tracked|gated`。Agent session status 只报告可观察的进程/输出事实，
-不推断完成。
+使用 `catpaw --help`、`catpaw <command> --help` 和 `catpaw --version` 发现命令。
+`status` 是日常 Work 视图，`board` 保留为存储和维护入口。Mutation 默认 dry-run，
+只有显式 `--apply` 才写入。`proof add` 底层仍写入 schema 2 typed Evidence，并支持
+inline、文件和 stdin body。旧调用方可以继续使用 `board status`、`work close`、
+`milestone close`、`evidence add`、`agent ...` 和
+`work start --mode tracked|gated`。
+
+Human output 使用 Work、Proof、visible Phase、Action 和 Next；JSON 保持 schema-shaped
+兼容字段。Transport session status 只报告可观察的进程/输出事实，不推断完成。
 
 Source checkout 使用 `src/runtime/bin/catpaw.mjs`；安装后使用
 `~/.catpaw/bin/catpaw.mjs`。CatPaw 不修改 `PATH`。

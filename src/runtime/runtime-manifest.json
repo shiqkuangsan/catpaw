@@ -3,7 +3,7 @@
   "version": "3.4.0",
   "runtimePath": "~/.catpaw",
   "boardSchemaVersion": 2,
-  "released": "2026-08-13",
+  "released": "2026-08-14",
   "canonicalFiles": [
     "VERSION",
     "runtime-manifest.json",
@@ -25,12 +25,13 @@
   "cli": {
     "entrypoint": "bin/catpaw.mjs",
     "commands": [
+      "status",
       "board init|status|doctor|migrate",
-      "work start [--high-risk]|close",
-      "milestone start|add|close",
-      "proof add (evidence add compatible)",
-      "agent intents|intent",
-      "agent check|open|send|status|read|close"
+      "work start|show|update|finish|cancel",
+      "milestone start|show|add|finish|cancel",
+      "proof add|list|show",
+      "intent list|show",
+      "transport check|open|send|status|read|close"
     ]
   },
   "projectArtifactPath": ".catpaw",

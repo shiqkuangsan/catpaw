@@ -13,9 +13,9 @@ export class CliUsageError extends Error {
 
 const COMMANDS = Object.freeze({
   board: Object.freeze(["init", "status", "doctor", "migrate"]),
-  work: Object.freeze(["start", "close"]),
-  milestone: Object.freeze(["start", "add", "close"]),
-  proof: Object.freeze(["add"]),
+  work: Object.freeze(["start", "show", "update", "close"]),
+  milestone: Object.freeze(["start", "show", "add", "close"]),
+  proof: Object.freeze(["add", "list", "show"]),
   evidence: Object.freeze(["add"]),
   agent: Object.freeze([
     "intents",
@@ -51,6 +51,11 @@ const VALUE_OPTIONS = new Set([
   "--label",
   "--prompt",
   "--lines",
+  "--phase",
+  "--next",
+  "--path",
+  "--body-file",
+  "--prompt-file",
 ]);
 
 const FLAG_OPTIONS = new Set([
@@ -110,6 +115,75 @@ function parseOptions(argv, startIndex) {
   }
 
   return { values, flags, seen };
+}
+
+const HELP_TOKENS = new Set(["--help", "-h", "help"]);
+const VERSION_TOKENS = new Set(["--version", "-V", "version"]);
+
+function metaRequest(argv) {
+  if (argv.length === 0) return { meta: "help", topic: [] };
+  if (VERSION_TOKENS.has(argv[0])) {
+    if (argv.length > 1) {
+      throw new CliUsageError(`${argv[0]} does not accept arguments`);
+    }
+    return { meta: "version" };
+  }
+  if (HELP_TOKENS.has(argv[0])) return { meta: "help", topic: argv.slice(1) };
+  const helpIndex = argv.findIndex((argument) => HELP_TOKENS.has(argument));
+  if (helpIndex !== -1) {
+    if (helpIndex !== argv.length - 1) {
+      throw new CliUsageError(`${argv[helpIndex]} must be the final argument`);
+    }
+    return { meta: "help", topic: argv.slice(0, helpIndex) };
+  }
+  return null;
+}
+
+function appendStatus(argv, status) {
+  if (argv.includes("--status")) {
+    throw new CliUsageError(`${argv[0]} ${argv[1]} does not accept --status`);
+  }
+  return [...argv.slice(0, 2), "--status", status, ...argv.slice(2)];
+}
+
+function normalizeInvocation(argv) {
+  const original = [...argv];
+  if (argv[0] === "status") {
+    return { argv: ["board", "status", ...argv.slice(1)], original };
+  }
+  if (argv[0] === "intent") {
+    const command = argv[1] === "list"
+      ? "intents"
+      : argv[1] === "show"
+        ? "intent"
+        : argv[1];
+    return { argv: ["agent", command, ...argv.slice(2)], original };
+  }
+  if (argv[0] === "transport") {
+    return { argv: ["agent", ...argv.slice(1)], original };
+  }
+  if (argv[0] === "work" && argv[1] === "finish") {
+    return { argv: appendStatus(["work", "close", ...argv.slice(2)], "done"), original };
+  }
+  if (argv[0] === "work" && argv[1] === "cancel") {
+    return {
+      argv: appendStatus(["work", "close", ...argv.slice(2)], "cancelled"),
+      original,
+    };
+  }
+  if (argv[0] === "milestone" && argv[1] === "finish") {
+    return {
+      argv: appendStatus(["milestone", "close", ...argv.slice(2)], "done"),
+      original,
+    };
+  }
+  if (argv[0] === "milestone" && argv[1] === "cancel") {
+    return {
+      argv: appendStatus(["milestone", "close", ...argv.slice(2)], "cancelled"),
+      original,
+    };
+  }
+  return { argv, original };
 }
 
 function rejectIrrelevantOptions(seen, allowed, label) {
@@ -175,6 +249,64 @@ function parseWorkOptions(command, parsed) {
   const { values, flags, seen } = parsed;
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
+  }
+  if (command === "show") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--board", "--json", "--id"]),
+      "work show",
+    );
+    requireOption(values, "id");
+    return { id: values.id };
+  }
+  if (command === "update") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set([
+        "--project",
+        "--board",
+        "--json",
+        "--dry-run",
+        "--apply",
+        "--id",
+        "--phase",
+        "--next",
+        "--status",
+        "--date",
+      ]),
+      "work update",
+    );
+    requireOption(values, "id");
+    if (values.phase === undefined && values.next === undefined && values.status === undefined) {
+      throw new CliUsageError("work update requires --phase, --next, or --status");
+    }
+    if (
+      values.phase !== undefined &&
+      !["understand", "execute", "check", "finish"].includes(values.phase)
+    ) {
+      throw new CliUsageError(
+        "work update --phase must be one of: understand, execute, check, finish",
+      );
+    }
+    const status = values.status ?? null;
+    if (status !== null && !["active", "blocked"].includes(status)) {
+      throw new CliUsageError(
+        "work update --status must be one of: active, blocked",
+      );
+    }
+    const next = values.next?.trim() ?? null;
+    if (values.next !== undefined && (next === "" || /[\r\n]/.test(values.next))) {
+      throw new CliUsageError("--next requires a nonempty single-line value");
+    }
+    return {
+      apply: flags.apply === true,
+      dryRun: flags.apply !== true,
+      id: values.id,
+      phase: values.phase ?? null,
+      next,
+      status,
+      date: values.date ?? localDate(),
+    };
   }
   if (command === "close") {
     rejectIrrelevantOptions(
@@ -289,6 +421,15 @@ function parseMilestoneOptions(command, parsed) {
   const { values, flags, seen } = parsed;
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
+  }
+  if (command === "show") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--board", "--json", "--id"]),
+      "milestone show",
+    );
+    requireOption(values, "id");
+    return { id: values.id };
   }
   if (command === "add") {
     rejectIrrelevantOptions(
@@ -430,6 +571,31 @@ function parseMilestoneOptions(command, parsed) {
 
 function parseProofOptions(command, parsed, group) {
   const { values, flags, seen } = parsed;
+  if (command === "list") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--board", "--json", "--work", "--type"]),
+      "proof list",
+    );
+    if (
+      values.type !== undefined &&
+      !Object.hasOwn(EVIDENCE_DEFAULT_STAGE, values.type)
+    ) {
+      throw new CliUsageError(
+        "proof list --type must be one of: research, review, test, provider, reflection",
+      );
+    }
+    return { work: values.work ?? null, type: values.type ?? null };
+  }
+  if (command === "show") {
+    rejectIrrelevantOptions(
+      seen,
+      new Set(["--project", "--board", "--json", "--path"]),
+      "proof show",
+    );
+    requireOption(values, "path");
+    return { path: values.path };
+  }
   rejectIrrelevantOptions(
     seen,
     new Set([
@@ -447,13 +613,14 @@ function parseProofOptions(command, parsed, group) {
       "--lens",
       "--independent",
       "--body",
+      "--body-file",
     ]),
     `${group} ${command}`,
   );
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
   }
-  requireOption(values, "type");
+  if (group === "evidence") requireOption(values, "type");
   requireOption(values, "title");
   const agent = values.agent?.trim() ?? null;
   if (values.agent !== undefined && agent === "") {
@@ -462,15 +629,23 @@ function parseProofOptions(command, parsed, group) {
   if (flags.independent && agent === null) {
     throw new CliUsageError("--independent requires --agent");
   }
-  if (flags.apply && (values.body?.trim() ?? "") === "") {
+  if (values.body !== undefined && values["body-file"] !== undefined) {
+    throw new CliUsageError("--body and --body-file are mutually exclusive");
+  }
+  if (
+    values["body-file"] === undefined &&
+    (values.body?.trim() ?? "") === "" &&
+    (group === "proof" || flags.apply)
+  ) {
     const label = group === "proof" ? "Proof" : "Evidence";
-    throw new CliUsageError(`--body is required when --apply records ${label}`);
+    throw new CliUsageError(`--body or --body-file is required to record ${label}`);
   }
 
+  const type = values.type ?? "research";
   const date = values.date ?? localDate();
-  const stage = values.stage ?? EVIDENCE_DEFAULT_STAGE[values.type] ?? "think";
+  const stage = values.stage ?? EVIDENCE_DEFAULT_STAGE[type] ?? "think";
   const metadata = {
-    type: values.type,
+    type,
     work: values.work ?? null,
     stage,
     created: date,
@@ -490,6 +665,7 @@ function parseProofOptions(command, parsed, group) {
     ...metadata,
     title: values.title,
     body: values.body ?? "",
+    bodyFile: values["body-file"] ?? null,
     date,
   };
 }
@@ -522,7 +698,7 @@ function parseAgentOptions(command, parsed) {
     command === "check"
       ? common
       : command === "send"
-        ? [...common, "--label", "--prompt"]
+        ? [...common, "--label", "--prompt", "--prompt-file"]
         : command === "read"
           ? [...common, "--label", "--lines"]
           : [...common, "--label"],
@@ -547,12 +723,21 @@ function parseAgentOptions(command, parsed) {
   }
 
   let prompt = null;
+  let promptFile = null;
   if (command === "send") {
-    requireOption(values, "prompt");
-    prompt = values.prompt.trim();
-    if (prompt === "") {
-      throw new CliUsageError("--prompt requires a nonempty value");
+    if (values.prompt !== undefined && values["prompt-file"] !== undefined) {
+      throw new CliUsageError("--prompt and --prompt-file are mutually exclusive");
     }
+    if (values.prompt === undefined && values["prompt-file"] === undefined) {
+      throw new CliUsageError("--prompt or --prompt-file is required");
+    }
+    if (values.prompt !== undefined) {
+      prompt = values.prompt.trim();
+      if (prompt === "") {
+        throw new CliUsageError("--prompt requires a nonempty value");
+      }
+    }
+    promptFile = values["prompt-file"] ?? null;
   }
 
   let lines = null;
@@ -573,12 +758,17 @@ function parseAgentOptions(command, parsed) {
     host: values.host ?? process.env.CATPAW_HOST ?? null,
     label,
     prompt,
+    promptFile,
     lines,
   };
 }
 
 export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
-  if (argv.length === 0 || (argv[0] === "board" && argv[1] === undefined)) {
+  const meta = metaRequest(argv);
+  if (meta) return meta;
+  const normalized = normalizeInvocation(argv);
+  argv = normalized.argv;
+  if (argv[0] === "board" && argv[1] === undefined) {
     throw new CliUsageError("expected board init|status|doctor|migrate");
   }
   const commands = COMMANDS[argv[0]];
@@ -611,6 +801,8 @@ export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
     projectRoot,
     boardPath,
     json: parsed.flags.json === true,
+    invokedAs: normalized.original.slice(0, 2).join(" "),
+    preferredGroup: normalized.original[0],
     ...commandOptions,
   };
 }

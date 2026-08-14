@@ -82,7 +82,7 @@ test("Agent collaboration defines exactly three composable intents", async () =>
   assert.match(text, /review and verification remain distinct `check` methods/i);
   assert.match(text, /different from the actor that built/i);
   assert.match(text, /catalog\/intents\.json/);
-  assert.match(text, /agent intents[\s\S]*agent intent --intent <id>/i);
+  assert.match(text, /intent list[\s\S]*intent show --intent <id>/i);
   assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
 });
 

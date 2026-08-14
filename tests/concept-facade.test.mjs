@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -132,7 +132,7 @@ test("proof add stores typed Evidence while evidence add remains compatible", as
     "--apply",
   ], root);
   assert.equal(emptyProof.code, 2);
-  assert.match(emptyProof.stderr, /--body is required when --apply records Proof/);
+  assert.match(emptyProof.stderr, /--body or --body-file is required to record Proof/);
 
   const proof = await runCli([
     "proof",
@@ -184,4 +184,227 @@ test("proof add stores typed Evidence while evidence add remains compatible", as
   assert.equal(evidenceReport.command, "evidence add");
   assert.equal(evidenceReport.evidence.type, "review");
   assert.equal(Object.hasOwn(evidenceReport, "proof"), false);
+});
+
+test("help and version make the preferred CLI discoverable", async (t) => {
+  const root = await boardFixture(t);
+  const general = await runCli([], root);
+  const work = await runCli(["work", "update", "--help"], root);
+  const version = await runCli(["--version"], root);
+
+  assert.equal(general.code, 0, general.stderr);
+  assert.match(general.stdout, /Core commands:/);
+  assert.match(general.stdout, /catpaw status/);
+  assert.match(general.stdout, /transport check\|open\|send\|status\|read\|close/);
+  assert.equal(work.code, 0, work.stderr);
+  assert.match(work.stdout, /--phase understand\|execute\|check\|finish/);
+  assert.equal(version.code, 0, version.stderr);
+  assert.match(version.stdout, /^catpaw 3\.4\.0 \(board schema 2\)\n$/);
+});
+
+test("status and Work commands expose Phase, Proof, and Next without schema leakage", async (t) => {
+  const root = await boardFixture(t);
+  const started = await runCli([
+    "work",
+    "start",
+    "--project",
+    root,
+    "--id",
+    "FR-910",
+    "--title",
+    "Visible Work Flow",
+    "--apply",
+    "--json",
+  ], root);
+  assert.equal(started.code, 0, started.stderr || started.stdout);
+  const workPath = path.join(root, ".catpaw/work/FR-910-visible-work-flow.md");
+  const before = await readFile(workPath, "utf8");
+
+  const preview = await runCli([
+    "work",
+    "update",
+    "--project",
+    root,
+    "--id",
+    "FR-910",
+    "--phase",
+    "execute",
+    "--next",
+    "Run the focused regression suite",
+    "--json",
+  ], root);
+  assert.equal(preview.code, 0, preview.stderr || preview.stdout);
+  assert.equal(JSON.parse(preview.stdout).mode, "dry-run");
+  assert.equal(await readFile(workPath, "utf8"), before);
+
+  const applied = await runCli([
+    "work",
+    "update",
+    "--project",
+    root,
+    "--id",
+    "FR-910",
+    "--phase",
+    "execute",
+    "--next",
+    "Run the focused regression suite",
+    "--apply",
+    "--json",
+  ], root);
+  assert.equal(applied.code, 0, applied.stderr || applied.stdout);
+  assert.equal(JSON.parse(applied.stdout).work.phase, "Execute");
+
+  const shown = await runCli([
+    "work",
+    "show",
+    "--project",
+    root,
+    "--id",
+    "FR-910",
+    "--json",
+  ], root);
+  const shownReport = JSON.parse(shown.stdout);
+  assert.equal(shownReport.work.phase, "Execute");
+  assert.equal(shownReport.work.next, "Run the focused regression suite");
+
+  const status = await runCli(["status", "--project", root], root);
+  assert.equal(status.code, 0, status.stderr);
+  assert.match(status.stdout, /CatPaw 3\.4\.0/);
+  assert.match(status.stdout, /Phase: Execute \| Risk: Normal/);
+  assert.match(status.stdout, /Next: Run the focused regression suite/);
+  assert.doesNotMatch(status.stdout, /Schema:|Mode:|Evidence:/);
+
+  const dashboard = await readFile(path.join(root, ".catpaw/index.md"), "utf8");
+  assert.match(dashboard, /\| ID \| Outcome \| State \| Phase \| Risk \| Next \| Details \|/);
+  assert.doesNotMatch(dashboard, /\| Mode \||\| Stage \|/);
+
+  const finished = await runCli([
+    "work",
+    "finish",
+    "--project",
+    root,
+    "--id",
+    "FR-910",
+    "--apply",
+    "--json",
+  ], root);
+  assert.equal(finished.code, 0, finished.stderr || finished.stdout);
+  assert.equal(JSON.parse(finished.stdout).command, "work finish");
+  assert.equal(JSON.parse(finished.stdout).closure.status, "done");
+  const closed = await readFile(workPath, "utf8");
+  assert.match(closed, /^status: done$/m);
+  assert.match(closed, /^- Phase: Finish$/m);
+  assert.match(closed, /^- Next: Completed$/m);
+});
+
+test("Proof file input, list, and show preserve typed schema 2 storage", async (t) => {
+  const root = await boardFixture(t);
+  await writeFile(
+    path.join(root, "proof-body.txt"),
+    "Executed node --test; all focused assertions passed.\n",
+  );
+  const started = await runCli([
+    "work",
+    "start",
+    "--project",
+    root,
+    "--id",
+    "FR-911",
+    "--title",
+    "Proof Queries",
+    "--apply",
+    "--json",
+  ], root);
+  assert.equal(started.code, 0, started.stderr || started.stdout);
+
+  const added = await runCli([
+    "proof",
+    "add",
+    "--project",
+    root,
+    "--work",
+    "FR-911",
+    "--type",
+    "test",
+    "--title",
+    "Focused Test",
+    "--body-file",
+    "proof-body.txt",
+    "--apply",
+    "--json",
+  ], root);
+  assert.equal(added.code, 0, added.stderr || added.stdout);
+  const proofPath = JSON.parse(added.stdout).artifacts[0].path;
+
+  const listed = await runCli([
+    "proof",
+    "list",
+    "--project",
+    root,
+    "--work",
+    "FR-911",
+    "--json",
+  ], root);
+  assert.equal(listed.code, 0, listed.stderr || listed.stdout);
+  assert.deepEqual(JSON.parse(listed.stdout).proof.map((item) => item.path), [proofPath]);
+
+  const shown = await runCli([
+    "proof",
+    "show",
+    "--project",
+    root,
+    "--path",
+    proofPath,
+    "--json",
+  ], root);
+  assert.equal(shown.code, 0, shown.stderr || shown.stdout);
+  const report = JSON.parse(shown.stdout);
+  assert.equal(report.proof.type, "test");
+  assert.equal(report.proof.work, "FR-911");
+  assert.match(report.proof.body, /all focused assertions passed/);
+});
+
+test("preferred intent and transport namespaces retain Agent aliases", async (t) => {
+  const root = await boardFixture(t);
+  const preferredIntent = await runCli([
+    "intent",
+    "list",
+    "--project",
+    root,
+    "--json",
+  ], root);
+  const compatibleIntent = await runCli([
+    "agent",
+    "intents",
+    "--project",
+    root,
+    "--json",
+  ], root);
+  assert.equal(JSON.parse(preferredIntent.stdout).command, "intent list");
+  assert.equal(JSON.parse(compatibleIntent.stdout).command, "agent intents");
+  assert.deepEqual(
+    JSON.parse(preferredIntent.stdout).intents,
+    JSON.parse(compatibleIntent.stdout).intents,
+  );
+
+  const preferredTransport = await runCli([
+    "transport",
+    "check",
+    "--project",
+    root,
+    "--agent",
+    "cx",
+    "--json",
+  ], root);
+  const compatibleAgent = await runCli([
+    "agent",
+    "check",
+    "--project",
+    root,
+    "--agent",
+    "cx",
+    "--json",
+  ], root);
+  assert.equal(JSON.parse(preferredTransport.stdout).command, "transport check");
+  assert.equal(JSON.parse(compatibleAgent.stdout).command, "agent check");
 });

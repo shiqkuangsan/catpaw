@@ -425,6 +425,25 @@ test("observable Agent session is non-blocking and reports facts only", async (t
   state = await readState(box.statePath);
   assert.match(state.sessions[openReport.session].output, /Goal: review the schema migration/);
 
+  await writeFile(
+    path.join(box.root, "transport-prompt.txt"),
+    "Follow-up: report only new contract findings.\n",
+  );
+  const fileSent = await runCli([
+    "transport",
+    "send",
+    ...common,
+    "--prompt-file",
+    "transport-prompt.txt",
+  ], box);
+  assert.equal(fileSent.code, 0, fileSent.stderr || fileSent.stdout);
+  assert.equal(JSON.parse(fileSent.stdout).command, "transport send");
+  state = await readState(box.statePath);
+  assert.match(
+    state.sessions[openReport.session].output,
+    /Follow-up: report only new contract findings/,
+  );
+
   const changed = await runCli(["agent", "status", ...common], box);
   const changedReport = JSON.parse(changed.stdout);
   assert.equal(changedReport.status, "open");

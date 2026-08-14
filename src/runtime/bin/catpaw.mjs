@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { CliUsageError, parseCliArgs } from "../lib/args.mjs";
+import { renderCliHelp, renderCliVersion } from "../lib/cli-meta.mjs";
 import {
   renderBoardReport,
   runBoardCommand,
@@ -40,6 +41,18 @@ async function main(argv = process.argv.slice(2)) {
   let options;
   try {
     options = parseCliArgs(argv);
+    if (options.meta === "help") {
+      const help = renderCliHelp(options.topic);
+      if (help === null) {
+        throw new CliUsageError(`unknown help topic: ${options.topic.join(" ")}`);
+      }
+      process.stdout.write(help);
+      return;
+    }
+    if (options.meta === "version") {
+      process.stdout.write(await renderCliVersion());
+      return;
+    }
     const result = options.group === "board"
       ? await runBoardCommand(options)
       : options.group === "work"

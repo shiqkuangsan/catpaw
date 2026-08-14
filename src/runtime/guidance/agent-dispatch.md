@@ -48,8 +48,9 @@ or available tool.
 ## Intent Catalog
 
 The machine-readable contract is [`catalog/intents.json`](../catalog/intents.json).
-Discover it with `catpaw agent intents` or
-`catpaw agent intent --intent <id>`.
+Discover it with `catpaw intent list` or
+`catpaw intent show --intent <id>`. The older `agent intents|intent` forms
+remain compatible.
 
 | Intent | Responsibility |
 |---|---|

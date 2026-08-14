@@ -6,7 +6,7 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
-## 3.4.0 - 2026-08-13
+## 3.4.0 - 2026-08-14
 
 - Consolidate the user-facing model to three parallel concerns: `Work`, `Proof`,
   and `Approval`, with the visible flow `Understand -> Execute -> Check ->
@@ -14,9 +14,15 @@ CLI; the newest release entry summarizes their versioned change.
 - Replace the unreleased six-Role catalog with three bounded Agent task intents:
   `explore`, `build`, and `check`; review and verification remain different
   check methods and required independent Proof still comes from another actor.
-- Add preferred `proof add`, `agent intents`, `agent intent --intent <id>`, and
-  `work start --high-risk` CLI language while retaining schema 2 Evidence,
-  `evidence add`, and `--mode tracked|gated` compatibility.
+- Add a discoverable CLI facade with global/command help, runtime version,
+  daily `status`, Work show/update/finish/cancel, Proof add/list/show, preferred
+  `intent` discovery, and advanced `transport` sessions.
+- Render Work, Proof, visible Phase, Action, and Next for humans while retaining
+  schema-shaped JSON, typed schema 2 Evidence, and the existing `board status`,
+  `work close`, `milestone close`, `evidence add`, `agent ...`, and
+  `--mode tracked|gated` compatibility inputs.
+- Accept Proof and transport prompt content inline, from files, or from stdin so
+  long records do not need to be embedded in process arguments.
 - Keep modes, seven stage values, typed Evidence, delegation fields, scheduling,
   and Git mechanics as internal runtime/storage contracts instead of concepts a
   user must learn.

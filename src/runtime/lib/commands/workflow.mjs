@@ -7,6 +7,13 @@ import { collectBoardFindings } from "../findings.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../frontmatter.mjs";
 import { buildArtifactGraph } from "../graph.mjs";
 import { createPatchPlan, renderPatchPlan } from "../patch-plan.mjs";
+import {
+  artifactTitle,
+  publicCliText,
+  visiblePhase,
+  visibleRisk,
+  workNext,
+} from "../presentation.mjs";
 import { validateMetadata } from "../schema.mjs";
 
 const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
@@ -83,13 +90,6 @@ function boardRelativePath(artifact) {
   return path.relative(artifact.boardPath, artifact.filePath).split(path.sep).join("/");
 }
 
-function artifactTitle(artifact) {
-  if (artifact.title) return artifact.title;
-  const heading = artifact.body?.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  if (!heading) return artifact.id;
-  return heading.replace(new RegExp(`^${artifact.id}(?::|\\s+-)?\\s*`), "").trim() || artifact.id;
-}
-
 export function neutralizeCatPawMarkers(value) {
   return String(value ?? "").replaceAll("<!-- catpaw:", "&lt;!-- catpaw:");
 }
@@ -147,13 +147,13 @@ function renderWork(workItems, plans) {
   return [
     "## Active Work",
     "",
-    "| ID | Title | Mode | Status | Stage | Links |",
-    "|---|---|---|---|---|---|",
+    "| ID | Outcome | State | Phase | Risk | Next | Details |",
+    "|---|---|---|---|---|---|---|",
     ...active.map((item) => {
       const links = [`[Work](${boardRelativePath(item)})`];
       const plan = planByWork.get(item.id);
       if (plan) links.push(`[Plan](${boardRelativePath(plan)})`);
-      return `| ${item.id} | ${managedTableCell(artifactTitle(item))} | ${item.mode} | ${item.status} | ${item.stage} | ${links.join(" / ")} |`;
+      return `| ${item.id} | ${managedTableCell(artifactTitle(item))} | ${item.status} | ${visiblePhase(item.stage)} | ${visibleRisk(item.mode)} | ${managedTableCell(workNext(item.body))} | ${links.join(" / ")} |`;
     }),
   ].join("\n");
 }
@@ -327,7 +327,7 @@ export function refusedMutation({
       projectRoot: options.projectRoot,
       boardPath: options.boardPath,
       schema: 2,
-      mode: options.apply ? "apply" : "dry-run",
+      mode: options.apply ? "apply" : options.dryRun === true ? "dry-run" : "read-only",
       status: "refused",
       migrationRequired: false,
       reason,
@@ -350,17 +350,89 @@ function appendApplyDiagnostics(lines, report) {
 }
 
 export function renderMutationReport(report) {
+  if (report.command === "work show" && report.work) {
+    return [
+      `Work ${report.work.id}: ${report.work.title}`,
+      `State: ${report.work.status}`,
+      `Phase: ${report.work.phase}`,
+      `Risk: ${report.work.risk}`,
+      `Proof: ${report.proof.count}${report.proof.types.length > 0 ? ` (${report.proof.types.join(", ")})` : ""}`,
+      ...(report.proof.missingCompletion.length > 0
+        ? [`Missing Proof: ${report.proof.missingCompletion.join(", ")}`]
+        : []),
+      `Path: ${report.work.path}`,
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
+  if (report.command === "milestone show" && report.milestone) {
+    return [
+      `Milestone ${report.milestone.id}: ${report.milestone.title}`,
+      `State: ${report.milestone.status}`,
+      `Target: ${report.milestone.target ?? "Not recorded"}`,
+      `Scoped Work: ${report.milestone.scope.length}`,
+      ...report.milestone.scope.map(
+        (item) => `- ${item.id} ${item.title} (${item.status})${item.notes ? ` — ${item.notes}` : ""}`,
+      ),
+      `Path: ${report.milestone.path}`,
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
+  if (report.command === "proof list") {
+    return [
+      `Proof: ${report.proof.length}`,
+      ...report.proof.map(
+        (item) => `- ${item.title} | ${item.type} | ${item.work ?? "topic"}${item.independent ? ` | independent: ${item.agent}` : ""}\n  ${item.path}`,
+      ),
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
+  if (report.command === "proof show" && report.proof) {
+    return [
+      `Proof: ${report.proof.path}`,
+      `Type: ${report.proof.type}`,
+      `Work: ${report.proof.work ?? "topic"}`,
+      `Independent: ${report.proof.independent ? `yes (${report.proof.agent})` : "no"}`,
+      "",
+      report.proof.body.trim(),
+      "",
+      `Next: ${report.nextAction}`,
+      "",
+    ].join("\n");
+  }
+
+  const action = report.mode === "dry-run"
+    ? "preview"
+    : report.mode === "apply"
+      ? "apply"
+      : report.mode ?? "read-only";
   const lines = [
     report.command,
-    `Schema: ${report.schema ?? "unknown"}`,
-    `Mode: ${report.mode}`,
+    `Action: ${action}`,
     `Status: ${report.status}`,
-    `Migration required: ${report.migrationRequired ? "yes" : "no"}`,
   ];
+  if (report.schema !== undefined && report.schema !== 2) {
+    lines.push(`Schema: ${report.schema ?? "unknown"}`);
+  }
+  if (report.migrationRequired) lines.push("Migration required: yes");
   if (report.findings) lines.push(`Findings: ${report.findings.length}`);
-  if (report.reason) lines.push(`Reason: ${report.reason}`);
+  if (report.reason) lines.push(`Reason: ${publicCliText(report.reason)}`);
+  if (report.work) {
+    lines.push(
+      `Work: ${report.work.id} ${report.work.title}`,
+      `State: ${report.work.status} | Phase: ${report.work.phase} | Risk: ${report.work.risk}`,
+    );
+  }
+  if (report.gate?.missing?.length > 0) {
+    lines.push(`Missing Proof: ${report.gate.missing.join(", ")}`);
+  }
+  if (report.gate?.acceptedGap) {
+    lines.push(`Approved gap: ${report.gate.reason ?? "recorded"}`);
+  }
   if (report.patch) lines.push("Patch:", report.patch.text.trimEnd());
   appendApplyDiagnostics(lines, report);
-  lines.push(`Next: ${report.nextAction}`, "");
+  lines.push(`Next: ${publicCliText(report.nextAction)}`, "");
   return lines.join("\n");
 }

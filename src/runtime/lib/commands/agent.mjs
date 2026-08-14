@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { accessSync, constants } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -258,11 +259,17 @@ function fallbackFields(localSurface) {
 
 function baseReport(options, profile) {
   return {
-    command: `agent ${options.command}`,
+    command: `${options.preferredGroup === "transport" ? "transport" : "agent"} ${options.command}`,
     agent: profile.key,
     provider: profile.name,
     projectRoot: options.projectRoot,
   };
+}
+
+function transportCommand(options, command) {
+  return options.preferredGroup === "transport"
+    ? `catpaw transport ${command}`
+    : `agent ${command}`;
 }
 
 function unavailable(options, profile, reason) {
@@ -358,7 +365,7 @@ async function runOpen(options, profile) {
         status: "exists",
         readOnly: profile.readOnly,
         completion: "unknown",
-        nextAction: "Use agent status, read, or send.",
+        nextAction: `Use ${transportCommand(options, "status")}, ${transportCommand(options, "read")}, or ${transportCommand(options, "send")}.`,
       },
     };
   }
@@ -422,7 +429,7 @@ async function runOpen(options, profile) {
       status: "opened",
       readOnly: profile.readOnly,
       completion: "unknown",
-      nextAction: "Send a self-contained prompt with agent send.",
+      nextAction: `Send a self-contained prompt with ${transportCommand(options, "send")}.`,
     },
   };
 }
@@ -451,7 +458,7 @@ function sessionOrReport(options, profile) {
           ...fallbackFields(localSurface),
           reason: "Observable session does not exist; provider exit status is unavailable.",
           completion: "unknown",
-          nextAction: "Run agent open first, or let the primary agent select a reported fallback option.",
+          nextAction: `Run ${transportCommand(options, "open")} first, or let the primary agent select a reported fallback option.`,
         },
       },
     };
@@ -493,7 +500,7 @@ function runSend(options, profile) {
       promptBytes: Buffer.byteLength(options.prompt),
       waited: false,
       completion: "unknown",
-      nextAction: "Inspect progress with agent status or agent read.",
+      nextAction: `Inspect progress with ${transportCommand(options, "status")} or ${transportCommand(options, "read")}.`,
     },
   };
 }
@@ -686,7 +693,7 @@ export async function runAgentCommand(options) {
     return {
       exitCode: 0,
       report: {
-        command: "agent intents",
+        command: options.preferredGroup === "intent" ? "intent list" : "agent intents",
         catalogVersion: catalog.catalogVersion,
         decisionOwner: catalog.decisionOwner,
         composition: catalog.composition,
@@ -707,13 +714,22 @@ export async function runAgentCommand(options) {
     return {
       exitCode: 0,
       report: {
-        command: "agent intent",
+        command: options.preferredGroup === "intent" ? "intent show" : "agent intent",
         catalogVersion: catalog.catalogVersion,
         decisionOwner: catalog.decisionOwner,
         intent,
         nextAction: "The primary agent decides whether and how to use this intent.",
       },
     };
+  }
+  if (options.command === "send" && options.promptFile !== null) {
+    const prompt = options.promptFile === "-"
+      ? await readFile(0, "utf8")
+      : await readFile(path.resolve(options.projectRoot, options.promptFile), "utf8");
+    if (prompt.trim() === "") {
+      throw agentError("ERR_AGENT_EMPTY_PROMPT", "Agent prompt must not be empty.");
+    }
+    options = { ...options, prompt };
   }
   const profile = getAgentProfile(options.agent, {
     projectRoot: options.projectRoot,
@@ -728,7 +744,7 @@ export async function runAgentCommand(options) {
 }
 
 export function renderAgentReport(report) {
-  if (report.command === "agent intents") {
+  if (report.command === "agent intents" || report.command === "intent list") {
     return [
       "Agent Intent Catalog",
       `Catalog version: ${report.catalogVersion}`,
@@ -737,12 +753,12 @@ export function renderAgentReport(report) {
       ...report.intents.map((intent) =>
         `- ${intent.id} (${intent.title}): ${intent.purpose}`
       ),
-      "Use agent intent --intent <id> to inspect one complete task contract.",
+      "Use catpaw intent show --intent <id> to inspect one complete task contract.",
       `Next: ${report.nextAction}`,
       "",
     ].join("\n");
   }
-  if (report.command === "agent intent") {
+  if (report.command === "agent intent" || report.command === "intent show") {
     const intent = report.intent;
     const section = (title, values) => [
       `${title}:`,

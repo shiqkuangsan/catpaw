@@ -1,6 +1,6 @@
 # ADR-0025: Executor-Owned Advisory Orchestration
 
-Status: Accepted; Role Catalog, discovery CLI, and public vocabulary superseded by ADR-0026
+Status: Accepted; Role Catalog and vocabulary superseded by ADR-0026, CLI facade amended by ADR-0027
 
 Date: 2026-08-13
 
@@ -11,7 +11,8 @@ collaboration patterns, one accountable writer per mutable surface, distinct-
 actor independent checking, and primary-agent final adoption. ADR-0026 removed
 the six-Role Catalog before release and replaced it with exactly three task
 intents: `explore`, `build`, and `check`. Current read-only discovery uses
-`agent intents` and `agent intent --intent <id>`.
+`intent list` and `intent show --intent <id>` under ADR-0027; the older
+`agent intents|intent` forms remain compatible.
 
 The Role Catalog, six Role names, `agent roles`, and `agent role --role <id>` in
 the original decision below are historical design state, not current Runtime

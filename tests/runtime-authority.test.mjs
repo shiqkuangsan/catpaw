@@ -274,7 +274,7 @@ test("observable Agent command examples keep the project-scoped session key", as
   for (const command of ["open", "send", "status", "read", "close"]) {
     assert.match(
       text,
-      new RegExp(`catpaw agent ${command}[^\\n]+--project <path>`),
+      new RegExp(`catpaw transport ${command}[^\\n]+--project <path>`),
     );
   }
 });

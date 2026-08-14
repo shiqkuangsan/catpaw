@@ -52,11 +52,11 @@ printf '%s\n' "$PROMPT" \
 ## Observable Session
 
 ```text
-catpaw agent open   --agent cc --label migration-review --project /abs/project
-catpaw agent send   --agent cc --label migration-review --project /abs/project --prompt "$PROMPT"
-catpaw agent status --agent cc --label migration-review --project /abs/project
-catpaw agent read   --agent cc --label migration-review --project /abs/project --lines 200
-catpaw agent close  --agent cc --label migration-review --project /abs/project
+catpaw transport open   --agent cc --label migration-review --project /abs/project
+catpaw transport send   --agent cc --label migration-review --project /abs/project --prompt "$PROMPT"
+catpaw transport status --agent cc --label migration-review --project /abs/project
+catpaw transport read   --agent cc --label migration-review --project /abs/project --lines 200
+catpaw transport close  --agent cc --label migration-review --project /abs/project
 ```
 
 Observable profile 启动 `claude --safe-mode --permission-mode plan`，只开放

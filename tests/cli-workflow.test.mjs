@@ -272,7 +272,10 @@ test("work start applies valid templates and is path-safe and idempotent", async
   assert.match(index, /Narrative after managed sections\./);
   assert.match(index, /\[Work\]\(work\/FR-101-deterministic-workflow\.md\)/);
   assert.match(index, /\[Plan\]\(plans\/FR-101-deterministic-workflow\.md\)/);
-  assert.match(index, /\| BUG-202 \| 登录修复 \| gated \| active \| plan \|/);
+  assert.match(
+    index,
+    /\| BUG-202 \| 登录修复 \| active \| Understand \| High \| Not recorded \|/,
+  );
 
   const beforeReplay = await treeSnapshot(root);
   const replay = await runCli(secondArgs);
@@ -919,7 +922,7 @@ test("Evidence apply requires a substantive body while dry-run may preview", asy
   const apply = await runCli([...args, "--apply"]);
   assert.equal(apply.code, 2);
   assert.equal(apply.stdout, "");
-  assert.match(apply.stderr, /--body is required when --apply records Evidence/);
+  assert.match(apply.stderr, /--body or --body-file is required to record Evidence/);
   assert.deepEqual(await treeSnapshot(root), before);
 });
 
@@ -2142,9 +2145,9 @@ test("workflow human output is deterministic and preserves apply diagnostics", a
   assert.equal(first.code, 0, first.stderr);
   assert.equal(first.stderr, "");
   assert.equal(second.stdout, first.stdout);
-  assert.match(first.stdout, /^work start\nSchema: 2\nMode: dry-run\nStatus: preview\n/);
+  assert.match(first.stdout, /^work start\nAction: preview\nStatus: preview\n/);
   assert.match(first.stdout, /Patch:\nREADY\n/);
-  assert.match(first.stdout, /Next: Run work start --apply to create the Work Item and Plan\.\n$/);
+  assert.match(first.stdout, /Next: Run catpaw work start --apply to create the Work and Plan\.\n$/);
 
   const output = renderMutationReport({
     command: "work close",

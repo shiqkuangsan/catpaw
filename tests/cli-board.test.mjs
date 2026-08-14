@@ -477,7 +477,7 @@ test("board status has deterministic JSON and human output without writes", asyn
       "Board status",
       "Schema: 2",
       "Active: milestones 1, work 2, plans 2",
-      "Evidence: research 1, review 1, test 1, provider 1, reflection 1",
+      "Stored Proof: research 1, review 1, test 1, provider 1, reflection 1",
       "Migration required: no",
       "Findings: 0",
       "Next: Continue active milestone work.",
@@ -521,7 +521,7 @@ test("board doctor reports a healthy schema 2 board without writes", async (t) =
     [
       "Board doctor",
       "Schema: 2",
-      "Mode: read-only",
+      "Action: read-only",
       "Migration required: no",
       "Findings: 0",
       "Next: No action required.",
@@ -579,7 +579,7 @@ updated: ${TODAY}
     [
       "Board doctor",
       "Schema: 2",
-      "Mode: read-only",
+      "Action: read-only",
       "Migration required: no",
       "Findings: 1",
       "- ERROR missing-work-item [.catpaw/plans/FR-999-missing.md] Plan references missing Work Item FR-999.",
@@ -889,10 +889,6 @@ test("unknown arguments and invalid option combinations exit 2", async (t) => {
   const before = await treeSnapshot(root);
   const cases = [
     {
-      args: [],
-      message: "expected board init|status|doctor|migrate",
-    },
-    {
       args: ["unknown"],
       message: "unknown command: unknown",
     },
@@ -972,7 +968,7 @@ test("board init honors cwd, a relative --board, and explicit --dry-run", async 
   assert.equal(humanResult.code, 0, humanResult.stderr);
   assert.match(
     humanResult.stdout,
-    /^Board init\nSchema: 2\nMode: dry-run\nStatus: preview\nMigration required: no\nPatch:\nREADY\n/,
+    /^Board init\nSchema: 2\nAction: preview\nStatus: preview\nMigration required: no\nPatch:\nREADY\n/,
   );
   for (const directory of SCHEMA_2_LAYOUT.requiredDirectories) {
     assert.match(humanResult.stdout, new RegExp(`ENSURE DIR ${directory}`));
@@ -980,7 +976,7 @@ test("board init honors cwd, a relative --board, and explicit --dry-run", async 
   assert.match(humanResult.stdout, /WRITE CREATE index\.md/);
   assert.match(
     humanResult.stdout,
-    /Next: Run board init --apply to create the board\.\n$/,
+    /Next: Run catpaw board init --apply to create the board\.\n$/,
   );
   assert.equal(repeatedHuman.stdout, humanResult.stdout);
   assert.deepEqual(await treeSnapshot(root), before);

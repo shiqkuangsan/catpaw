@@ -11,9 +11,16 @@ closed: null
 
 # {{WORK_ID}}: {{TITLE}}
 
-## Goal
+## Outcome
 
 State the verifiable outcome.
+
+## Progress
+
+<!-- catpaw:work-progress:start -->
+- Phase: Understand
+- Next:
+<!-- catpaw:work-progress:end -->
 
 ## Scope
 

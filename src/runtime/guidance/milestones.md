@@ -26,9 +26,13 @@ Item；每个 Work 仍独立保存内部 routing、Plan 与 typed Evidence。
 
 ```text
 catpaw milestone start --id <id> --title <title>
+catpaw milestone show  --id <id>
 catpaw milestone add   --milestone <id> --work <work-id>
-catpaw milestone close --id <id>
+catpaw milestone finish --id <id>
+catpaw milestone cancel --id <id>
 ```
+
+`milestone close --status done|cancelled` remains compatible.
 
 默认 dry-run；写入需要 `--apply`。Done close 要求 Scope 非空且全部 Work 已进入
 terminal status。Cancelled 不伪造 completion claim。

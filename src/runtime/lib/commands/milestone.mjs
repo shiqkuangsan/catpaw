@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { stringifyFrontmatter } from "../frontmatter.mjs";
+import { artifactTitle } from "../presentation.mjs";
 import {
   parseMilestoneScope,
   refreshMilestoneScope,
@@ -164,10 +165,10 @@ async function runAdd(options) {
   });
 }
 
-async function runClose(options) {
+async function runShow(options) {
   const inspected = await inspectMutationBoard(options);
   const refusal = schemaRefusal(
-    "milestone close",
+    "milestone show",
     options,
     inspected.board,
     inspected.findings,
@@ -178,7 +179,61 @@ async function runClose(options) {
   );
   if (!milestone) {
     return refusedMutation({
-      command: "milestone close",
+      command: "milestone show",
+      options,
+      reason: `Milestone ${options.id} does not exist.`,
+      nextAction: "Run catpaw status to inspect active Milestones.",
+    });
+  }
+  const scope = parseMilestoneScope(milestone.body).rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    notes: row.notes,
+  }));
+  return {
+    exitCode: 0,
+    report: {
+      command: "milestone show",
+      projectRoot: options.projectRoot,
+      boardPath: options.boardPath,
+      schema: 2,
+      status: "ok",
+      milestone: {
+        id: milestone.id,
+        title: artifactTitle(milestone),
+        status: milestone.status,
+        target: milestone.target,
+        scope,
+        path: boardRelative(inspected.board, milestone.filePath),
+      },
+      nextAction: ["done", "cancelled"].includes(milestone.status)
+        ? "No action required."
+        : "Continue the scoped Work.",
+    },
+  };
+}
+
+async function runClose(options) {
+  const command = options.invokedAs === "milestone finish"
+    ? "milestone finish"
+    : options.invokedAs === "milestone cancel"
+      ? "milestone cancel"
+      : "milestone close";
+  const inspected = await inspectMutationBoard(options);
+  const refusal = schemaRefusal(
+    command,
+    options,
+    inspected.board,
+    inspected.findings,
+  );
+  if (refusal) return refusal;
+  const milestone = inspected.board.milestones.find(
+    (item) => item.id === options.id,
+  );
+  if (!milestone) {
+    return refusedMutation({
+      command,
       options,
       reason: `Milestone ${options.id} does not exist.`,
       nextAction: "Create or select an existing Milestone.",
@@ -189,7 +244,7 @@ async function runClose(options) {
     milestone.status !== options.status
   ) {
     return refusedMutation({
-      command: "milestone close",
+      command,
       options,
       reason: `Milestone ${options.id} is already ${milestone.status}.`,
       nextAction: "Use the existing terminal status.",
@@ -200,7 +255,7 @@ async function runClose(options) {
     const plan = await createMutationPlan(options, []);
     const applyResult = await applyMutationPlan(plan, options);
     return mutationResult({
-      command: "milestone close",
+      command,
       options,
       plan,
       applyResult,
@@ -223,7 +278,7 @@ async function runClose(options) {
   const gate = { scoped, nonTerminal };
   if (options.status === "done" && scoped.length === 0) {
     return refusedMutation({
-      command: "milestone close",
+      command,
       options,
       reason: "Milestone done requires at least one scoped Work Item.",
       reportFields: { gate },
@@ -232,7 +287,7 @@ async function runClose(options) {
   }
   if (options.status === "done" && nonTerminal.length > 0) {
     return refusedMutation({
-      command: "milestone close",
+      command,
       options,
       reason: "Milestone has non-terminal scoped Work Items.",
       reportFields: { gate },
@@ -263,7 +318,7 @@ async function runClose(options) {
   ]);
   const applyResult = await applyMutationPlan(plan, options);
   return mutationResult({
-    command: "milestone close",
+    command,
     options,
     plan,
     applyResult,
@@ -274,12 +329,15 @@ async function runClose(options) {
     },
     nextAction: options.apply
       ? `Milestone is ${options.status}.`
-      : "Run milestone close --apply to close the Milestone.",
+      : command === "milestone close"
+        ? "Run milestone close --apply to close the Milestone."
+        : `Run catpaw ${command} with the same arguments and --apply.`,
   });
 }
 
 export async function runMilestoneCommand(options) {
   if (options.command === "start") return runStart(options);
+  if (options.command === "show") return runShow(options);
   if (options.command === "add") return runAdd(options);
   if (options.command === "close") return runClose(options);
   throw new TypeError(`Unsupported milestone command: ${options.command}`);

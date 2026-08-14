@@ -2188,12 +2188,12 @@ test("board migrate defaults to a read-only deterministic preview", async (t) =>
   });
   assert.equal(human.code, 0, human.stderr || human.stdout);
   assert.equal(human.stderr, "");
-  assert.match(human.stdout, /^Board migrate\nMode: dry-run\nStatus: preview\n/);
+  assert.match(human.stdout, /^Board migrate\nAction: preview\nStatus: preview\n/);
   assert.match(human.stdout, /Schema: 1 -> 2\n/);
   assert.match(human.stdout, /Patch:\nREADY\n/);
   assert.match(
     human.stdout,
-    /Next: Run board migrate --apply to migrate the board\.\n$/,
+    /Next: Run catpaw board migrate --apply to migrate the board\.\n$/,
   );
 });
 

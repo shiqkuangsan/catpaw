@@ -1,6 +1,8 @@
 import path from "node:path";
 
 import { applyPatchPlan } from "../atomic-write.mjs";
+import { runtimeVersion } from "../cli-meta.mjs";
+import { completionEvidenceState } from "../completion-evidence.mjs";
 import {
   loadBoard,
   pathExists,
@@ -15,6 +17,7 @@ import {
   createPatchPlan,
   renderPatchPlan,
 } from "../patch-plan.mjs";
+import { artifactTitle, publicCliText, workSummary } from "../presentation.mjs";
 import { loadBoardSchema } from "../schema.mjs";
 import { runMigrationCommand } from "./migrate.mjs";
 import { rebuildDashboard } from "./workflow.mjs";
@@ -232,15 +235,42 @@ async function runStatus(options) {
   const migrationRequired = board.schema === 1;
   const hasErrors = findings.some((finding) => finding.severity === "error");
   const readableSchema1 = board.schema === 1 && !board.index.parseError;
+  const activeWork = board.workItems
+    .filter((item) => !item.terminal)
+    .map((item) => {
+      const proof = board.evidence.filter((record) => record.work === item.id);
+      const completion = completionEvidenceState(board, item.id);
+      return {
+        ...workSummary(item, board.boardPath),
+        proofCount: proof.length,
+        missingProof: item.mode === "gated" ? completion.missing : [],
+      };
+    });
+  const activeMilestones = board.milestones
+    .filter((item) => !TERMINAL_STATUSES.has(item.status))
+    .map((item) => ({
+      id: item.id,
+      title: artifactTitle(item),
+      status: item.status,
+      target: item.target,
+      path: path.relative(board.boardPath, item.filePath).split(path.sep).join("/"),
+    }));
 
   return {
     exitCode: readableSchema1 || (board.schema === 2 && !hasErrors) ? 0 : 1,
     report: {
-      command: "board status",
+      command: options.preferredGroup === "status" ? "status" : "board status",
       projectRoot: options.projectRoot,
       boardPath: options.boardPath,
       schema: board.schema,
       counts,
+      ...(options.preferredGroup === "status"
+        ? {
+          runtimeVersion: await runtimeVersion(),
+          activeWork,
+          activeMilestones,
+        }
+        : {}),
       findings,
       migrationRequired,
       nextAction: nextStatusAction(counts, findings, migrationRequired),
@@ -447,7 +477,7 @@ export function renderBoardReport(report) {
     const lines = [
       "Board init",
       `Schema: ${report.schema ?? "unknown"}`,
-      `Mode: ${report.mode}`,
+      `Action: ${report.mode === "dry-run" ? "preview" : report.mode}`,
       `Status: ${report.status}`,
       `Migration required: ${report.migrationRequired ? "yes" : "no"}`,
     ];
@@ -459,7 +489,43 @@ export function renderBoardReport(report) {
     }
     if (report.patch) lines.push("Patch:", report.patch.text.trimEnd());
     appendApplyDiagnostics(lines, report);
-    lines.push(`Next: ${report.nextAction}`, "");
+    lines.push(`Next: ${publicCliText(report.nextAction)}`, "");
+    return lines.join("\n");
+  }
+
+  if (report.command === "status") {
+    const lines = [
+      `CatPaw ${report.runtimeVersion}`,
+      "",
+      `Active Work: ${report.activeWork.length}`,
+    ];
+    if (report.activeWork.length === 0) {
+      lines.push("- None");
+    } else {
+      for (const work of report.activeWork) {
+        lines.push(
+          `- ${work.id} ${work.title}`,
+          `  State: ${work.status} | Phase: ${work.phase} | Risk: ${work.risk}`,
+          `  Proof: ${work.proofCount}${work.missingProof.length > 0 ? ` | Missing: ${work.missingProof.join(", ")}` : ""}`,
+          `  Next: ${work.next}`,
+        );
+      }
+    }
+    lines.push("", `Active Milestones: ${report.activeMilestones.length}`);
+    if (report.activeMilestones.length === 0) {
+      lines.push("- None");
+    } else {
+      for (const milestone of report.activeMilestones) {
+        lines.push(`- ${milestone.id} ${milestone.title} (${milestone.status})`);
+      }
+    }
+    const errors = report.findings.filter((item) => item.severity === "error");
+    lines.push(
+      "",
+      `Board: ${errors.length === 0 ? "healthy" : `${errors.length} error(s)`}`,
+      `Next: ${publicCliText(report.nextAction)}`,
+      "",
+    );
     return lines.join("\n");
   }
 
@@ -469,11 +535,11 @@ export function renderBoardReport(report) {
       "Board status",
       `Schema: ${report.schema ?? "unknown"}`,
       `Active: milestones ${active.milestones}, work ${active.work}, plans ${active.plans}`,
-      `Evidence: ${EVIDENCE_TYPES.map((type) => `${type} ${evidence[type]}`).join(", ")}`,
+      `Stored Proof: ${EVIDENCE_TYPES.map((type) => `${type} ${evidence[type]}`).join(", ")}`,
       `Migration required: ${report.migrationRequired ? "yes" : "no"}`,
       `Findings: ${report.findings.length}`,
       ...renderFindingLines(report.findings),
-      `Next: ${report.nextAction}`,
+      `Next: ${publicCliText(report.nextAction)}`,
       "",
     ].join("\n");
   }
@@ -482,7 +548,7 @@ export function renderBoardReport(report) {
     const lines = [
       "Board doctor",
       `Schema: ${report.schema ?? "unknown"}`,
-      `Mode: ${report.mode}`,
+      `Action: ${report.mode === "dry-run" ? "preview" : report.mode}`,
       `Migration required: ${report.migrationRequired ? "yes" : "no"}`,
       `Findings: ${report.findings.length}`,
       ...renderFindingLines(report.findings),
@@ -495,7 +561,7 @@ export function renderBoardReport(report) {
       }
       appendApplyDiagnostics(lines, report.fix);
     }
-    lines.push(`Next: ${report.nextAction}`, "");
+    lines.push(`Next: ${publicCliText(report.nextAction)}`, "");
     return lines.join("\n");
   }
 
@@ -510,7 +576,7 @@ export function renderBoardReport(report) {
       .join(", ");
     const lines = [
       "Board migrate",
-      `Mode: ${report.mode}`,
+      `Action: ${report.mode === "dry-run" ? "preview" : report.mode}`,
       `Status: ${report.status}`,
       `Schema: ${report.fromSchema ?? "unknown"} -> ${report.toSchema}`,
       `Mappings: ${report.mappings.length}`,
@@ -534,9 +600,9 @@ export function renderBoardReport(report) {
       backupPath: report.backupPath,
       warnings: report.applyWarnings,
     });
-    lines.push(`Next: ${report.nextAction}`, "");
+    lines.push(`Next: ${publicCliText(report.nextAction)}`, "");
     return lines.join("\n");
   }
 
-  return `${report.command}\nStatus: ${report.status}\nNext: ${report.nextAction}\n`;
+  return `${report.command}\nStatus: ${report.status}\nNext: ${publicCliText(report.nextAction)}\n`;
 }

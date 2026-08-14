@@ -100,7 +100,9 @@ above, and historical names must not be copied into new operating guidance.
 The current architecture is owned by
 [ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
 and its user-facing vocabulary by
-[ADR-0026: User-Facing Concept Consolidation](decisions/0026-user-facing-concept-consolidation.md).
+[ADR-0026: User-Facing Concept Consolidation](decisions/0026-user-facing-concept-consolidation.md),
+with its executable command layers owned by
+[ADR-0027: Layered CLI Facade](decisions/0027-layered-cli-facade.md).
 Its safety and collaboration contracts were developed through
 [ADR-0022: Tiered Local Git Authority And Engineering Methods](decisions/0022-tiered-local-git-authority-and-engineering-methods.md) and
 [ADR-0023: Task Envelopes And Risk-based Agent Dispatch](decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md), with its bounded Git delegation refined by
@@ -113,7 +115,8 @@ structural blockers; ADR-0022 delegates bounded local Git and adds CatPaw-owned
 engineering methods; ADR-0023 introduced bounded delegation; ADR-0024 introduced
 exact-opt-in isolated build commits; ADR-0025 made orchestration contextual and
 advisory; ADR-0026 exposes only Work, Proof, Approval and three Agent task
-intents while retaining the hard authority, independence, and isolation gates.
+intents while retaining the hard authority, independence, and isolation gates;
+ADR-0027 maps that vocabulary onto the daily, contract, and advanced CLI layers.
 
 ## Writing Rules
 

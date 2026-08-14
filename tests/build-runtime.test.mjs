@@ -73,12 +73,13 @@ test("runtime manifest declares schema 2 and executable CLI package entries", as
   assert.equal(manifest.boardSchemaVersion, 2);
   assert.equal(manifest.cli.entrypoint, "bin/catpaw.mjs");
   assert.deepEqual(manifest.cli.commands, [
+    "status",
     "board init|status|doctor|migrate",
-    "work start [--high-risk]|close",
-    "milestone start|add|close",
-    "proof add (evidence add compatible)",
-    "agent intents|intent",
-    "agent check|open|send|status|read|close",
+    "work start|show|update|finish|cancel",
+    "milestone start|show|add|finish|cancel",
+    "proof add|list|show",
+    "intent list|show",
+    "transport check|open|send|status|read|close",
   ]);
   for (const entry of [
     "bin/",

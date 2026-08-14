@@ -72,7 +72,7 @@ const CURRENT_INTERPRETATION_EXPECTATIONS = new Map([
   ]],
   ["0015-observable-provider-sessions.md", [
     /`cc`[\s\S]*`cx`/,
-    /agent[\s\S]*open\|send\|status\|read\|close/i,
+    /transport[\s\S]*open\|send\|status\|read\|close/i,
     /never establish completion or Approval/i,
   ]],
   ["0016-milestones-and-subagent-governance.md", [
@@ -112,8 +112,13 @@ const CURRENT_INTERPRETATION_EXPECTATIONS = new Map([
   ]],
   ["0025-executor-owned-advisory-orchestration.md", [
     /explore[\s\S]*build[\s\S]*check/i,
-    /agent intents[\s\S]*agent intent --intent <id>/i,
+    /intent list[\s\S]*intent show --intent <id>/i,
     /historical design state[\s\S]*cannot create Approval/i,
+  ]],
+  ["0026-user-facing-concept-consolidation.md", [
+    /ADR-0027/,
+    /status[\s\S]*work[\s\S]*proof[\s\S]*milestone/i,
+    /intent list\|show[\s\S]*transport/i,
   ]],
 ]);
 
@@ -196,7 +201,7 @@ test("every ADR declares lifecycle status and amended core ADRs lead with curren
   const decisions = (await readdir(decisionDir))
     .filter((file) => /^\d{4}-.+\.md$/.test(file))
     .sort();
-  assert.equal(decisions.length, 26);
+  assert.equal(decisions.length, 27);
 
   for (const file of decisions) {
     const text = await readFile(path.join(decisionDir, file), "utf8");
@@ -298,7 +303,7 @@ test("ADR-0025 records Executor-owned advisory orchestration and hard bounds", a
   assert.match(text, /^# ADR-0025:/m);
   assert.match(text, /Status: Accepted;[^\n]*Role Catalog[^\n]*superseded by ADR-0026/i);
   assert.match(current, /explore[\s\S]*build[\s\S]*check/i);
-  assert.match(current, /agent intents[\s\S]*agent intent --intent <id>/i);
+  assert.match(current, /intent list[\s\S]*intent show --intent <id>/i);
   assert.match(text, /Agent Executor[\s\S]*models[\s\S]*transports[\s\S]*parallelism[\s\S]*final adoption/i);
   assert.match(text, /Hard runtime contracts[\s\S]*Advisory orchestration[\s\S]*Executor decisions/i);
   assert.match(text, /Historical Role Catalog decision[\s\S]*Scout[\s\S]*Architect[\s\S]*Builder[\s\S]*Reviewer[\s\S]*Verifier[\s\S]*Integrator/);
@@ -327,6 +332,20 @@ test("ADR-0026 consolidates public concepts without weakening safety contracts",
   assert.match(text, /work start --high-risk[\s\S]*mode: gated/i);
   assert.match(text, /Board schema remains 2/i);
   assert.match(text, /Remote[\s\S]*protected\/base[\s\S]*destructive[\s\S]*explicit user Approval/i);
+});
+
+test("ADR-0027 layers daily, contract, and advanced CLI surfaces", async () => {
+  const text = await readFile(
+    path.join(REPO, "docs/decisions/0027-layered-cli-facade.md"),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0027:/m);
+  assert.match(text, /^Status: Accepted$/m);
+  assert.match(text, /daily:[\s\S]*status \| work \| proof \| milestone/i);
+  assert.match(text, /contracts:[\s\S]*intent/i);
+  assert.match(text, /advanced:[\s\S]*board \| transport/i);
+  assert.match(text, /Approval gets no command or artifact/i);
+  assert.match(text, /schema-shaped JSON[\s\S]*compatibility/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {

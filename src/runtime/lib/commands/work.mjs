@@ -5,6 +5,13 @@ import {
   completionEvidenceState,
 } from "../completion-evidence.mjs";
 import { stringifyFrontmatter } from "../frontmatter.mjs";
+import {
+  storedStage,
+  updateWorkProgress,
+  visiblePhase,
+  workNext,
+  workSummary,
+} from "../presentation.mjs";
 import { loadBoardSchema } from "../schema.mjs";
 import { refreshMilestoneScope } from "./milestone-scope.mjs";
 import {
@@ -14,6 +21,7 @@ import {
   inspectMutationBoard,
   instantiateTemplate,
   mutationResult,
+  neutralizeCatPawMarkers,
   rebuildDashboard,
   refusedMutation,
   schemaRefusal,
@@ -94,7 +102,7 @@ async function runStart(options) {
     order: WORK_ORDER,
     replacements: {
       WORK_ID: options.id,
-      TITLE: options.title,
+      TITLE: neutralizeCatPawMarkers(options.title),
       PLAN_PATH: `../${planPath}`,
     },
   });
@@ -105,7 +113,7 @@ async function runStart(options) {
     order: PLAN_ORDER,
     replacements: {
       WORK_ID: options.id,
-      TITLE: options.title,
+      TITLE: neutralizeCatPawMarkers(options.title),
       WORK_PATH: `../${workPath}`,
     },
   });
@@ -147,13 +155,135 @@ function boardRelative(board, filePath) {
   return path.relative(board.boardPath, filePath).split(path.sep).join("/");
 }
 
-async function terminalNoop(options, work, board, workPath) {
+async function runShow(options) {
+  const inspected = await inspectMutationBoard(options);
+  const refusal = schemaRefusal(
+    "work show",
+    options,
+    inspected.board,
+    inspected.findings,
+  );
+  if (refusal) return refusal;
+  const work = inspected.board.workItems.find((item) => item.id === options.id);
+  if (!work) {
+    return refusedMutation({
+      command: "work show",
+      options,
+      reason: `Work ${options.id} does not exist.`,
+      nextAction: "Run catpaw status to inspect active Work.",
+    });
+  }
+  const proof = inspected.board.evidence.filter((item) => item.work === work.id);
+  const coverage = completionEvidenceState(inspected.board, work.id);
+  return {
+    exitCode: 0,
+    report: {
+      command: "work show",
+      projectRoot: options.projectRoot,
+      boardPath: options.boardPath,
+      schema: 2,
+      status: "ok",
+      work: workSummary(work, inspected.board.boardPath),
+      proof: {
+        count: proof.length,
+        types: [...new Set(proof.map((item) => item.type))].sort(),
+        missingCompletion: work.mode === "gated" ? coverage.missing : [],
+      },
+      nextAction: workNext(work.body) === "Not recorded"
+        ? "Record the next action with catpaw work update --next <text>."
+        : workNext(work.body),
+    },
+  };
+}
+
+async function runUpdate(options) {
+  const inspected = await inspectMutationBoard(options);
+  const refusal = schemaRefusal(
+    "work update",
+    options,
+    inspected.board,
+    inspected.findings,
+  );
+  if (refusal) return refusal;
+  const work = inspected.board.workItems.find((item) => item.id === options.id);
+  if (!work) {
+    return refusedMutation({
+      command: "work update",
+      options,
+      reason: `Work ${options.id} does not exist.`,
+      nextAction: "Run catpaw status to inspect active Work.",
+    });
+  }
+  if (work.terminal) {
+    return refusedMutation({
+      command: "work update",
+      options,
+      reason: `Work ${options.id} is already ${work.status}.`,
+      nextAction: "Select active Work or retain the terminal record.",
+    });
+  }
+
+  const phase = options.phase === null
+    ? visiblePhase(work.stage)
+    : visiblePhase(storedStage(options.phase));
+  const next = options.next === null
+    ? workNext(work.body)
+    : neutralizeCatPawMarkers(options.next);
+  const metadata = {
+    ...work.metadata,
+    ...(options.phase === null ? {} : { stage: storedStage(options.phase) }),
+    ...(options.status === null ? {} : { status: options.status }),
+    updated: options.date,
+  };
+  const body = updateWorkProgress(work.body, { phase, next });
+  const workPath = boardRelative(inspected.board, work.filePath);
+  const content = `${stringifyFrontmatter(metadata, WORK_ORDER)}${body}`;
+  const dashboard = rebuildDashboard(inspected.board.indexText, inspected.board, {
+    workItems: [{
+      ...work,
+      ...metadata,
+      body,
+      boardRelativePath: workPath,
+    }],
+  });
+  const milestoneUpdates = milestoneScopeUpdates(
+    inspected.board,
+    metadata,
+    options.date,
+  );
+  const plan = await createMutationPlan(options, [
+    ...milestoneUpdates.operations,
+    { type: "write-file", path: workPath, content, mode: "replace" },
+    { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
+  ]);
+  const applyResult = await applyMutationPlan(plan, options);
+  return mutationResult({
+    command: "work update",
+    options,
+    plan,
+    applyResult,
+    artifacts: [
+      { kind: "workItem", path: workPath },
+      ...milestoneUpdates.artifacts,
+    ],
+    reportFields: {
+      work: workSummary({ ...work, ...metadata, body }, inspected.board.boardPath),
+    },
+    nextAction: options.apply
+      ? next === "Not recorded"
+        ? "Record the next action when it is known."
+        : next
+      : "Run catpaw work update with the same arguments and --apply.",
+  });
+}
+
+async function terminalNoop(options, work, board, workPath, command) {
   const evidenceState = completionEvidenceState(board, work.id);
   const gapReasons = evidenceState.gapReasons;
   if (options.acceptGap !== null) {
     if (work.mode !== "gated" || options.status !== "done") {
       return refusedMutation({
-        command: "work close",
+        command,
         options,
         reason: "--accept-gap requires a Gated done closure with missing required Evidence.",
         nextAction: "Remove --accept-gap for this terminal Work Item.",
@@ -161,7 +291,7 @@ async function terminalNoop(options, work, board, workPath) {
     }
     if (!gapReasons.includes(options.acceptGap)) {
       return refusedMutation({
-        command: "work close",
+        command,
         options,
         reason: "--accept-gap does not match an existing accepted Gated gap.",
         nextAction: "Reuse the recorded accepted-gap reason or omit --accept-gap.",
@@ -176,7 +306,7 @@ async function terminalNoop(options, work, board, workPath) {
   const plan = await createMutationPlan(options, []);
   const applyResult = await applyMutationPlan(plan, options);
   return mutationResult({
-    command: "work close",
+    command,
     options,
     plan,
     applyResult,
@@ -222,9 +352,14 @@ function milestoneScopeUpdates(board, workMetadata, date) {
 }
 
 async function runClose(options) {
+  const command = options.invokedAs === "work finish"
+    ? "work finish"
+    : options.invokedAs === "work cancel"
+      ? "work cancel"
+      : "work close";
   const inspected = await inspectMutationBoard(options);
   const refusal = schemaRefusal(
-    "work close",
+    command,
     options,
     inspected.board,
     inspected.findings,
@@ -233,7 +368,7 @@ async function runClose(options) {
   const work = inspected.board.workItems.find((item) => item.id === options.id);
   if (!work) {
     return refusedMutation({
-      command: "work close",
+      command,
       options,
       reason: `Work Item ${options.id} does not exist.`,
       nextAction: "Create or select an existing Work Item.",
@@ -244,7 +379,7 @@ async function runClose(options) {
     work.status !== options.status
   ) {
     return refusedMutation({
-      command: "work close",
+      command,
       options,
       reason: `Work Item ${options.id} is already ${work.status}.`,
       nextAction: "Use the existing terminal status.",
@@ -252,7 +387,7 @@ async function runClose(options) {
   }
   const workPath = boardRelative(inspected.board, work.filePath);
   if (["done", "cancelled"].includes(work.status)) {
-    return terminalNoop(options, work, inspected.board, workPath);
+    return terminalNoop(options, work, inspected.board, workPath, command);
   }
   const missing = work.mode === "gated" && options.status === "done"
     ? completionEvidenceState(inspected.board, options.id).missing
@@ -262,7 +397,7 @@ async function runClose(options) {
     !(work.mode === "gated" && options.status === "done" && missing.length > 0)
   ) {
     return refusedMutation({
-      command: "work close",
+      command,
       options,
       reason: "--accept-gap requires a Gated done closure with missing required Evidence.",
       nextAction: "Remove --accept-gap or use it only to record an actual Gated completion gap.",
@@ -270,7 +405,7 @@ async function runClose(options) {
   }
   if (missing.length > 0 && !options.acceptGap) {
     return refusedMutation({
-      command: "work close",
+      command,
       options,
       reason: "Gated Work Item is missing required completion Evidence.",
       reportFields: {
@@ -291,10 +426,15 @@ async function runClose(options) {
     updated: options.date,
     closed: options.date,
   };
-  const content = `${stringifyFrontmatter(metadata, WORK_ORDER)}${work.body}`;
+  const body = updateWorkProgress(work.body, {
+    phase: "Finish",
+    next: options.status === "done" ? "Completed" : "Cancelled",
+  });
+  const content = `${stringifyFrontmatter(metadata, WORK_ORDER)}${body}`;
   const dashboard = rebuildDashboard(inspected.board.indexText, inspected.board, {
     workItems: [{
       ...metadata,
+      body,
       boardRelativePath: workPath,
     }],
   });
@@ -347,7 +487,7 @@ async function runClose(options) {
   ]);
   const applyResult = await applyMutationPlan(plan, options);
   return mutationResult({
-    command: "work close",
+    command,
     options,
     plan,
     applyResult,
@@ -375,12 +515,16 @@ async function runClose(options) {
     },
     nextAction: options.apply
       ? `Work Item is ${options.status}.`
-      : "Run work close --apply to close the Work Item.",
+      : command === "work close"
+        ? "Run work close --apply to close the Work Item."
+        : `Run catpaw ${command} with the same arguments and --apply.`,
   });
 }
 
 export async function runWorkCommand(options) {
   if (options.command === "start") return runStart(options);
+  if (options.command === "show") return runShow(options);
+  if (options.command === "update") return runUpdate(options);
   if (options.command === "close") return runClose(options);
   throw new TypeError(`Unsupported work command: ${options.command}`);
 }

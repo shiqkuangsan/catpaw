@@ -1,14 +1,15 @@
 # ADR-0015: Observable Provider Sessions
 
-Status: Accepted; implementation/provider scope amended by ADR-0019 and authority by ADR-0022
+Status: Accepted; provider scope amended by ADR-0019, authority by ADR-0022, and CLI namespace by ADR-0027
 
 ## Current Interpretation
 
 ADR-0019 retained observable long-running second opinions but narrowed
 CatPaw-managed reciprocal transports to `cc` and `cx`; Gemini/OpenCode aliases
 and `provider-session.sh` below are historical. Current operations live in
-[`providers/README.md`](../../src/runtime/providers/README.md) and the `agent
-open|send|status|read|close` CLI. ADR-0022 and later authority decisions keep
+[`providers/README.md`](../../src/runtime/providers/README.md) and the
+`transport open|send|status|read|close` CLI under ADR-0027; equivalent `agent`
+forms remain compatible. ADR-0022 and later authority decisions keep
 these profiles read-only. Observable process/session facts may contribute to
 Proof but never establish completion or Approval by themselves.
 

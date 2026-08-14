@@ -43,11 +43,11 @@ instructions 视为潜在上下文噪音。
 ## Observable Session
 
 ```text
-catpaw agent open   --agent cx --label contract-review --project /abs/project
-catpaw agent send   --agent cx --label contract-review --project /abs/project --prompt "$PROMPT"
-catpaw agent status --agent cx --label contract-review --project /abs/project
-catpaw agent read   --agent cx --label contract-review --project /abs/project --lines 200
-catpaw agent close  --agent cx --label contract-review --project /abs/project
+catpaw transport open   --agent cx --label contract-review --project /abs/project
+catpaw transport send   --agent cx --label contract-review --project /abs/project --prompt "$PROMPT"
+catpaw transport status --agent cx --label contract-review --project /abs/project
+catpaw transport read   --agent cx --label contract-review --project /abs/project --lines 200
+catpaw transport close  --agent cx --label contract-review --project /abs/project
 ```
 
 Interactive Codex 当前没有 `exec --ignore-user-config` 的完全等价启动 flag；

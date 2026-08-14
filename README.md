@@ -106,19 +106,26 @@ Schema 1 migration may additionally retain a checksummed
 Preferred commands:
 
 ```text
+catpaw status
 catpaw board init|status|doctor|migrate
-catpaw work start [--high-risk]|close
-catpaw milestone start|add|close
-catpaw proof add
-catpaw agent intents|intent
-catpaw agent check|open|send|status|read|close
+catpaw work start|show|update|finish|cancel
+catpaw milestone start|show|add|finish|cancel
+catpaw proof add|list|show
+catpaw intent list|show
+catpaw transport check|open|send|status|read|close
 ```
 
-Board mutations are dry-run by default and write only with explicit `--apply`.
-`proof add` stores typed schema 2 Evidence. Existing `evidence add` and
-`work start --mode tracked|gated` inputs remain compatible for older callers.
-Agent session status reports observable process/output facts and never infers
-completion.
+Run `catpaw --help`, `catpaw <command> --help`, or `catpaw --version` for
+discovery. `status` is the ordinary Work view; `board` is the storage and
+maintenance surface. Mutations are dry-run by default and write only with
+explicit `--apply`. `proof add` stores typed schema 2 Evidence while accepting
+inline, file, or stdin bodies. Existing `board status`, `work close`,
+`milestone close`, `evidence add`, `agent ...`, and
+`work start --mode tracked|gated` calls remain compatible.
+
+Human output uses Work, Proof, visible Phase, Action, and Next. JSON retains
+schema-shaped compatibility fields. Transport session status reports observable
+process/output facts and never infers completion.
 
 In a source checkout, use `src/runtime/bin/catpaw.mjs`; after installation, use
 `~/.catpaw/bin/catpaw.mjs`. CatPaw does not add itself to `PATH`.
