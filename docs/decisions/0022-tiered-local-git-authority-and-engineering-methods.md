@@ -1,8 +1,19 @@
 # ADR-0022: Tiered Local Git Authority And Engineering Methods
 
-Status: Accepted; integration ownership and commit cadence amended by ADR-0025
+Status: Accepted; integration ownership and commit cadence amended by ADR-0025, and public authority vocabulary by ADR-0026
 
 Date: 2026-08-12
+
+## Current Interpretation
+
+The local Git safety gates and CatPaw-owned engineering methods remain current.
+ADR-0025 generalized the single Primary integration-owner wording into one
+accountable writer per assigned mutable integration surface, with final adoption
+owned by the primary agent. ADR-0026 expresses delegated implementation as the
+`build` intent and user authority as `Approval`; durable facts called Evidence
+below are the schema 2 storage form of `Proof`. None of those vocabulary changes
+expands local Git, protected/base, remote, destructive, secret, or external
+authority.
 
 ## Context
 
@@ -100,3 +111,4 @@ worktrees; it must not delete, move, or clean a worktree as plugin cleanup.
 - [ADR-0019](0019-catpaw-3-hybrid-runtime.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
 - [ADR-0025](0025-executor-owned-advisory-orchestration.md)
+- [ADR-0026](0026-user-facing-concept-consolidation.md)

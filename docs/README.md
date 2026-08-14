@@ -11,9 +11,9 @@ Current behavior has one owner per concern:
 | Concern | Runtime authority |
 |---|---|
 | Always-on routing and safety | [`runtime-policy.md`](../src/runtime/runtime-policy.md) |
-| Lifecycle and modes | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
-| Role Catalog, Task Envelope, advisory scheduling, and concurrency | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
-| Machine-readable Agent roles | [`catalog/roles.json`](../src/runtime/catalog/roles.json) |
+| Work handling and internal risk routing | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
+| Agent intents, bounded delegation, scheduling, and concurrency | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
+| Machine-readable Agent intents | [`catalog/intents.json`](../src/runtime/catalog/intents.json) |
 | Debugging and RED/GREEN | [`guidance/engineering-methods.md`](../src/runtime/guidance/engineering-methods.md) |
 | Independent judgment | [`guidance/independent-checks.md`](../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phases | [`guidance/milestones.md`](../src/runtime/guidance/milestones.md) |
@@ -24,6 +24,23 @@ Current behavior has one owner per concern:
 
 Use `docs/` for the answer to "why is this designed this way?" Use the runtime
 authority for "what should an agent or CLI do now?"
+
+## Reading Order And Document State
+
+Read the corpus by authority, not by filename recency:
+
+| Document class | Examples | How to read it |
+|---|---|---|
+| Current behavioral authority | `src/runtime/runtime-policy.md`, guidance, schema, CLI | Normative for current source behavior |
+| Current explanation | root READMEs, `CONTRIBUTING.md`, `docs/architecture/`, `docs/glossary.md` | Maintained to match the authorities, but does not override them |
+| Compatibility/storage material | Evidence templates, schema terms, migration guidance | Current internal mechanics, not extra user concepts |
+| Historical record | ADR decision bodies, older changelog entries, versioned migration notes | Accurate for the decision/release at that time; never a current command reference by itself |
+
+Retired commands, paths, Role names, or workflow terms may therefore remain in
+historical records. A current explanatory or runtime-facing document must not
+teach them as live behavior. When an accepted ADR's original body would be
+misleading today, a `Current Interpretation` section immediately after its
+metadata routes the reader to the controlling later ADR and runtime authority.
 
 ## Architecture Map
 
@@ -66,19 +83,25 @@ ADRs are durable records, not automatically current operating instructions.
 Earlier ADRs remain useful evidence for storage, packaging, registry, migration,
 and safety choices even when CatPaw 3 supersedes some of their workflow terms.
 
-The `Status` line is authoritative for an ADR's current standing:
+The `Status` line and any immediately following `Current Interpretation` section
+are authoritative for an ADR's current standing:
 
 - `Accepted` means the decision remains current.
-- `Accepted; ... amended by ADR-0019` means the principle remains but CatPaw 3
-  owns its current vocabulary or implementation.
+- `Accepted; ... amended by ADR-0019` means the principle remains but the named
+  later ADR owns the changed vocabulary or implementation.
+- `Accepted; ... superseded by ADR-0026` means only the explicitly named
+  surface is historical; the rest of the decision remains accepted.
 - `Superseded by ADR-0019` means historical rationale only.
 
 ADR bodies and references describe the source tree at decision time and may
-name removed v2 paths. They never override the current authority map above.
+name removed paths or commands. They never override the current authority map
+above, and historical names must not be copied into new operating guidance.
 
 The current architecture is owned by
 [ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
-and amended by
+and its user-facing vocabulary by
+[ADR-0026: User-Facing Concept Consolidation](decisions/0026-user-facing-concept-consolidation.md).
+Its safety and collaboration contracts were developed through
 [ADR-0022: Tiered Local Git Authority And Engineering Methods](decisions/0022-tiered-local-git-authority-and-engineering-methods.md) and
 [ADR-0023: Task Envelopes And Risk-based Agent Dispatch](decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md), with its bounded Git delegation refined by
 [ADR-0024: Bounded Builder Slice Commits](decisions/0024-bounded-builder-slice-commits.md), and both amended by
@@ -87,10 +110,10 @@ and amended by
 owns schema 1 conversion. ADR-0019 defines the compact runtime model; ADR-0021
 makes schema 1 conversion complete and zero-touch while retaining provenance and
 structural blockers; ADR-0022 delegates bounded local Git and adds CatPaw-owned
-engineering methods; ADR-0023 introduced temporary capabilities and bounded
-Task Envelopes; ADR-0024 introduced exact-opt-in Builder commits; ADR-0025 makes
-the Executor the contextual decision owner, publishes composable roles, replaces
-fixed dispatch with advisory patterns, and retains hard authority/isolation gates.
+engineering methods; ADR-0023 introduced bounded delegation; ADR-0024 introduced
+exact-opt-in isolated build commits; ADR-0025 made orchestration contextual and
+advisory; ADR-0026 exposes only Work, Proof, Approval and three Agent task
+intents while retaining the hard authority, independence, and isolation gates.
 
 ## Writing Rules
 

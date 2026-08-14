@@ -1,6 +1,17 @@
 # ADR-0016: Milestones And Subagent Governance
 
-Status: Accepted; vocabulary amended by ADR-0019, authority by ADR-0022, dispatch by ADR-0023
+Status: Accepted; vocabulary amended by ADR-0019, authority by ADR-0022, dispatch by ADR-0023, and public/intent vocabulary by ADR-0026
+
+## Current Interpretation
+
+Milestone remains an optional grouping for several Work items; Work, not req/FR
+terminology, is the smallest durable verifiable unit. ADR-0019 removed Provider
+stance as current board authority, ADR-0023 moved delegation into bounded
+internal contracts, and ADR-0026 reduced collaboration to `explore`, `build`,
+and `check`. Current independent-check triggers, fallback, and skipped-check
+recording are owned by
+[`independent-checks.md`](../../src/runtime/guidance/independent-checks.md), not
+the historical frontmatter convention below.
 
 ## Context
 

@@ -1,6 +1,15 @@
 # ADR-0012: Contract-First Quality Gates
 
-Status: Accepted; mode and artifact vocabulary amended by ADR-0019
+Status: Accepted; mode and artifact vocabulary amended by ADR-0019 and public Proof vocabulary by ADR-0026
+
+## Current Interpretation
+
+The contract-first principle remains current for behavior-sensitive Work:
+identify invariants and boundary cases before accepting an implementation, then
+record executed checks or reproducible findings as Proof. ADR-0019 moved the
+L0-L3 and legacy artifact names below into internal risk/lifecycle handling;
+ADR-0026 supplies the current Work / Proof / Approval language. The principle
+does not create a mandatory new artifact or universal ceremony.
 
 ## Context
 

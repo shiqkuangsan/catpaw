@@ -1,8 +1,22 @@
 # ADR-0025: Executor-Owned Advisory Orchestration
 
-Status: Accepted
+Status: Accepted; Role Catalog, discovery CLI, and public vocabulary superseded by ADR-0026
 
 Date: 2026-08-13
+
+## Current Interpretation
+
+The accepted core is contextual orchestration by the primary agent, advisory
+collaboration patterns, one accountable writer per mutable surface, distinct-
+actor independent checking, and primary-agent final adoption. ADR-0026 removed
+the six-Role Catalog before release and replaced it with exactly three task
+intents: `explore`, `build`, and `check`. Current read-only discovery uses
+`agent intents` and `agent intent --intent <id>`.
+
+The Role Catalog, six Role names, `agent roles`, and `agent role --role <id>` in
+the original decision below are historical design state, not current Runtime
+commands or concepts. Task Envelopes, ownership tokens, scheduling signals, and
+Git grants remain internal implementation contracts and cannot create Approval.
 
 ## Context
 
@@ -52,9 +66,10 @@ after the Executor's decision, requires an Integration Git Envelope bound to the
 assigned non-protected surface, target/base, commit list, allowed
 fast-forward/cherry-pick, and verification.
 
-### Publish a composable Role Catalog
+### Historical Role Catalog decision
 
-The runtime ships a machine-readable catalog with six core roles:
+At the time of this decision, the proposed runtime shipped a machine-readable
+catalog with six core roles:
 
 - **Scout** collects source-backed facts, options, dependencies, and unknowns.
 - **Architect** designs boundaries, interfaces, alternatives, and trade-offs.
@@ -101,13 +116,15 @@ remote Git, history rewrite, force, destructive cleanup, secrets, and permission
 expansion remain explicit gates. Reviewers, Verifiers, Scouts, non-opted-in
 Agents, and current CatPaw-managed cc/cx profiles remain unable to commit.
 
-### Add deterministic read-only discovery
+### Historical read-only discovery surface
 
-The CLI exposes the catalog through `agent roles` and `agent role --role <id>`
-in human and JSON forms. It does not add `agent plan`, `agent team`, `run-all`,
-automatic adoption, or a persistent invocation ledger. Provider availability
-reports may expose ordered fallback options and identify the Executor as the
-decision owner while retaining the previous scalar fallback for compatibility.
+At the time of this decision, the CLI exposed the catalog through `agent roles`
+and `agent role --role <id>` in human and JSON forms. ADR-0026 replaced those
+commands with intent discovery before 3.4 activation. Neither design adds
+`agent plan`, `agent team`, `run-all`, automatic adoption, or a persistent
+invocation ledger. Provider availability reports may expose ordered fallback
+options and identify the primary agent as the decision owner while retaining
+the previous scalar fallback for compatibility.
 
 Board schema remains 2. Transient team, role assignment, scheduling, slot, and
 dependency-graph state do not become Work or Evidence metadata.
@@ -116,10 +133,10 @@ dependency-graph state do not become Work or Evidence metadata.
 
 - CatPaw remains an orchestration runtime instead of shrinking to a prompt
   bundle, while stronger Executors retain contextual control.
-- Structured role discovery is deterministic and testable without making the
+- Structured intent discovery is deterministic and testable without making the
   CLI a scheduler.
-- Six roles add vocabulary, but their behavioral fields and composability avoid
-  reviving the retired specialist council/persona hierarchy.
+- Three intents retain the useful behavioral contracts without reviving the
+  six-Role or specialist persona hierarchy.
 - Isolation and Independent Check gates remain enforceable even when the
   Executor chooses aggressive parallelism or competing implementations.
 - Builder handoffs can use natural local commit series without transferring
@@ -140,10 +157,12 @@ dependency-graph state do not become Work or Evidence metadata.
   scheduling signals.
 - ADR-0024's one-commit limit becomes an Executor-chosen bounded local commit
   series; all authority ceilings and isolation requirements remain.
+- ADR-0026 replaces the unreleased Role Catalog and its CLI with three intent
+  contracts, while retaining contextual orchestration and every hard bound.
 
 ## References
 
-- [Role Catalog](../../src/runtime/catalog/roles.json)
+- [Current Intent Catalog](../../src/runtime/catalog/intents.json)
 - [Agent orchestration](../../src/runtime/guidance/agent-dispatch.md)
 - [Runtime policy](../../src/runtime/runtime-policy.md)
 - [Workflow](../../src/runtime/guidance/workflow.md)
@@ -151,3 +170,4 @@ dependency-graph state do not become Work or Evidence metadata.
 - [ADR-0019](0019-catpaw-3-hybrid-runtime.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
 - [ADR-0024](0024-bounded-builder-slice-commits.md)
+- [ADR-0026 amendment](0026-user-facing-concept-consolidation.md)

@@ -1,8 +1,23 @@
 # ADR-0019: CatPaw 3 Hybrid Runtime
 
-Status: Accepted; local Git/methods amended by ADR-0022 and orchestration by ADR-0025
+Status: Accepted; local Git/methods amended by ADR-0022, orchestration by ADR-0025, and public vocabulary by ADR-0026
 
 Date: 2026-07-11
+
+## Current Interpretation
+
+ADR-0026 replaces ADR-0019's onboarding vocabulary with three parallel user
+concerns—`Work`, `Proof`, and `Approval`—and the visible flow `Understand ->
+Execute -> Check -> Finish`. Modes, seven lifecycle stages, five schema 2
+artifact kinds, typed Evidence, and Lens selection remain internal runtime or
+storage contracts rather than concepts users must operate.
+
+Agent collaboration is currently expressed through `explore`, `build`, and
+`check` intents, with the primary agent owning contextual orchestration and
+final adoption. The original decision below remains the historical foundation
+for schema 2, the three runtime surfaces, explicit activation, and independent
+judgment; where its public vocabulary differs, ADR-0026 and the current runtime
+authorities control.
 
 ## Context
 
@@ -105,8 +120,9 @@ and source-package splitting remain valid foundations.
 
 ## Consequences
 
-- New users learn three modes, five artifact kinds, and three judgment concepts
-  instead of several overlapping taxonomies.
+- At adoption, the redesign reduced the previous vocabulary to three modes,
+  five artifact kinds, and three judgment concepts; ADR-0026 later moved those
+  behind the Work / Proof / Approval facade.
 - The always-on policy becomes smaller; detailed rules load only when relevant.
 - Deterministic board operations become testable and idempotent without turning
   product judgment into a rigid state engine.
@@ -132,3 +148,4 @@ and source-package splitting remain valid foundations.
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
 - [ADR-0025](0025-executor-owned-advisory-orchestration.md)
+- [ADR-0026](0026-user-facing-concept-consolidation.md)

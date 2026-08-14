@@ -2,6 +2,16 @@
 
 Status: Accepted; callable provider scope amended by ADR-0019
 
+## Current Interpretation
+
+ADR-0019 retained Claude Code as the reciprocal `cc` transport while removing
+the broader provider surface. The current self-contained stdin recipe and
+enforced Read/Glob/Grep allowlist are owned by
+[`providers/claude.md`](../../src/runtime/providers/claude.md); use that file
+instead of copying flags from this historical decision. Read-only transport
+output is candidate material for `explore` or `check`, not completion Proof or
+Approval by itself.
+
 ## Context
 
 CatPaw routes Laoer / `老二` to Claude Code when Codex is the primary agent.

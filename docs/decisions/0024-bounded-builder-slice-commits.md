@@ -1,8 +1,17 @@
 # ADR-0024: Bounded Builder Slice Commits
 
-Status: Accepted; commit cadence amended by ADR-0025
+Status: Accepted; commit cadence amended by ADR-0025, and Builder/authority vocabulary by ADR-0026
 
 Date: 2026-08-13
+
+## Current Interpretation
+
+Under ADR-0026, `Builder` below now means an Agent acting under the `build`
+intent, not a persona or user-facing Role. The bounded local-commit exception
+remains an internal exact grant and cannot create Approval. One accountable
+writer owns a mutable surface at a time; the primary agent still owns candidate
+acceptance and final adoption, while `explore` and `check` actors cannot receive
+the build commit exception.
 
 ## Context
 
@@ -71,16 +80,17 @@ commit. A Builder cannot satisfy the required independent review of its own
 slice. Reciprocal `cc`/`cx` profiles remain read-only and do not receive the
 exception; external Builder remains unavailable.
 
-## Amendment By ADR-0025
+## Amendments By ADR-0025 And ADR-0026
 
 The one-commit cadence and Primary-owned adoption language above are retained as
-decision history. The current contract permits an opted-in Builder to create an
-Agent Executor-chosen bounded local commit series inside one unchanged Git
-Envelope. A delegated integration owner needs Builder Role plus Builder Git
-Envelope for candidate/reconciliation commits, or an exact Integration Git
-Envelope for clean inbound adoption after the Executor's decision. The Agent
-Executor still owns final adoption; protected/base and external actions remain
-explicit authorization gates.
+decision history. The current contract permits an opted-in `build` Agent to
+create a primary-agent-chosen bounded local commit series inside one unchanged
+exact Git grant. A delegated integration owner receives no Git authority from
+the ownership token: candidate or reconciliation commits require the build
+grant, while clean inbound adoption requires a separate exact integration grant
+bound to target, base, commit list, allowed operation, and verification. The
+primary agent still owns final adoption; protected/base and external actions
+remain explicit Approval gates.
 
 ## Consequences
 
@@ -105,3 +115,4 @@ explicit authorization gates.
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
 - [ADR-0023](0023-task-envelopes-and-risk-based-agent-dispatch.md)
 - [ADR-0025](0025-executor-owned-advisory-orchestration.md)
+- [ADR-0026](0026-user-facing-concept-consolidation.md)

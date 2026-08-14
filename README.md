@@ -2,41 +2,90 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw is an advisory orchestration runtime for coding agents. It keeps one
-development lifecycle, selects the lightest safe operating mode, exposes
-structured subagent roles and collaboration guidance, records only durable
-project facts, and uses executable checks for mechanical consistency.
+CatPaw is a local-first runtime for reliable coding-agent work. It keeps agents
+moving within the authority you have given, requires inspectable support for
+completion claims, and stops only when a decision or risk genuinely belongs to
+you.
 
 ```text
-Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
+Work      what outcome is being delivered, what is current, and what is next
+Proof     what was checked, what the facts show, and what remains uncertain
+Approval  the exact decision needed for new authority or accepted risk
 ```
 
-Source runtime version: `3.4.0`. Project boards use **board schema 2**.
+These are parallel concerns. Most Work needs no new Approval after you authorize
+the task.
 
-Activation is machine-local. A source checkout cannot declare the installed
-runtime current or pending for every machine: compare it with
-`node scripts/verify-runtime.mjs`. An older or missing installation is
-`pending activation`; a matching verified installation is current. Building
-source does not automatically install, apply, or migrate CatPaw.
+Source runtime version: `3.4.0`. Project boards use **schema 2**.
 
-Repository: https://github.com/shiqkuangsan/catpaw
+## The User Model
 
-## Core Model
+### Work
 
-### Modes
+Work carries one outcome from understanding through a clean handoff. Small,
+local tasks may stay in the conversation. Work that needs continuity is recorded
+in the repository so another session can recover the goal, progress, and `Next`.
 
-| Mode | Use when | Durable records |
-|---|---|---|
-| `Direct` | Work is narrow, local, reversible, and low risk | None by default; still verify and report |
-| `Tracked` | Work spans steps or files, changes shared behavior, or needs continuity | Work Item + Plan, with Evidence when useful |
-| `Gated` | Work affects security, release, migration, external systems, destructive operations, or high-impact contracts | Work Item + Plan + required Independent Check and Evidence |
+Several related Work items may optionally share a Milestone. Users do not need
+to manage internal risk modes, lifecycle stages, or Agent topology.
 
-CatPaw starts with the lightest safe mode and upgrades it when scope or risk
-grows. A mode never grants permission for an external or destructive action.
+### Proof
 
-### Work Board
+Proof is inspectable support for a claim: executed checks, reproducible findings,
+independent review, and explicit remaining gaps. Process start, exit zero,
+session stability, code reading, or an Agent saying “done” is not completion
+Proof by itself.
 
-Project state lives in `<project>/.catpaw/`:
+High-risk Work requires Proof from an actor different from the actor that built
+the checked scope. Durable Proof is stored as typed schema 2 `Evidence`; this is
+a storage term, not a second user concept.
+
+### Approval
+
+Approval is required only when the user must supply new authority or consciously
+accept risk: material outcome changes, missing required Proof, external or
+irreversible effects, protected/base updates, destructive or history-changing
+Git, secret access, or permission expansion.
+
+Approval is not a workflow stage. Already-authorized Work continues without
+asking for every internal step. Proof can never manufacture Approval.
+
+## Visible Flow
+
+```text
+Understand -> Execute -> Check -> Finish
+```
+
+CatPaw chooses lightweight, durable, or high-risk handling internally. It keeps
+the detailed lifecycle and board metadata for continuity without making the user
+operate them.
+
+## Agent Collaboration
+
+CatPaw exposes three bounded task intents:
+
+| Intent | Outcome |
+|---|---|
+| `explore` | Establish facts, boundaries, options, and designs |
+| `build` | Implement or integrate an exact isolated scope |
+| `check` | Review for defects or verify acceptance |
+
+The primary agent decides which Agents, models, and transports to use, whether
+to work serially or in parallel, and which candidate to accept. CatPaw provides
+constraints and collaboration options, not an automatic team scheduler.
+
+Different Agents never concurrently write the same mutable surface. Competing
+candidates may touch the same logical files only in isolated worktrees or
+equivalent state. Independent Proof always requires a different actor, not the
+same Agent under another label.
+
+CatPaw-managed reciprocal read-only transports are `cc` (Claude Code) and `cx`
+(Codex). They are second-opinion surfaces, not the primary agent's complete
+roster.
+
+## Project Memory
+
+The repository-local `.catpaw/` board stores durable project facts:
 
 ```text
 .catpaw/
@@ -47,81 +96,45 @@ Project state lives in `<project>/.catpaw/`:
 └── evidence/
 ```
 
-Schema 2 has five artifact kinds:
+`Work` maps to schema 2 Work Item/Plan records. `Proof` facts map to typed
+Evidence. `Approval` remains a user authority boundary and is not a new artifact.
+Schema 1 migration may additionally retain a checksummed
+`legacy/schema-1/` archive; original material is preserved.
 
-| Artifact | Purpose |
-|---|---|
-| Index | Current board dashboard and schema marker |
-| Milestone | Optional phase objective spanning several Work Items |
-| Work Item | Smallest durable, independently verifiable unit of work |
-| Plan | Work-bound contracts, steps, acceptance, and verification |
-| typed Evidence | `research`, `review`, `test`, `provider`, or `reflection` facts |
+## CLI
 
-Schema 1 migration may also create `legacy/schema-1/`. It is a checksummed,
-read-only migration archive, not a sixth artifact kind; normal schema 2 status,
-doctor, and mutation commands ignore it.
-
-Migration is zero-touch for ordinary users: CatPaw infers missing legacy
-metadata from explicit facts, canonical structure, scoped prose, and artifact
-relationships, while preserving every original file for audit and rollback.
-
-Direct work normally stays in the conversation. Tracked and Gated work use the
-board when durable coordination adds value.
-
-### Judgment
-
-CatPaw separates three concerns:
-
-- **Lens**: what professional perspective is needed.
-- **Agent**: who performs work or supplies judgment.
-- **Independent Check**: when a non-primary view is recommended or required.
-
-The five Lens cards are Value & Scope, System & Contracts, Experience,
-Security, and Performance. Engineering, review, testing, shipping, debugging,
-and reflection remain lifecycle methods instead of a second role hierarchy.
-CatPaw owns compact root-cause Debugging and risk-triggered RED/GREEN guidance;
-it does not require a universal meta-skill or design-approval ritual.
-
-CatPaw provides advisory orchestration to the Agent Executor. Its structured
-Role Catalog defines Scout, Architect, Builder, Reviewer, Verifier, and
-Integrator as composable responsibility contracts. One Agent may hold several
-roles, and several Agents may instantiate one role; required independence still
-requires a distinct actor. A bounded Task Envelope carries exact context,
-scope, deliverable, verification, and authority for each material delegation.
-
-The Executor chooses Agents, models, transports, role composition, count,
-order/parallelism, fallback, integration owner, and final adoption. CatPaw
-supplies collaboration patterns and concurrency hazards, but does not generate
-a mandatory team graph. Its hard boundary is no concurrent write to one shared
-mutable surface; competing candidates may modify the same logical scope in
-separate worktrees.
-
-CatPaw's built-in reciprocal read-only transports are `cc` (Claude Code) and
-`cx` (Codex). They are not the Executor's complete Agent roster. OpenCode may
-host CatPaw instructions, but it is not a CatPaw-managed direct transport.
-
-## Hybrid Runtime
-
-The runtime has three behavior surfaces:
-
-| Surface | Responsibility |
-|---|---|
-| Always-on Rules | Compact routing, safety, progress, and authority rules |
-| On-demand Guidance | Workflow, Agent orchestration, engineering methods, Milestones, Independent Checks, Lens cards, and Agent recipes |
-| Executable Tools | Board graph, schema validation, dry-run patches, migration, and observable Agent sessions |
-
-Its storage and activation chain is separate:
+Preferred commands:
 
 ```text
-source -> dist -> installed -> project board
+catpaw board init|status|doctor|migrate
+catpaw work start [--high-risk]|close
+catpaw milestone start|add|close
+catpaw proof add
+catpaw agent intents|intent
+catpaw agent check|open|send|status|read|close
 ```
 
-The Agent Executor makes contextual orchestration and adoption decisions, the
-CLI records and verifies deterministic state, and users authorize writes or
-external effects. See the
-[Hybrid Runtime decision](docs/decisions/0019-catpaw-3-hybrid-runtime.md).
+Board mutations are dry-run by default and write only with explicit `--apply`.
+`proof add` stores typed schema 2 Evidence. Existing `evidence add` and
+`work start --mode tracked|gated` inputs remain compatible for older callers.
+Agent session status reports observable process/output facts and never infers
+completion.
 
-## Quick Start From Source
+In a source checkout, use `src/runtime/bin/catpaw.mjs`; after installation, use
+`~/.catpaw/bin/catpaw.mjs`. CatPaw does not add itself to `PATH`.
+
+## Safety
+
+- Agent output, Proof, and CLI success do not grant Approval.
+- A delegated writer receives one exact isolated mutable surface.
+- Bounded local commits require an explicit scoped grant, clean baseline, exact
+  diff review, relevant verification, and a credential scan.
+- A candidate is not accepted merely because it was delivered or committed.
+- Push, PR, deploy/publish, protected/base updates, history rewriting, force,
+  destructive cleanup, secret access, permission expansion, and other external
+  or irreversible effects require explicit user Approval.
+
+## Build And Activation
 
 ```bash
 git clone https://github.com/shiqkuangsan/catpaw.git
@@ -130,84 +143,30 @@ node scripts/build-runtime.mjs
 node scripts/verify-runtime.mjs
 ```
 
-The build creates `dist/runtime/` from
-[`src/runtime/runtime-manifest.json`](src/runtime/runtime-manifest.json).
-Verification checks source and dist, exercises the CLI on a temporary board,
-and reports an older installed runtime as `pending activation` by default.
-
-To install or upgrade after explicit approval, start with
-[`AI-INSTALL.md`](AI-INSTALL.md). Runtime installation, adapter activation, and
-each project board migration are separate actions.
-
-## CLI
-
-The generated or installed runtime exposes:
+Activation is machine-local. Source, generated `dist`, installed runtime, host
+adapter, and each project board are separate surfaces:
 
 ```text
-catpaw board init|status|doctor|migrate
-catpaw work start|close
-catpaw milestone start|add|close
-catpaw evidence add
-catpaw agent roles|role
-catpaw agent check|open|send|status|read|close
+source -> dist -> installed -> project board
 ```
 
-Here `catpaw` is shorthand for the executable entrypoint: use
-`src/runtime/bin/catpaw.mjs` in a source checkout or
-`~/.catpaw/bin/catpaw.mjs` after installation. CatPaw does not add a command to
-`PATH`; a user-managed alias or symlink is a separate, explicit choice.
+Building does not automatically install, apply, activate, or migrate CatPaw.
+After explicit authorization, begin with [AI-INSTALL.md](AI-INSTALL.md).
 
-Board mutations default to dry-run and require explicit `--apply`. Agent
-session status reports observable facts such as open/closed, changed/stable,
-and explicit waiting text; it does not infer completion.
-
-## Repository Layout
+## Repository
 
 ```text
 catpaw/
-├── src/runtime/   # Versioned runtime source
-├── scripts/       # Build and verification tooling
-├── tests/         # Executable contracts
-├── docs/          # Maintainer rationale and decisions
-└── dist/runtime/  # Generated package, ignored by git
+├── src/runtime/   # versioned runtime source
+├── scripts/       # build and verification
+├── tests/         # executable contracts
+├── docs/          # maintainer rationale and ADRs
+└── dist/runtime/  # generated, Git-ignored package
 ```
 
-Runtime users follow [`src/runtime/runtime-policy.md`](src/runtime/runtime-policy.md).
-Maintainers can start with [`docs/README.md`](docs/README.md). Contributors
-should read [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## Safety Boundaries
-
-- Runtime files install only under `~/.catpaw/`; project boards contain only
-  project artifacts.
-- Thin host adapters reference CatPaw without copying the runtime.
-- Agent output and CLI results are evidence, not authorization.
-- In an authorized change/build task, the Agent Executor designates one
-  accountable integration owner per mutable surface. If the Executor retains
-  that ownership, it may use a non-protected local task branch/worktree and
-  bounded local commits for exact task-owned changes after review,
-  verification, and a credential scan.
-- A delegated integration owner may write only its assigned isolated surface;
-  integration ownership alone grants no Git authority. Candidate/reconciliation
-  commits require the Builder Role plus a complete Builder Git Envelope. After
-  the Executor decides adoption, exact clean inbound fast-forward/cherry-pick
-  requires an Integration Git Envelope bound to the assigned non-protected
-  surface, target/base, commit list, and verification.
-- A current-tool Builder may create an Executor-chosen bounded local commit
-  series only under an exact Task Envelope opt-in bound to one isolated
-  worktree, dedicated non-protected branch/base, exact scope, verification,
-  diff review, and secret scan. The Executor still owns final adoption.
-- Scout, Architect, Reviewer, Verifier, non-opted-in Agents, and current
-  `cc`/`cx` profiles must not stage or commit. Integrator/integration ownership
-  alone grants no Git authority.
-- Push, pull request, deploy/publish, any protected/base branch update (direct
-  commit, merge, cherry-pick, fast-forward), history rewrite, force,
-  destructive Git/cleanup, secret access, permission expansion, and other
-  external or irreversible effects require explicit authorization.
+Runtime behavior is owned by
+[runtime-policy.md](src/runtime/runtime-policy.md). Maintainers start with
+[docs/README.md](docs/README.md).
 
 CatPaw is not affiliated with any model vendor or similarly named product. See
-[`NOTICE.md`](NOTICE.md) for attribution.
-
-## License
-
-MIT. See [`LICENSE`](LICENSE).
+[NOTICE.md](NOTICE.md). MIT licensed; see [LICENSE](LICENSE).

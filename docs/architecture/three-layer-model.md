@@ -23,7 +23,7 @@ three, but each kind of rule has one primary owner.
 card loaded when CatPaw applies. It owns:
 
 - activation and instruction priority;
-- initial Direct/Tracked/Gated dispatch;
+- the Work / Proof / Approval boundary and internal risk routing;
 - Work Board boundary;
 - progress and completion expectations;
 - safety and authorization invariants;
@@ -38,9 +38,9 @@ Guidance is read when a task reaches the corresponding decision:
 
 | Need | Owner |
 |---|---|
-| Lifecycle and mode behavior | [`workflow.md`](../../src/runtime/guidance/workflow.md) |
-| Role Catalog, Task Envelope, advisory scheduling, and concurrency | [`agent-dispatch.md`](../../src/runtime/guidance/agent-dispatch.md) |
-| Machine-readable Agent role contracts | [`roles.json`](../../src/runtime/catalog/roles.json) |
+| Work handling and internal risk behavior | [`workflow.md`](../../src/runtime/guidance/workflow.md) |
+| Agent intents, bounded delegation, scheduling, and concurrency | [`agent-dispatch.md`](../../src/runtime/guidance/agent-dispatch.md) |
+| Machine-readable Agent intent contracts | [`intents.json`](../../src/runtime/catalog/intents.json) |
 | Root-cause debugging and RED/GREEN | [`engineering-methods.md`](../../src/runtime/guidance/engineering-methods.md) |
 | Independent triggers and fallback | [`independent-checks.md`](../../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phase progress | [`milestones.md`](../../src/runtime/guidance/milestones.md) |
@@ -59,8 +59,8 @@ mechanical behavior:
 - schema validation and artifact graph construction;
 - deterministic status and doctor findings;
 - dry-run patch planning and atomic apply;
-- Work, Milestone, and Evidence mutations;
-- read-only Agent Role Catalog discovery;
+- Work, Milestone, and Proof/Evidence mutations;
+- read-only Agent intent discovery;
 - schema migration staging and validation;
 - observable external Agent session operations.
 
@@ -72,13 +72,13 @@ operations repeatable and inspectable.
 ## Why Hybrid
 
 A prose-only runtime leaves consistency to agent memory. A fully rigid engine
-cannot reliably choose scope, tradeoffs, useful Lens combinations, or when
-evidence changes the plan. CatPaw therefore assigns:
+cannot reliably choose scope, tradeoffs, useful checks, or when facts change
+the plan. CatPaw therefore assigns:
 
 ```text
-Agent Executor -> contextual orchestration and final adoption
-CLI            -> deterministic discovery, record, and verification
-User           -> authorization and accepted risk
+Primary agent -> contextual orchestration and final adoption
+CLI           -> deterministic discovery, record, and verification
+User          -> Approval and accepted risk
 ```
 
 The separate storage and activation chain is described in
@@ -90,7 +90,7 @@ The separate storage and activation chain is described in
 - One behavior has one canonical owner.
 - Guidance may call tools, but cannot weaken tool safety.
 - Tools may report gaps, but cannot invent acceptance.
-- Lens or Agent output is evidence, not authority.
-- Role Catalog and scheduling guidance are advisory; the Executor owns topology.
+- Agent output and Proof never create authority.
+- Intent catalog and scheduling guidance are advisory; the primary agent owns topology.
 - Concurrent Agents do not write one shared mutable surface.
 - Loading CatPaw does not imply installation, migration, or external action.

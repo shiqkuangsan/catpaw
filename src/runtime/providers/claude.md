@@ -1,8 +1,8 @@
 # Claude Code Agent
 
-Claude Code (`cc`) 是 Codex host 的默认 reciprocal Agent。Review/debug 默认
-read-only；prompt 通过 stdin 传入。`$PROMPT` 使用完整
-[Task Envelope](../guidance/agent-dispatch.md)。
+Claude Code (`cc`) 是 Codex host 的默认 reciprocal Agent。Explore/check 默认
+read-only；prompt 通过 stdin 传入。`$PROMPT` 使用完整的
+[bounded delegation facts](../guidance/agent-dispatch.md)。
 
 ## Smoke Test
 
@@ -32,7 +32,7 @@ printf '%s\n' "$PROMPT" \
 agents 等 customization。其代价是必须提供 self-contained prompt：goal、背景、
 约束、绝对路径、输出格式、禁止事项与验收重点都要显式写入。
 `--tools Read,Glob,Grep` 是预防性 read-only boundary；不要为方便 review 加回 Bash。
-需要 diff 或命令输出时，由 primary Agent 放入 prompt 或 Evidence。
+需要 diff 或命令输出时，由 primary agent 放入 prompt 或 Proof。
 
 ## Multiple Directories
 
@@ -64,12 +64,10 @@ Read/Glob/Grep，并显式禁止 Edit/Write/NotebookEdit。`send` 不等待结�
 `status`/`read` 查看事实。Stable is not completion，明确的 waiting text 也只表示
 需要检查输入请求。
 
-Claude output does not authorize Git or external actions。Bounded local Git
-authority comes only from the current authorized task, runtime policy, and exact
-Task Envelope. The Agent Executor decides final adoption and assigns one
-accountable integration owner per mutable surface. The current-tool Builder
-local-commit exception does not apply to this external
-read-only profile；Claude as reciprocal external Agent must not stage or commit。
+Claude output does not grant Approval for Git or external actions. The primary
+agent decides candidate acceptance and keeps one accountable writer per mutable
+surface. Writable build/local-commit grants do not apply to this reciprocal
+read-only profile; Claude must not stage or commit.
 Push、PR、deploy、任何
 protected/base branch update、history-changing/destructive actions、secret access
-与 permission expansion 仍需 explicit user authorization。
+与 permission expansion 仍需 explicit user Approval。

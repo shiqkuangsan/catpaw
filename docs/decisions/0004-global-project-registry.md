@@ -2,6 +2,16 @@
 
 Status: Accepted; registry shape amended by ADR-0019
 
+## Current Interpretation
+
+ADR-0019 retained the per-machine registry principle while moving its current
+shape and operations to
+[`guidance/maintenance.md`](../../src/runtime/guidance/maintenance.md). The
+absolute board path is the primary key; read-only checks do not refresh
+timestamps, and registration/upsert occurs only after an explicitly applied
+project activation, legacy import, or schema migration. Registry operations
+never mutate or delete project boards and do not imply fleet migration.
+
 ## Context
 
 Global operations need to know where project boards live. Re-scanning the filesystem is slow, incomplete, and cannot remember last-seen or stamp information.

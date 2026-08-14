@@ -1,8 +1,8 @@
 # Milestones
 
-Milestone 是可选 phase artifact，用来让多个 Work Item 围绕一个连续目标推进，
-减少每完成一项就重新询问“下一步”。它不是 project-management subsystem，也不
-替代 Work Item、Plan 或 Evidence。
+Milestone 是可选的多 Work 分组，用来让相关 Work 围绕一个连续目标推进，减少每
+完成一项就重新询问“下一步”。它不是用户必须学习的第四个核心概念，也不替代
+Work 或 Proof。
 
 ## Use When
 
@@ -11,7 +11,7 @@ Milestone 是可选 phase artifact，用来让多个 Work Item 围绕一个连�
 - 用户说“推进这一阶段”“后面连续做”“统一收口”；
 - 单项局部最优可能偏离整体 exit criteria。
 
-Direct 或单一、短 Tracked Work 默认不建 Milestone。
+单一、短 Work 默认不建 Milestone。
 
 ## Contract
 
@@ -20,7 +20,7 @@ criteria、verification entry、需要用户协助的点、close summary、remai
 与 next phase。
 
 Allowed status：`active | blocked | done | cancelled`。Scope 只引用已有 Work
-Item；Work Item 仍有自己的 Mode、Plan 与 Evidence。
+Item；每个 Work 仍独立保存内部 routing、Plan 与 typed Evidence。
 
 ## CLI
 

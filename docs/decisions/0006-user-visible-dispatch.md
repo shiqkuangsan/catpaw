@@ -1,6 +1,15 @@
 # ADR-0006: User-visible Workflow Dispatch
 
-Status: Accepted; mode vocabulary amended by ADR-0019
+Status: Accepted; mode vocabulary amended by ADR-0019 and public progress language superseded by ADR-0026
+
+## Current Interpretation
+
+The retained principle is visible escalation: when handling becomes durable or
+high risk, explain the reason, expected Work/Proof, current action, and `Next`
+without exposing private reasoning. ADR-0019 keeps `Direct`, `Tracked`, and
+`Gated` as internal routing metadata; ADR-0026 replaces workflow-level
+onboarding with Work / Proof / Approval and `Understand -> Execute -> Check ->
+Finish`. Routing visibility is not an Approval gate.
 
 ## Context
 

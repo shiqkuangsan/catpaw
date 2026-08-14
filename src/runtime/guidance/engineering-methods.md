@@ -1,8 +1,8 @@
 # Engineering Methods
 
-CatPaw 在 lifecycle 内按真实 trigger 选择工程方法。方法只能改变当前动作或证据
-要求，不能选择 CatPaw Mode、扩大 authorization、创建新的 artifact 种类，或接管
-Work/Plan/Review/Test 的 canonical owner。
+CatPaw 在 Work 执行中按真实 trigger 选择工程方法。方法只能改变当前动作或 Proof
+要求，不能改变内部 risk routing、扩大 authorization、创建新的 artifact 种类，或
+接管 Work 的 accountable owner。
 
 ## Selection
 
@@ -46,11 +46,11 @@ RED/GREEN 用于锁定期望行为，不是所有文件修改的通用仪式。
 已存在实现、测试基础薄弱或无法安全回退时，不要求删除代码再 start over。先建立
 可信的 characterization/reproduction，再明确记录无法证明 pre-change RED 的 gap。
 
-## Evidence And Handoff
+## Proof And Handoff
 
-- Direct 工作只在当前上下文保留必要的 reproduction 与 verification。
-- Tracked/Gated 将 contract、失败处理和验证命令写进既有 Plan；只有影响 closeout
-  判断的结果才写入 typed Evidence。
+- 小型非持久 Work 只在当前上下文保留必要的 reproduction 与 verification。
+- 持久 Work 将 contract、失败处理和验证命令写进内部 Plan；只有影响 completion
+  判断的结果才通过 `proof add` 写入 typed Evidence。
 - 不创建 method ledger、重复 plan、provider-specific artifact 或 skill invocation
   计数。衡量方法价值看 root cause 是否被证明、行为是否被锁定、finding 是否被采用，
   以及最终验证是否可复现。

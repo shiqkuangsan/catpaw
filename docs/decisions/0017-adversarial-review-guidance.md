@@ -1,6 +1,15 @@
 # ADR-0017: Adversarial Review Guidance
 
-Status: Accepted; integrated into ADR-0019 Independent Checks and amended by ADR-0022
+Status: Accepted; integrated into ADR-0019 Independent Checks, amended by ADR-0022, and intent/Proof vocabulary by ADR-0026
+
+## Current Interpretation
+
+Adversarial review remains an optional `check` method selected when risk makes
+opposing-side challenge useful. ADR-0019 removed the Expert Council, legacy
+commands, and role paths below; ADR-0022 kept the method trigger-based rather
+than universal; ADR-0026 expresses its findings as Proof and requires a distinct
+actor when the check is independent. Current behavior lives in Agent
+collaboration and independent-Proof guidance.
 
 ## Context
 

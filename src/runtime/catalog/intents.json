@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "1.0.0",
+  "decisionOwner": "primary-agent",
+  "composition": {
+    "oneAgentMayHoldMultipleIntents": true,
+    "oneIntentMayHaveMultipleAgents": true,
+    "independentCheckRequiresDistinctActor": true,
+    "effectiveAuthority": "user-project-approval intersect intent-authority-ceiling intersect primary-agent-grant intersect tool-enforcement"
+  },
+  "intents": [
+    {
+      "id": "explore",
+      "title": "Explore",
+      "purpose": "Establish source-backed facts, boundaries, options, and designs before a decision or build.",
+      "methods": ["investigate", "design"],
+      "useWhen": ["scope or ownership is uncertain", "alternatives would materially improve a decision"],
+      "avoidWhen": ["the relevant facts and implementation contract are already settled", "only a bounded mechanical change remains"],
+      "requiredInputs": ["outcome and non-goals", "exact read scope", "known facts", "open questions or decision criteria"],
+      "outputs": ["source-backed findings", "recommended option and trade-offs", "remaining unknowns"],
+      "proofObligations": ["separate observed facts from inference", "identify assumptions and unavailable sources"],
+      "defaultSideEffects": { "writes": "none", "git": "forbidden" },
+      "authorityCeiling": ["read declared non-sensitive scope", "propose changes without treating the proposal as Approval"],
+      "independentProofEligible": false,
+      "concurrency": { "mode": "read-mostly", "hardConstraint": "do not mutate shared project or external state" },
+      "handoff": ["build", "check", "primary-agent"],
+      "stopConditions": ["material evidence is inaccessible", "the work requires sensitive data or a missing product decision"],
+      "antiPatterns": ["speculative implementation", "inventing constraints", "claiming completion from discovery"]
+    },
+    {
+      "id": "build",
+      "title": "Build",
+      "purpose": "Implement or integrate an exact bounded outcome on an isolated mutable surface.",
+      "methods": ["implement", "integrate"],
+      "useWhen": ["write scope and acceptance are explicit", "an isolated implementation or integration candidate is useful"],
+      "avoidWhen": ["scope is materially uncertain", "no accountable isolated writer surface can be assigned"],
+      "requiredInputs": ["outcome and acceptance", "exact read and write scope", "constraints", "verification", "allowed actions"],
+      "outputs": ["working changes or bounded local commits", "verification results", "clean candidate handoff and remaining gaps"],
+      "proofObligations": ["report exact changed paths", "distinguish run and unrun checks", "report provenance and credential scan when commits are allowed"],
+      "defaultSideEffects": { "writes": "bounded-isolated-scope", "git": "forbidden-unless-explicitly-granted" },
+      "authorityCeiling": ["write only the assigned isolated scope", "create bounded local commits only under an exact scoped grant", "never accept its own candidate or update protected, base, or remote state"],
+      "independentProofEligible": false,
+      "concurrency": { "mode": "isolated-writer", "hardConstraint": "one accountable writer per mutable surface at a time" },
+      "handoff": ["check", "build", "primary-agent"],
+      "stopConditions": ["baseline or scope drifts", "unexpected files, conflicts, or out-of-scope verification failures appear"],
+      "antiPatterns": ["self-acceptance", "self-certifying independent Proof", "editing beyond the assigned scope"]
+    },
+    {
+      "id": "check",
+      "title": "Check",
+      "purpose": "Challenge a candidate or independently reproduce whether its acceptance claims hold.",
+      "methods": ["review", "verify"],
+      "useWhen": ["non-primary judgment can change the outcome", "risk or a completion claim needs adversarial review or reproduction"],
+      "avoidWhen": ["the actor built the checked scope", "the request is to repair rather than assess the candidate"],
+      "requiredInputs": ["checked target and provenance", "acceptance and contracts", "exact read or verification scope", "expected Proof"],
+      "outputs": ["prioritized reproducible findings or commands and results", "acceptance verdict", "coverage limits and remaining gaps"],
+      "proofObligations": ["distinguish pass, fail, not-run, and blocked", "separate blockers from suggestions", "state actor independence and coverage"],
+      "defaultSideEffects": { "writes": "none", "git": "forbidden" },
+      "authorityCeiling": ["read and assess declared scope", "run authorized isolated verification", "never modify the checked implementation or grant Approval"],
+      "independentProofEligible": true,
+      "independenceConditions": ["actor is different from the actor that built the checked scope", "actor did not modify the checked candidate"],
+      "concurrency": { "mode": "read-mostly", "hardConstraint": "verification side effects are isolated or explicitly serialized" },
+      "handoff": ["build", "primary-agent"],
+      "stopConditions": ["the target changes during assessment", "required evidence is unavailable", "verification would mutate unapproved state"],
+      "antiPatterns": ["repairing the implementation while claiming independence", "rubber-stamp verdicts", "turning an environment gap into a pass"]
+    }
+  ]
+}

@@ -461,17 +461,17 @@ async function verifyCliBehavior(label, root, manifest, record, options = {}) {
     } catch {
       // The check below reports the malformed output.
     }
-    const roles = status.ok
+    const intents = status.ok
       ? subprocess(process.execPath, [
           cli,
           "agent",
-          "roles",
+          "intents",
           "--json",
         ], { env, timeout: smokeTimeoutMs() })
       : { ok: false, detail: "status failed", stdout: "" };
-    let rolesReport = null;
+    let intentsReport = null;
     try {
-      rolesReport = roles.stdout ? JSON.parse(roles.stdout) : null;
+      intentsReport = intents.stdout ? JSON.parse(intents.stdout) : null;
     } catch {
       // The check below reports the malformed output.
     }
@@ -482,14 +482,14 @@ async function verifyCliBehavior(label, root, manifest, record, options = {}) {
       statusReport?.schema === manifest.boardSchemaVersion &&
       Array.isArray(statusReport?.findings) &&
       !statusReport.findings.some((item) => item.severity === "error");
-    const rolesOk = roles.ok &&
-      rolesReport?.command === "agent roles" &&
-      rolesReport?.decisionOwner === "agent-executor" &&
-      Array.isArray(rolesReport?.roles) &&
-      rolesReport.roles.length === 6;
-    const ok = initOk && statusOk && rolesOk;
+    const intentsOk = intents.ok &&
+      intentsReport?.command === "agent intents" &&
+      intentsReport?.decisionOwner === "primary-agent" &&
+      Array.isArray(intentsReport?.intents) &&
+      intentsReport.intents.length === 3;
+    const ok = initOk && statusOk && intentsOk;
     const detail = ok
-      ? "board init/status schema 2 and Agent Role Catalog smoke"
+      ? "board init/status schema 2 and Agent Intent Catalog smoke"
       : !initialized.ok
         ? initialized.detail
         : !initOk
@@ -498,9 +498,9 @@ async function verifyCliBehavior(label, root, manifest, record, options = {}) {
             ? status.detail
             : !statusOk
               ? "status returned unusable schema 2 output"
-              : !roles.ok
-                ? roles.detail
-                : "Agent Role Catalog returned unusable output";
+              : !intents.ok
+                ? intents.detail
+                : "Agent Intent Catalog returned unusable output";
     record(
       `${label} CLI behavior`,
       ok,

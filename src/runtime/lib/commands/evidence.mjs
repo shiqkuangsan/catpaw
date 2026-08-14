@@ -34,9 +34,12 @@ function evidenceMetadata(options) {
 }
 
 async function runAdd(options) {
+  const publicProof = options.group === "proof";
+  const command = publicProof ? "proof add" : "evidence add";
+  const label = publicProof ? "Proof" : "Evidence";
   const inspected = await inspectMutationBoard(options);
   const refusal = schemaRefusal(
-    "evidence add",
+    command,
     options,
     inspected.board,
     inspected.findings,
@@ -47,10 +50,10 @@ async function runAdd(options) {
     !inspected.board.workItems.some((item) => item.id === options.work)
   ) {
     return refusedMutation({
-      command: "evidence add",
+      command,
       options,
       reason: `Work Item ${options.work} does not exist.`,
-      nextAction: "Create the Work Item or omit --work for topic Evidence.",
+      nextAction: `Create the Work Item or omit --work for topic ${label}.`,
     });
   }
 
@@ -75,15 +78,17 @@ async function runAdd(options) {
   ]);
   const applyResult = await applyMutationPlan(plan, options);
   return mutationResult({
-    command: "evidence add",
+    command,
     options,
     plan,
     applyResult,
     artifacts: [{ kind: "evidence", path: evidencePath }],
-    reportFields: { evidence: metadata },
+    reportFields: publicProof
+      ? { proof: metadata, storageKind: "evidence" }
+      : { evidence: metadata },
     nextAction: options.apply
-      ? "Evidence is recorded."
-      : "Run evidence add --apply to record the Evidence.",
+      ? `${label} is recorded.`
+      : `Run ${command} --apply to record the ${label}.`,
   });
 }
 

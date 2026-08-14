@@ -1,9 +1,11 @@
 # Contributing
 
-CatPaw 3.0 is a Hybrid Runtime: agents make contextual decisions, executable
-tools record and verify deterministic state, and users authorize writes and
-external effects. Contributions should keep those boundaries visible and the
-runtime small.
+CatPaw 3.4 is a Hybrid Runtime. Users operate through `Work`, `Proof`, and
+`Approval`; the visible flow is `Understand -> Execute -> Check -> Finish`.
+Primary agents make contextual decisions, executable tools record and verify
+deterministic state, and users authorize new authority or accepted risk.
+Contributions should keep that public model compact while preserving exact
+internal contracts.
 
 ## Source Layout
 
@@ -45,9 +47,13 @@ source verification.
 
 ## Runtime Change Checklist
 
-- Keep the lifecycle `Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect`.
-- Preserve Direct, Tracked, and Gated semantics unless an accepted ADR changes
-  them.
+- Keep `Work`, `Proof`, and `Approval` as the complete user-facing model and
+  `Understand -> Execute -> Check -> Finish` as its progress language.
+- Preserve the internal schema 2 lifecycle and risk metadata unless an accepted
+  ADR changes their machine contract; do not make modes or stage values a user
+  prerequisite.
+- Keep Agent collaboration intent-based (`explore`, `build`, `check`) and keep
+  independent `check` Proof bound to a different actor from the builder.
 - Treat `src/runtime/schemas/board-v2.json` as the board metadata contract.
 - Keep board mutations dry-run by default and write only with explicit
   `--apply`.
@@ -64,7 +70,9 @@ policy, guidance, schema, or executable code. Significant design changes need
 a compact ADR with Status, Context, Decision, Consequences, and References.
 
 Historical ADRs remain decision records even when later vocabulary supersedes
-part of their operational description.
+part of their operational description. Do not modernize historical bodies by
+mechanical replacement. Update Status/current-interpretation routing when a
+later decision changes how an otherwise accepted ADR must be read.
 
 ## Submission Expectations
 

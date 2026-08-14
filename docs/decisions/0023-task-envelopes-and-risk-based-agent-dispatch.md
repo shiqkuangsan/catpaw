@@ -1,8 +1,19 @@
 # ADR-0023: Task Envelopes And Risk-based Agent Dispatch
 
-Status: Accepted; orchestration ownership and Role Catalog amended by ADR-0025
+Status: Accepted; orchestration ownership amended by ADR-0025, and capability/Role vocabulary superseded by ADR-0026
 
 Date: 2026-08-13
+
+## Current Interpretation
+
+The bounded delegation fields, useful-separation test, one-writer isolation,
+and distinct-actor independent check remain current internal contracts. The
+temporary capabilities and later Role Catalog are historical vocabulary under
+ADR-0026:
+investigation/design now use `explore`, implementation/integration use `build`,
+and review/verification use `check`. The primary agent owns contextual team
+formation and final adoption. Modes, Task Envelope fields, Lens selection, and
+typed Evidence remain internal mechanics behind Work / Proof / Approval.
 
 ## Context
 
@@ -65,7 +76,7 @@ external Agents never inherit Git integration authority. A required Reviewer or
 Verifier must be non-primary and cannot be the same Builder checking its own
 slice.
 
-## Amendment By ADR-0025
+## Historical Amendment By ADR-0025
 
 The fixed Primary-owned dispatch language above is retained as decision history.
 The current contract gives the Agent Executor contextual ownership of Agent,
@@ -74,6 +85,13 @@ and final adoption. Temporary capabilities are now published as a composable
 Role Catalog. Scheduling rules are advisory; the hard concurrency boundary is
 no concurrent write to one shared mutable surface. See ADR-0025 and the current
 Agent Orchestration guidance.
+
+## Amendment By ADR-0026
+
+ADR-0026 replaced the Role Catalog and fixed capability labels with exactly
+three composable task intents. The Envelope remains an internal bounded grant;
+an intent never becomes identity, topology, or Approval. Current discovery uses
+`agent intents` and `agent intent --intent <id>`.
 
 ## Consequences
 
@@ -96,3 +114,4 @@ Agent Orchestration guidance.
 - [ADR-0019](0019-catpaw-3-hybrid-runtime.md)
 - [ADR-0022](0022-tiered-local-git-authority-and-engineering-methods.md)
 - [ADR-0025](0025-executor-owned-advisory-orchestration.md)
+- [ADR-0026](0026-user-facing-concept-consolidation.md)

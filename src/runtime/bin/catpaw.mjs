@@ -46,7 +46,7 @@ async function main(argv = process.argv.slice(2)) {
         ? await runWorkCommand(options)
         : options.group === "milestone"
           ? await runMilestoneCommand(options)
-          : options.group === "evidence"
+          : options.group === "proof" || options.group === "evidence"
             ? await runEvidenceCommand(options)
             : await runAgentCommand(options);
     process.stdout.write(

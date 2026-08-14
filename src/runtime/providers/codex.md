@@ -3,7 +3,7 @@
 Codex (`cx`) 是 Claude Code host 的默认 reciprocal Agent。一次性 review/debug
 使用 read-only sandbox，关闭 approval escalation，并忽略 `config.toml` 与
 execpolicy `.rules`；不要把它描述成关闭全部用户/项目 instructions。`$PROMPT`
-使用完整 [Task Envelope](../guidance/agent-dispatch.md)。
+使用完整的 [bounded delegation facts](../guidance/agent-dispatch.md)。
 
 ## Smoke Test
 
@@ -52,7 +52,7 @@ catpaw agent close  --agent cx --label contract-review --project /abs/project
 
 Interactive Codex 当前没有 `exec --ignore-user-config` 的完全等价启动 flag；
 CatPaw observable profile 因而只保证 `--sandbox read-only`、
-`--ask-for-approval never` 与 captured output。Prompt 仍须自包含，Agent Executor
+`--ask-for-approval never` 与 captured output。Prompt 仍须自包含，primary agent
 必须把 customization 影响视为潜在噪音。One-shot 额外隔离 config 与 execpolicy
 `.rules`，但同样不承诺忽略 `AGENTS.md`；需要更强隔离时使用受控输入副本或外部
 filesystem sandbox。
@@ -60,12 +60,10 @@ filesystem sandbox。
 `send` 不做 blocking wait。Changed/stable、pane output 与 waiting text 都是事实
 观察；stable is not completion。
 
-Codex output does not authorize Git or external actions。Bounded local Git
-authority comes only from the current authorized task, runtime policy, and exact
-Task Envelope. The Agent Executor decides final adoption and assigns one
-accountable integration owner per mutable surface. The current-tool Builder
-local-commit exception does not apply to this external
-read-only profile；Codex as reciprocal external Agent must not stage or commit。
+Codex output does not grant Approval for Git or external actions. The primary
+agent decides candidate acceptance and keeps one accountable writer per mutable
+surface. Writable build/local-commit grants do not apply to this reciprocal
+read-only profile; Codex must not stage or commit.
 Push、PR、deploy、任何
 protected/base branch update、history-changing/destructive actions、secret access
-与 permission expansion 仍需 explicit user authorization。
+与 permission expansion 仍需 explicit user Approval。

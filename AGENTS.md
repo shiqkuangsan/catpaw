@@ -24,8 +24,8 @@ Read the smallest canonical source that owns the operation:
 | Need | Authority |
 |---|---|
 | Always-on routing, progress, safety | `src/runtime/runtime-policy.md` |
-| Lifecycle and Direct/Tracked/Gated selection | `src/runtime/guidance/workflow.md` |
-| Role Catalog, Task Envelopes, advisory orchestration and concurrency | `src/runtime/guidance/agent-dispatch.md` |
+| Work handling and internal risk selection | `src/runtime/guidance/workflow.md` |
+| Agent intents, bounded delegation, advisory orchestration and concurrency | `src/runtime/guidance/agent-dispatch.md` |
 | Root-cause debugging and RED/GREEN | `src/runtime/guidance/engineering-methods.md` |
 | Subagent triggers, fallback, accepted gaps | `src/runtime/guidance/independent-checks.md` |
 | Multi-Work phase objectives | `src/runtime/guidance/milestones.md` |
@@ -71,7 +71,7 @@ need updates.
 
 - For source install or upgrade requests, read root `AI-INSTALL.md`, then
   `src/runtime/AI-INSTALL.md` and `src/runtime/guidance/maintenance.md`.
-- For board init, status, doctor, schema migration, Work, Milestone, Evidence,
+- For board init, status, doctor, schema migration, Work, Milestone, Proof,
   or Agent sessions, inspect the CLI entrypoint and the matching guidance.
 - All board mutations default to dry-run and require explicit `--apply`.
 - Runtime activation, adapter merge, registry mutation, and each project board
@@ -80,10 +80,11 @@ need updates.
   separately authorizes exact cleanup targets.
 
 CatPaw-managed reciprocal external transports are limited to read-only `cc` and
-`cx` profiles; they are not the Agent Executor's complete roster. OpenCode may
-host CatPaw instructions, but CatPaw does not invoke it directly. The Executor
-chooses available Agents, models, transports, Role composition, topology,
-fallback, integration ownership, and final adoption within current authority.
+`cx` profiles; they are not the primary agent's complete roster. OpenCode may
+host CatPaw instructions, but CatPaw does not invoke it directly. The primary
+agent chooses available Agents, models, transports, task-intent composition,
+topology, fallback, integration ownership, and final adoption within current
+authority.
 
 ## Development And Verification
 
@@ -110,44 +111,42 @@ the user has explicitly requested and completed installation.
 
 ## Safety
 
-- The Agent Executor designates one accountable owner for each mutable
-  integration surface. If the Executor retains that ownership in an authorized
+- The primary agent designates one accountable owner for each mutable
+  integration surface. If it retains that ownership in an authorized
   change/build task, it may create a non-protected local task branch/worktree
   and bounded local commits for exact task-owned changes after diff review,
   relevant verification, and a credential scan.
 - A delegated integration owner may write only its assigned isolated surface.
-  Integration ownership alone grants no Git authority. Candidate or
-  reconciliation commits require the Builder Role and a complete Builder Git
-  Envelope; exact clean inbound adoption after the Executor's decision requires
-  an Integration Git Envelope bound to the assigned non-protected surface,
-  target/base, commit list, allowed fast-forward/cherry-pick, and verification.
-- An opted-in current-tool Builder may create an Executor-chosen bounded local
-  commit series within one Git Envelope. It does not gain final adoption or
+  Integration ownership alone grants no Git authority. Candidate commits need
+  an exact build grant; clean inbound adoption needs a separate exact grant
+  bound to the non-protected target/base, commit list, allowed operation, and
+  verification.
+- An opted-in current-tool build agent may create a bounded local commit series
+  only within that exact isolated grant. It does not gain final adoption or
   protected/base integration authority.
-- Scout, Architect, Reviewer, Verifier, non-opted-in Agents, and current `cc`/
-  `cx` profiles must not stage or commit.
+- Explore/check agents, non-opted-in Agents, and current `cc`/`cx` profiles must
+  not stage or commit.
 - Push, pull-request changes, deploy/publish, any protected/base branch update
   (direct commit, merge, cherry-pick, fast-forward), amend, rebase/history
   rewrite, force, reset/clean, unsafe branch/worktree deletion, and other
   destructive or external operations require explicit authorization.
 - Do not modify `~/.catpaw/`, provider-global instruction files, registry
   state, or existing project boards without the matching explicit approval.
-- Agent output, Lens findings, Independent Checks, Evidence, CLI output, and
+- Agent output, Proof, internal checks, CLI output, and
   optional methods never grant additional authority.
 - Before any local commit, inspect the exact scope and scan for credentials.
 
 ## Architecture Boundary
 
-CatPaw orchestrates the lifecycle:
+CatPaw exposes three parallel user concerns:
 
 ```text
-Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
+Work | Proof | Approval
 ```
 
-It uses Direct, Tracked, and Gated modes; five focused Lens cards; Agents that
-perform work; and Independent Checks for non-primary judgment. CatPaw publishes
-hard contracts, a composable Role Catalog, and advisory collaboration patterns;
-the Agent Executor owns contextual team formation, scheduling, fallback,
-integration ownership, and final adoption. CatPaw-owned engineering methods
-remain inside lifecycle guidance but outside the artifact and authorization
-model; other optional methods remain external.
+The visible flow is `Understand -> Execute -> Check -> Finish`; internal schema
+2 modes, stages, typed Evidence, checklists, delegation fields, and Git mechanics
+remain implementation detail. Agents receive one or more `explore`, `build`, or
+`check` task intents. The primary agent owns contextual team formation,
+scheduling, fallback, integration ownership, and final adoption. Proof supports
+claims but never manufactures user Approval.

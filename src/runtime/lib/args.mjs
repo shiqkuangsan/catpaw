@@ -15,10 +15,11 @@ const COMMANDS = Object.freeze({
   board: Object.freeze(["init", "status", "doctor", "migrate"]),
   work: Object.freeze(["start", "close"]),
   milestone: Object.freeze(["start", "add", "close"]),
+  proof: Object.freeze(["add"]),
   evidence: Object.freeze(["add"]),
   agent: Object.freeze([
-    "roles",
-    "role",
+    "intents",
+    "intent",
     "check",
     "open",
     "send",
@@ -40,7 +41,7 @@ const VALUE_OPTIONS = new Set([
   "--type",
   "--stage",
   "--agent",
-  "--role",
+  "--intent",
   "--lens",
   "--body",
   "--milestone",
@@ -58,6 +59,7 @@ const FLAG_OPTIONS = new Set([
   "--apply",
   "--fix",
   "--independent",
+  "--high-risk",
 ]);
 
 const EVIDENCE_DEFAULT_STAGE = Object.freeze({
@@ -243,6 +245,7 @@ function parseWorkOptions(command, parsed) {
       "--id",
       "--title",
       "--mode",
+      "--high-risk",
       "--date",
     ]),
     `work ${command}`,
@@ -250,7 +253,10 @@ function parseWorkOptions(command, parsed) {
   requireOption(values, "id");
   requireOption(values, "title");
 
-  const mode = values.mode ?? "tracked";
+  if (flags["high-risk"] && values.mode !== undefined) {
+    throw new CliUsageError("--high-risk and --mode are mutually exclusive");
+  }
+  const mode = flags["high-risk"] ? "gated" : values.mode ?? "tracked";
   const date = values.date ?? localDate();
   const mapping = loadBoardSchema().constraints.workTypeByIdPrefix.mapping;
   const type = mapping[values.id.match(/^([A-Z]+)-/)?.[1]] ?? "feature";
@@ -422,7 +428,7 @@ function parseMilestoneOptions(command, parsed) {
   };
 }
 
-function parseEvidenceOptions(command, parsed) {
+function parseProofOptions(command, parsed, group) {
   const { values, flags, seen } = parsed;
   rejectIrrelevantOptions(
     seen,
@@ -442,7 +448,7 @@ function parseEvidenceOptions(command, parsed) {
       "--independent",
       "--body",
     ]),
-    `evidence ${command}`,
+    `${group} ${command}`,
   );
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
@@ -457,7 +463,8 @@ function parseEvidenceOptions(command, parsed) {
     throw new CliUsageError("--independent requires --agent");
   }
   if (flags.apply && (values.body?.trim() ?? "") === "") {
-    throw new CliUsageError("--body is required when --apply records Evidence");
+    const label = group === "proof" ? "Proof" : "Evidence";
+    throw new CliUsageError(`--body is required when --apply records ${label}`);
   }
 
   const date = values.date ?? localDate();
@@ -489,26 +496,26 @@ function parseEvidenceOptions(command, parsed) {
 
 function parseAgentOptions(command, parsed) {
   const { values, seen } = parsed;
-  if (command === "roles") {
+  if (command === "intents") {
     rejectIrrelevantOptions(
       seen,
       new Set(["--project", "--json"]),
-      "agent roles",
+      "agent intents",
     );
-    return { role: null };
+    return { intent: null };
   }
-  if (command === "role") {
+  if (command === "intent") {
     rejectIrrelevantOptions(
       seen,
-      new Set(["--project", "--json", "--role"]),
-      "agent role",
+      new Set(["--project", "--json", "--intent"]),
+      "agent intent",
     );
-    requireOption(values, "role");
-    const role = values.role.trim();
-    if (!/^[a-z][a-z0-9-]*$/.test(role)) {
-      throw new CliUsageError("--role must be a lowercase role id");
+    requireOption(values, "intent");
+    const intent = values.intent.trim();
+    if (!/^[a-z][a-z0-9-]*$/.test(intent)) {
+      throw new CliUsageError("--intent must be a lowercase intent id");
     }
-    return { role };
+    return { intent };
   }
   const common = ["--project", "--json", "--agent", "--host"];
   const allowed = new Set(
@@ -594,8 +601,8 @@ export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
       ? parseWorkOptions(command, parsed)
       : group === "milestone"
         ? parseMilestoneOptions(command, parsed)
-        : group === "evidence"
-          ? parseEvidenceOptions(command, parsed)
+        : group === "proof" || group === "evidence"
+          ? parseProofOptions(command, parsed, group)
           : parseAgentOptions(command, parsed);
 
   return {

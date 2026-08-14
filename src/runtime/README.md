@@ -1,34 +1,32 @@
 # CatPaw Runtime
 
-CatPaw 是 coding-agent 项目的 advisory orchestration runtime。它保留一条稳定
-lifecycle，按风险选择 Mode，把持久状态留在项目 Work Board，把机械一致性留给
-Node CLI，并向 Agent Executor 提供结构化 Role 与协作指导。
+CatPaw is a local-first runtime for reliable coding-agent Work:
 
 ```text
-Think -> Plan -> Build -> Review -> Test -> Ship -> Reflect
-
-Mode: Direct | Tracked | Gated
-Artifacts: Milestone | Work Item | Plan | Evidence
-Judgment: Lens | Agent | Independent Check
-Orchestration: Agent Executor | Role Catalog | Task Envelope
-Roles: Scout | Architect | Builder | Reviewer | Verifier | Integrator
+Work      outcome, progress, and Next
+Proof     checked facts and remaining gaps
+Approval  exact user authority or accepted risk
 ```
+
+The visible flow is `Understand -> Execute -> Check -> Finish`. Internal schema
+2 modes, stages, typed Evidence, checklists, delegation fields, and scoped Git
+rules preserve precision without becoming user prerequisites.
 
 ## Runtime Composition
 
 | Surface | Responsibility |
 |---|---|
-| [runtime-policy.md](runtime-policy.md) | always-on routing 与 safety card |
-| [catalog/](catalog/) | machine-readable Agent Role Catalog |
-| [guidance/](guidance/) | lifecycle、Agent orchestration、engineering methods、Milestone、Independent Check 与 maintenance |
-| [lenses/](lenses/) | 五个按需专业视角 |
-| [providers/](providers/) | cc/cx one-shot 与 observable session recipes |
-| [bin/](bin/), [lib/](lib/) | executable CLI、graph、patch、migration 与 session logic |
-| [schemas/](schemas/), [templates/](templates/) | schema 2 machine contract 与四类 artifact skeleton |
+| [runtime-policy.md](runtime-policy.md) | always-on Work / Proof / Approval routing and safety |
+| [catalog/](catalog/) | machine-readable `explore`, `build`, and `check` intent contracts |
+| [guidance/](guidance/) | internal Work handling, Agent collaboration, methods, independent Proof, Milestone, and maintenance |
+| [lenses/](lenses/) | internal professional checklists |
+| [providers/](providers/) | reciprocal cc/cx recipes and observable sessions |
+| [bin/](bin/), [lib/](lib/) | deterministic CLI, graph, patch, migration, catalog, and session logic |
+| [schemas/](schemas/), [templates/](templates/) | schema 2 storage contract and artifact skeletons |
 
-## Work Board
+## Project Memory
 
-Project-local `.catpaw/` 是 artifact board，不是 runtime 副本：
+Project-local `.catpaw/` is durable memory, not a runtime copy:
 
 ```text
 .catpaw/
@@ -40,41 +38,38 @@ Project-local `.catpaw/` 是 artifact board，不是 runtime 副本：
     └── topics/
 ```
 
-Evidence types：`research | review | test | provider | reflection`。
-
-Schema 1 migration 可能额外生成 `legacy/schema-1/`。它是带 checksum manifest 的
-只读迁移归档，不是第六类 artifact；schema 2 的 status、doctor 与 mutation 会忽略它。
-缺失 metadata 由 migration 从明确事实、canonical 结构、限定正文与 artifact graph
-自动推断；普通用户不需要补 YAML，所有原件仍保存在 archive 中。
+User-facing Work maps to Work Item and Plan storage. Proof facts map to typed
+Evidence (`research | review | test | provider | reflection`). Approval remains
+a user boundary, not an artifact. A schema 1 migration may preserve an isolated
+`legacy/schema-1/` checksum archive without changing the native graph.
 
 ## CLI
 
-所有 mutation 默认 dry-run，只有显式 `--apply` 才写 board：
+Preferred commands:
 
 ```text
 catpaw board init|status|doctor|migrate
-catpaw work start|close
+catpaw work start [--high-risk]|close
 catpaw milestone start|add|close
-catpaw evidence add
-catpaw agent roles|role
+catpaw proof add
+catpaw agent intents|intent
 catpaw agent check|open|send|status|read|close
 ```
 
-`agent roles` 与 `agent role --role <id>` 只读发现 responsibility contracts；
-CatPaw 不生成 mandatory team graph。Agent Executor 选择 Agent/model/transport、Role
-composition、数量、topology、fallback、integration owner 与 final adoption。
+Mutations default to dry-run and write only with `--apply`. `proof add` and the
+compatible `evidence add` share identical schema 2 storage logic. `--high-risk`
+maps to internal `mode: gated`; existing `--mode tracked|gated` remains accepted.
 
-`agent send` 非阻塞；`agent status` 只报告 open/closed、changed/stable 与明确的
-waiting text，不推断完成。
+Agent intent discovery is read-only. The primary agent chooses actors, models,
+transports, composition, topology, fallback, accountable writers, and final
+candidate acceptance. Observable session status never infers completion.
 
-文档中的 `catpaw` 是 executable entrypoint 简写。Source checkout 使用
-`src/runtime/bin/catpaw.mjs`；安装后使用 `~/.catpaw/bin/catpaw.mjs`。Runtime
-install 不修改 `PATH`，也不隐式创建 alias 或 symlink。
+`catpaw` abbreviates `src/runtime/bin/catpaw.mjs` in a source checkout and
+`~/.catpaw/bin/catpaw.mjs` after installation. CatPaw does not modify `PATH`.
 
 ## Install And Activation
 
-Installed runtime 位于 `~/.catpaw/`。Source/dist ready 不等于 installed runtime
-已 activation；安装、adapter 更新与每个 project board migration 都是独立、显式
-操作。见 [AI Install](AI-INSTALL.md) 与 [Maintenance](guidance/maintenance.md)。
-
-项目只接收 [thin adapter](snippets/project-adapter.md)，不得复制完整 runtime。
+Installed runtime lives at `~/.catpaw/`. Source/dist readiness does not activate
+it. Runtime installation, host adapter refresh, and each project board migration
+remain separate explicit actions. See [AI Install](AI-INSTALL.md) and
+[Maintenance](guidance/maintenance.md).

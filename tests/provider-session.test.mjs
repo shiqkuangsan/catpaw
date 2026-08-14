@@ -358,7 +358,7 @@ test("agent check reports local surface without claiming provider access", async
     "current-tool-subagent",
     "inline-with-explicit-gap",
   ]);
-  assert.equal(report.decisionOwner, "agent-executor");
+  assert.equal(report.decisionOwner, "primary-agent");
 
   const rendered = await runCli(["agent", "check", "--agent", "cc"], box);
   assert.equal(rendered.code, 0, rendered.stderr || rendered.stdout);
@@ -370,7 +370,7 @@ test("agent check reports local surface without claiming provider access", async
   );
   assert.doesNotMatch(rendered.stdout, /fallback:\s*none/i);
   assert.match(rendered.stdout, /Fallback options:/);
-  assert.match(rendered.stdout, /Decision owner: agent-executor/);
+  assert.match(rendered.stdout, /Decision owner: primary-agent/);
 
   const providerCalls = await readProviderCalls(box.providerCallsPath);
   assert.deepEqual(providerCalls, []);
@@ -662,7 +662,7 @@ test("capability gaps are reported without requiring tmux or another subscriptio
     "current-tool-subagent",
     "inline-with-explicit-gap",
   ]);
-  assert.equal(noTmuxReport.decisionOwner, "agent-executor");
+  assert.equal(noTmuxReport.decisionOwner, "primary-agent");
   const noTmuxOpen = await runCli([
     "agent",
     "open",
@@ -695,7 +695,7 @@ test("capability gaps are reported without requiring tmux or another subscriptio
     "current-tool-subagent",
     "inline-with-explicit-gap",
   ]);
-  assert.equal(noCliReport.decisionOwner, "agent-executor");
+  assert.equal(noCliReport.decisionOwner, "primary-agent");
   const noCliOpen = await runCli([
     "agent",
     "open",
@@ -735,7 +735,9 @@ test("provider recipes are self-contained, read-only, and authority-bounded", as
   ]);
   const combined = `${readme}\n${claude}\n${codex}`;
   assert.match(combined, /self-contained prompt/i);
-  assert.match(combined, /does not authorize[\s\S]*commit[\s\S]*push[\s\S]*deploy/i);
+  assert.match(readme, /neither output nor Proof grants Approval/i);
+  assert.match(combined, /must not stage or commit/i);
+  assert.match(combined, /Push[\s\S]*PR[\s\S]*deploy[\s\S]*explicit user Approval/i);
   assert.doesNotMatch(combined, /Gemini|Laosan|老三|gemini\s+-p/i);
   assert.match(claude, /printf '%s\\n' "\$PROMPT"[\s\S]*claude -p/);
   assert.match(claude, /--safe-mode/);
@@ -747,7 +749,7 @@ test("provider recipes are self-contained, read-only, and authority-bounded", as
   assert.match(codex, /没有承诺忽略 `AGENTS\.md`/i);
   assert.match(codex, /不等价于[\s\S]*--safe-mode/i);
   assert.match(combined, /stable[\s\S]*not completion/i);
-  assert.match(readme, /local surface/i);
+  assert.match(readme, /local work surface/i);
   assert.match(readme, /provider access[\s\S]*(?:unknown|unverified)/i);
   assert.match(
     readme,

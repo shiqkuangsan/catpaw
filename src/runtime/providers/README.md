@@ -1,43 +1,37 @@
 # CatPaw-managed Agent Transports
 
-CatPaw 内置管理的 reciprocal external transport adapters 有两个：
+CatPaw manages two reciprocal external read-only transports:
 
 | Key | Agent | Aliases |
 |---|---|---|
 | `cc` | Claude Code | `claude`, `claude-code` |
 | `cx` | Codex | `codex` |
 
-`老二` / `laoer` 根据当前 host 反向路由：Codex 中调用 `cc`，Claude Code
-中调用 `cx`。其它 coding tools 可以作为 CatPaw host，也可以由 Agent Executor
-通过 host 能力使用；它们不因此成为 CatPaw 内置管理的 callable transport。
-`cc`/`cx` 不是 Executor 可用 Agent 的完整 roster。
+`老二` / `laoer` routes to the other host: Codex calls `cc`; Claude Code calls
+`cx`. Other coding tools may host CatPaw or be available to the primary agent,
+but they are not CatPaw-managed callable transports. cc/cx is not the complete
+Agent roster.
 
 ## Invocation Choice
 
-何时委派、如何组合 Role、Task Envelope 与 topology 由 Agent Executor 决定；
-[Agent Orchestration](../guidance/agent-dispatch.md) 提供 catalog、patterns 与 hard
-contract。本文件只拥有 cc/cx transport、fallback surfaces、session observation 与
-transport-specific safety。当前 cc/cx profiles 是 read-only，可承载 Scout、Architect、
-Reviewer 或 Verifier；external Builder/Integrator write unavailable，不能用 prompt 把
-read-only recipe 升级成 write transport。
+The primary agent decides when to delegate, which `explore` or `check` method is
+useful, how to schedule it, and what fallback to use. Current cc/cx profiles are
+read-only: they can investigate, design, review, or verify, but cannot carry a
+writable `build` task. A prompt cannot upgrade a read-only transport.
 
-- current-tool subagent：host 当前可用的局部 work surface。
-- non-interactive cc/cx：一次性 ask、review、debug 或 smoke test surface。
-- observable Agent session：长时间、多轮、需要区分运行/等待输入/关闭的 surface。
+- current-tool Agent: host-provided local work surface;
+- non-interactive cc/cx: one-shot investigation, review, debug, or smoke test;
+- observable session: long-running or multi-round second opinion.
 
-这些是调度 options，不是固定优先级；Executor 可以基于 independence、context、cost、
-latency 与 enforcement 选择或跳过任一 surface。
+These are options, not a fixed priority. Independence, context, cost, latency,
+and enforcement determine the useful surface.
 
-先执行 `agent check`，但它只是无副作用的 local surface check：检查 binary
-presence 与 tmux surface，不启动 provider process。It does not invoke a model,
-validate CLI compatibility/authentication, or consume or validate a subscription。
-因此 executable 存在只表示 local surface available，provider access 始终报告为
-`unverified`。
-
-CLI 报告 ordered `fallbackOptions` 与 `decisionOwner: agent-executor`，供 Executor
-选择；兼容字段 `fallback` 在 3.4 仍保留为旧客户端可读的摘要。即使 local observable
-surface available，也不能输出 `fallback: none`。仍不满足 required check 时记录 gap，
-不要求用户额外安装或购买工具。
+Run `agent check` first. It checks only local binary and tmux availability; it
+does not invoke a model or validate authentication, compatibility, subscription,
+or provider access. Reports keep provider access `unverified`, list fallback
+options, and identify `primary-agent` as the decision owner. A missing provider
+does not require the user to install or purchase another tool; record a gap when
+required independent Proof remains unavailable.
 
 ## Observable CLI
 
@@ -50,63 +44,49 @@ catpaw agent read   --agent <cc|cx> --label <purpose> --project <path> --lines <
 catpaw agent close  --agent <cc|cx> --label <purpose> --project <path>
 ```
 
-Session key 由 Agent、绝对 project path 与 label 共同决定。`send` 只投递输入，
-立即返回；没有 blocking wait。session 使用 `remain-on-exit` 保留 provider
-进程终态；`status` 报告 open/failed/exited、provider exit code、输出
-changed/stable 和明确 waiting text。非零 provider exit 是进程失败并触发
-fallback；zero exit、空 stdout 或 pane 暂时不变仍不证明任务完成。Stable is an
-observation, not completion。
+The session key combines Agent, absolute project path, and label. `send` is
+non-blocking. Sessions retain process exit state; `status` reports open, failed,
+or exited, provider exit code, changed/stable output, and explicit waiting text.
+A zero exit, empty stdout, or stable pane does not prove completion.
 
 ## Transport Handoff
 
-Every Agent call carries the complete Task Envelope from
-[Agent Orchestration](../guidance/agent-dispatch.md)。Transport handoff 只补充：
+Each call receives the complete bounded delegation facts from
+[Agent Collaboration](../guidance/agent-dispatch.md), plus:
 
-- project/worktree 的绝对路径与 provider 可见 surface；
-- enforced read-only mechanism，或准确标记 `no-write requested + audited`；
-- session label、观察方式与 available fallback surfaces；
-- 前一轮 claim、Executor critique 与下一轮精确问题（多轮时）。
+- absolute project/worktree path and provider-visible surface;
+- enforced read-only mechanism or `no-write requested + audited`;
+- session label, observation path, and available fallback surfaces;
+- previous claim, primary-agent critique, and narrowed next question.
 
-不要依赖 Agent 的全局记忆、skills、上次会话或项目 customization 来补齐关键
-上下文。
+Do not rely on global Agent memory, skills, previous sessions, or provider
+customization for critical context.
 
 ## Sensitive State And Side Effects
 
-Prompt-only read-only 不是权限隔离。只有调用面具备预防性控制、能在约定 scope
-阻断 write/delete/rename 时，才称为 read-only；使用真实 sandbox、read-only
-mount/URI 或最小 tool allowlist。不要向 Agent 暴露 task scope 之外的 sensitive
-state，例如 coding-tool state DB、用户配置、凭据、生产数据或无关 workspace。
-需要这些事实时优先提供最小 export/snapshot；若环境不能阻断写入，不委派该敏感
-任务。
+Prompt-only read-only is not isolation. Enforced read-only must prevent
+write/delete/rename at the tool boundary through a sandbox, read-only mount or
+URI, or minimal allowlist. Do not expose unrelated coding-tool state, user
+configuration, credentials, production data, or workspaces. Provide a minimal
+export or snapshot when needed.
 
-普通 project/worktree 调用若不能阻断写入，只能标为
-`no-write requested + audited`，不能冒充 read-only 或满足 read-only gate。每次
-enforced read-only 调用前记录 protected scope，返回后执行 bounded side-effect
-audit，检查约定范围内的 write/delete/rename 和 worktree diff。发现副作用时将
-delivery 标为 failed，即使输出内容本身可用。
+If the environment cannot prevent writes, label the call
+`no-write requested + audited`; it cannot satisfy an enforced read-only gate.
+Record the protected scope and audit relevant writes, deletes, renames, and
+worktree diff afterward. Unexpected mutation makes the output failed even when
+its content is useful.
 
-## Evidence And Authority
+## Proof And Approval
 
-Agent output 需要由 Agent Executor 核实并使用统一分类：
+The primary agent reads and verifies output before marking a candidate accepted,
+rejected, or superseded. Agent output is not Proof merely because the process
+exited, and neither output nor Proof grants Approval.
 
-```text
-adoption: accepted | rejected | superseded
-```
+Current cc/cx profiles must not stage or commit. Push, PR, deploy, protected/base
+updates, history-changing or destructive actions, external effects, secret
+access, and permission expansion still require explicit user Approval.
 
-判断尚未完成时标为 review pending，并省略 `adoption`。
-未决 conflict 写入 finding 或待决事项，不增加第四种 adoption value。
-Agent output does not authorize Git or external actions。Bounded local Git authority
-只来自当前 authorized task、runtime policy 与 exact Task Envelope；Agent Executor
-决定 final adoption，指定的 integration owner 负责 clean integration handoff。
-Agent Orchestration 允许 exact opt-in 的 current-tool Builder 在 exclusive worktree
-创建 bounded local commit series，但当前 cc/cx external profiles 是
-read-only，must not stage or commit；它们只交付 patch、worktree changes 或 evidence。
-Push、PR、deploy、对 protected/base
-branch 的任何 update/integration、history-changing/destructive operations、external
-side effects、secret access 或 permission expansion 仍需 explicit user authorization。
-Evidence、session state 与 Independent Check 也不能扩大授权。
-
-Agent recipes：
+Recipes:
 
 - [Claude Code](claude.md)
 - [Codex](codex.md)

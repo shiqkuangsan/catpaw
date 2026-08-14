@@ -2,6 +2,16 @@
 
 Status: Accepted; implementation/provider scope amended by ADR-0019 and authority by ADR-0022
 
+## Current Interpretation
+
+ADR-0019 retained observable long-running second opinions but narrowed
+CatPaw-managed reciprocal transports to `cc` and `cx`; Gemini/OpenCode aliases
+and `provider-session.sh` below are historical. Current operations live in
+[`providers/README.md`](../../src/runtime/providers/README.md) and the `agent
+open|send|status|read|close` CLI. ADR-0022 and later authority decisions keep
+these profiles read-only. Observable process/session facts may contribute to
+Proof but never establish completion or Approval by themselves.
+
 ## Context
 
 CatPaw provider orchestration originally focused on non-interactive CLI calls

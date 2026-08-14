@@ -1,36 +1,45 @@
 # Changelog
 
+Entries describe the runtime and vocabulary shipped by each release at that
+time. Older Role names, commands, paths, or workflow terms are historical and
+must not be used as current operating guidance. Current behavior is owned by
+[runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
+CLI; the newest release entry summarizes their versioned change.
+
 ## 3.4.0 - 2026-08-13
 
-- Make the Agent Executor the contextual owner of Agent/model/transport, Role
-  composition, count, order/parallelism, fallback, integration-owner selection,
-  and final adoption decisions.
-- Add a machine-readable six-role catalog for Scout, Architect, Builder,
-  Reviewer, Verifier, and Integrator, plus read-only `agent roles` and
-  `agent role --role <id>` discovery.
-- Replace minimum-call, fixed stage-role, serial-default, and provider fallback
-  decisions with advisory scheduling signals and collaboration patterns,
-  including competing proposals, isolated build slices, tournaments, reciprocal
-  critique, and isolated fan-in.
-- Keep no concurrent write to one shared mutable surface, required non-primary
-  checks, Evidence semantics, authorization ceilings, and explicit integration
-  accountability as hard runtime contracts.
-- Let an exact-opt-in current-tool Builder create an Executor-chosen bounded
-  local commit series in one validated isolated non-protected Git surface;
-  adoption, protected/base, remote, history-changing, destructive, secret, and
-  permission-expanding actions remain separately gated.
-- Report provider `fallbackOptions` and `decisionOwner: agent-executor` while
+- Consolidate the user-facing model to three parallel concerns: `Work`, `Proof`,
+  and `Approval`, with the visible flow `Understand -> Execute -> Check ->
+  Finish`.
+- Replace the unreleased six-Role catalog with three bounded Agent task intents:
+  `explore`, `build`, and `check`; review and verification remain different
+  check methods and required independent Proof still comes from another actor.
+- Add preferred `proof add`, `agent intents`, `agent intent --intent <id>`, and
+  `work start --high-risk` CLI language while retaining schema 2 Evidence,
+  `evidence add`, and `--mode tracked|gated` compatibility.
+- Keep modes, seven stage values, typed Evidence, delegation fields, scheduling,
+  and Git mechanics as internal runtime/storage contracts instead of concepts a
+  user must learn.
+- Preserve one writer per mutable surface, primary-agent candidate acceptance,
+  deterministic dry-run/apply behavior, required independent checks, and exact
+  scoped local Git grants.
+- Keep protected/base, remote, history-changing, destructive, secret,
+  permission-expanding, and external actions behind explicit user Approval.
+- Report provider `fallbackOptions` and `decisionOwner: primary-agent` while
   retaining the scalar `fallback` compatibility field.
-- Add ADR-0025 and executable Role Catalog/CLI/orchestration contracts without
+- Add ADR-0026 and executable intent/CLI/concept-budget contracts without
   changing board schema or persisting transient team/scheduler state.
+- Classify current authority, explanation, compatibility storage, and historical
+  records; route every amended accepted ADR through a leading Current
+  Interpretation section and reject retired surfaces in current-doc tests.
 
 Migration note (3.3.0 -> 3.4.0):
 
 ```text
 Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
 Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
-Required actions: build and verify source/dist, then activate the runtime separately to expose Role discovery and Executor-owned orchestration.
-Adapter impact: refresh managed global/project blocks separately if hosts should receive the concise Executor/Role/Git contract.
+Required actions: build and verify source/dist, then activate the runtime separately to expose the consolidated model and intent discovery.
+Adapter impact: refresh managed global/project blocks separately if hosts should receive the concise Work/Proof/Approval contract.
 Compatibility: provider reports retain scalar fallback in 3.4 while adding fallbackOptions and decisionOwner.
 Non-goals: no automatic scheduler, invocation ledger, activation, adapter/registry mutation, fleet refresh, push, PR, deploy, or destructive cleanup is implied.
 Rollback: retain the verified 3.3.0 runtime and adapter backups until strict 3.4.0 activation and host smoke checks succeed.
