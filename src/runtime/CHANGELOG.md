@@ -6,6 +6,34 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 3.4.1 - 2026-08-16
+
+- Add a trigger-based Understand method for Work with multiple concerns,
+  cross-system boundaries, unclear containment, or material dependencies.
+- Use one shallow scope tree for containment, separate dependency edges for
+  sequencing/ownership/parallelism/risk, and a first thin end-to-end delivery
+  slice with acceptance and required Proof. Blocking dependencies must be
+  satisfied or have an authorized executable resolution with an accountable
+  owner before Execute.
+- Keep `Confirmed | Proposed | Open` as local decision annotations only; they do
+  not become Work status, Proof, Approval, or schema metadata.
+- Keep simple and Direct Work lightweight. Durable structure reuses the existing
+  Plan, tree leaves do not automatically become Work, and multiple independently
+  verifiable outcomes may still use an optional Milestone.
+- Add ADR-0028 and executable guidance/concept-budget contracts without adding
+  an artifact, schema field, CLI surface, or mandatory ceremony.
+
+Migration note (3.4.0 -> 3.4.1):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately to expose the structured Understand method.
+Adapter impact: none; existing compact adapters already route Understand through the installed workflow authority.
+Non-goals: no new Tree/Map artifact, status enum, CLI command, automatic Work generation, activation, adapter/registry mutation, push, PR, deploy, or destructive cleanup is implied.
+Rollback: retain the verified 3.4.0 runtime until strict 3.4.1 activation succeeds.
+```
+
 ## 3.4.0 - 2026-08-14
 
 - Consolidate the user-facing model to three parallel concerns: `Work`, `Proof`,

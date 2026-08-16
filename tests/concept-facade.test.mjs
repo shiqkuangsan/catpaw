@@ -199,7 +199,7 @@ test("help and version make the preferred CLI discoverable", async (t) => {
   assert.equal(work.code, 0, work.stderr);
   assert.match(work.stdout, /--phase understand\|execute\|check\|finish/);
   assert.equal(version.code, 0, version.stderr);
-  assert.match(version.stdout, /^catpaw 3\.4\.0 \(board schema 2\)\n$/);
+  assert.match(version.stdout, /^catpaw 3\.4\.1 \(board schema 2\)\n$/);
 });
 
 test("status and Work commands expose Phase, Proof, and Next without schema leakage", async (t) => {
@@ -269,7 +269,7 @@ test("status and Work commands expose Phase, Proof, and Next without schema leak
 
   const status = await runCli(["status", "--project", root], root);
   assert.equal(status.code, 0, status.stderr);
-  assert.match(status.stdout, /CatPaw 3\.4\.0/);
+  assert.match(status.stdout, /CatPaw 3\.4\.1/);
   assert.match(status.stdout, /Phase: Execute \| Risk: Normal/);
   assert.match(status.stdout, /Next: Run the focused regression suite/);
   assert.doesNotMatch(status.stdout, /Schema:|Mode:|Evidence:/);

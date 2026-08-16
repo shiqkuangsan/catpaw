@@ -73,6 +73,29 @@ test("workflow maps the visible flow to compatible internal modes and stages", a
   assert.match(text, /push[\s\S]*PR[\s\S]*explicit[\s\S]*Approval/i);
 });
 
+test("Understand may structure complex Work without adding an artifact or status model", async () => {
+  const [workflow, plan, milestones] = await Promise.all([
+    runtimeText("guidance/workflow.md"),
+    runtimeText("templates/plan.md"),
+    runtimeText("guidance/milestones.md"),
+  ]);
+  assert.match(workflow, /^### Structure Complex Work When Needed$/m);
+  assert.match(workflow, /multiple concerns or systems[\s\S]*Simple Work does not need/i);
+  assert.match(workflow, /shallow scope tree[\s\S]*containment only[\s\S]*not a task hierarchy/i);
+  assert.match(workflow, /dependency edges separately[\s\S]*sequencing[\s\S]*ownership[\s\S]*parallelism[\s\S]*risk/i);
+  assert.match(workflow, /Confirmed[\s\S]*Proposed[\s\S]*Open/);
+  assert.match(workflow, /local discussion notes[\s\S]*not Work status[\s\S]*Proof[\s\S]*Approval[\s\S]*schema fields/i);
+  assert.match(workflow, /first thin end-to-end delivery slice[\s\S]*acceptance[\s\S]*required Proof/i);
+  assert.match(workflow, /every blocking dependency[\s\S]*satisfied[\s\S]*authorized executable resolution[\s\S]*accountable owner/i);
+  assert.match(workflow, /no\s+blocking `Open`[\s\S]*Non-blocking `Open`[\s\S]*deferred/i);
+  assert.match(workflow, /Direct Work[\s\S]*conversation[\s\S]*existing Plan/i);
+  assert.match(workflow, /Do not create a Tree\/Map artifact[\s\S]*independently[\s\S]*verifiable outcome/i);
+  assert.match(workflow, /optional Milestone/i);
+  assert.match(plan, /structurally complex Work[\s\S]*scope tree[\s\S]*dependency edges[\s\S]*decision annotations[\s\S]*end-to-end slice/i);
+  assert.match(milestones, /不是用户必须学习的第四个核心概念/);
+  assert.doesNotMatch(workflow, /^## (?:Tree|Map|Decision Ledger)$/m);
+});
+
 test("Agent collaboration defines exactly three composable intents", async () => {
   const text = await runtimeText("guidance/agent-dispatch.md");
   assert.match(text, /^# Agent Collaboration$/m);
@@ -175,6 +198,7 @@ test("primary public docs stay within the concept budget", async () => {
     assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
     assert.match(text, /Understand -> Execute -> Check -> Finish/);
     assert.match(text, /explore[\s\S]*build[\s\S]*check/i);
+    assert.match(text, /(?:optional method|可选方法|trigger-based method)[\s\S]*not[\s\S]*(?:artifact|user concept)|可选方法[\s\S]*不新增 artifact 或用户概念/i);
     assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
   }
 });

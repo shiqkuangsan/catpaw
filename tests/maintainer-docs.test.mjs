@@ -25,6 +25,8 @@ const DOCS = [
   "docs/decisions/0024-bounded-builder-slice-commits.md",
   "docs/decisions/0025-executor-owned-advisory-orchestration.md",
   "docs/decisions/0026-user-facing-concept-consolidation.md",
+  "docs/decisions/0027-layered-cli-facade.md",
+  "docs/decisions/0028-structured-understand-without-new-concepts.md",
 ];
 const CURRENT_NARRATIVE_DOCS = [
   "README.md",
@@ -158,7 +160,7 @@ function currentInterpretation(text, file) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.4\.0/);
+    assert.match(text, /3\.4\.1/);
     assert.match(text, /schema 2/i);
     assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
     assert.match(text, /Understand -> Execute -> Check -> Finish/);
@@ -201,7 +203,7 @@ test("every ADR declares lifecycle status and amended core ADRs lead with curren
   const decisions = (await readdir(decisionDir))
     .filter((file) => /^\d{4}-.+\.md$/.test(file))
     .sort();
-  assert.equal(decisions.length, 27);
+  assert.equal(decisions.length, 28);
 
   for (const file of decisions) {
     const text = await readFile(path.join(decisionDir, file), "utf8");
@@ -346,6 +348,26 @@ test("ADR-0027 layers daily, contract, and advanced CLI surfaces", async () => {
   assert.match(text, /advanced:[\s\S]*board \| transport/i);
   assert.match(text, /Approval gets no command or artifact/i);
   assert.match(text, /schema-shaped JSON[\s\S]*compatibility/i);
+});
+
+test("ADR-0028 structures complex Understand work without new concepts", async () => {
+  const text = await readFile(
+    path.join(
+      REPO,
+      "docs/decisions/0028-structured-understand-without-new-concepts.md",
+    ),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0028:/m);
+  assert.match(text, /^Status: Accepted$/m);
+  assert.match(text, /shallow scope tree[\s\S]*containment/i);
+  assert.match(text, /dependency edges[\s\S]*sequencing[\s\S]*ownership[\s\S]*parallelism[\s\S]*risk/i);
+  assert.match(text, /Confirmed \| Proposed \| Open/);
+  assert.match(text, /not Work[\s\S]*status[\s\S]*Proof[\s\S]*Approval[\s\S]*schema metadata/i);
+  assert.match(text, /first thin end-to-end slice[\s\S]*acceptance[\s\S]*required Proof/i);
+  assert.match(text, /every blocking dependency[\s\S]*satisfied[\s\S]*authorized executable resolution[\s\S]*accountable owner/i);
+  assert.match(text, /existing Plan[\s\S]*independently verifiable outcome[\s\S]*Milestone/i);
+  assert.match(text, /No Tree\/Map artifact[\s\S]*schema field[\s\S]*CLI command/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {

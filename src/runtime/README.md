@@ -12,6 +12,11 @@ The visible flow is `Understand -> Execute -> Check -> Finish`. Internal schema
 2 modes, stages, typed Evidence, checklists, delegation fields, and scoped Git
 rules preserve precision without becoming user prerequisites.
 
+Structurally complex Work may use a shallow containment tree, separate material
+dependency edges, local `Confirmed | Proposed | Open` decision notes, and a
+first end-to-end slice during Understand. This trigger-based method persists in
+the existing Plan only when useful; it adds no artifact, schema, or CLI surface.
+
 ## Runtime Composition
 
 | Surface | Responsibility |

@@ -77,6 +77,38 @@ debugging and RED/GREEN contracts are in [Engineering Methods](engineering-metho
 - Durable Work records its acceptance, verification entrypoints, dependencies,
   and failure handling in its internal Plan.
 
+### Structure Complex Work When Needed
+
+Use a structured pass only when Work spans multiple concerns or systems, has
+unclear containment or cross-branch dependencies, or the user wants to clarify
+the shape before execution. Simple Work does not need this method.
+
+- Start from the user outcome and build one shallow scope tree, normally two or
+  three levels. The tree expresses containment only; it is not a task hierarchy.
+- Record dependency edges separately and only when they change sequencing,
+  ownership, safe parallelism, or risk. A tree must not pretend to represent a
+  dependency graph.
+- Annotate material local statements or decision points as `Confirmed`,
+  `Proposed`, or `Open`.
+  `Confirmed` requires an explicit user decision or verified fact; these labels
+  are local discussion notes, not Work status, Proof, Approval, or schema fields.
+- Select the first thin end-to-end delivery slice and give it acceptance plus
+  required Proof. Prefer a user-visible path through the necessary layers over
+  completing every infrastructure layer first.
+
+Execution is ready when outcome and non-goals are clear, material dependencies
+are visible, every blocking dependency of the first slice is satisfied or has
+an authorized executable resolution with an accountable owner, the slice has no
+blocking `Open`, acceptance and Proof are defined, and future Approval boundaries
+are named. Otherwise stay in Understand. Non-blocking `Open` items may be
+explicitly deferred; Understand does not require total certainty.
+
+Direct Work keeps this structure in the conversation. Durable Work persists
+only the useful parts in the existing Plan, normally under Approach, Contracts,
+Steps, Verification, Risks, or Notes. Do not create a Tree/Map artifact or a
+second plan. A tree leaf becomes separate Work only when it has an independently
+verifiable outcome; several such Work items may use an optional Milestone.
+
 ## Execute
 
 - Work along existing ownership boundaries and keep changes bounded.
