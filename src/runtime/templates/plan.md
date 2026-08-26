@@ -10,8 +10,9 @@ Work Item: [{{WORK_ID}}]({{WORK_PATH}})
 ## Approach
 
 Describe the implementation approach. For structurally complex Work, keep any
-shallow scope tree, material dependency edges, local decision annotations, and
-first end-to-end slice here; omit them for simple Work.
+shallow scope tree, material dependency edges, local decision annotations,
+current blocking decision frontier, and first end-to-end slice here; omit them
+for simple Work.
 
 ## Contracts / Invariants
 

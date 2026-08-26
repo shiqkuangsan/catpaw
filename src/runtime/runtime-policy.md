@@ -123,24 +123,22 @@ its provenance, diff or findings, verification, conflicts, and remaining gaps.
 
 ## Scoped Git And Approval
 
-Within an authorized change/build task, the primary agent may inspect Git,
-create or switch to a non-protected local task branch, create an isolated
-worktree, stage only exact task-owned changes, and create bounded local commits
-after exact diff review, relevant verification, and credential scanning. These
-actions are optional; answer-only, review, or diagnosis does not imply a commit.
+Within authorized change/build Work, the primary agent may use a non-protected
+local task branch or isolated worktree and create bounded local commits for exact
+task-owned changes after diff review, relevant verification, and credential
+scanning. Answer-only, review, or diagnosis does not imply a commit.
 
 A delegated `build` Agent may write only an assigned isolated surface. Local
 commits require an explicit grant bound to the absolute exclusive worktree,
 dedicated non-protected branch/base, clean baseline, exact scope, allowed Git
-actions,
-verification, diff review, credential scan, and stop conditions. Without that
-grant it must not stage or commit.
+actions, verification, diff review, credential scan, and stop conditions.
+Without that grant it must not stage or commit.
 
 After the primary agent accepts an exact candidate, an accountable writer may
-introduce only the named commits into an assigned non-protected integration
-surface under an explicit target/base/commit/operation grant. Conflict, base
-drift, unexpected changes, reconciliation edits, or failed verification stops
-the operation. A reconciliation edit requires a new bounded build grant.
+introduce only the named commits into an assigned non-protected surface under
+the exact target/base/commit/operation grant. Conflict, drift, unexpected change,
+or failed verification stops the operation.
+A reconciliation edit requires a new bounded build grant.
 
 `explore` and `check` Agents, non-opted-in Agents, and current `cc`/`cx` profiles
 must not stage or commit. No Agent output, intent, Proof, CLI result, hook, or
@@ -158,8 +156,8 @@ further narrow this authority.
 | Need | Canonical owner |
 |---|---|
 | Work handling, risk, verification, progress | [Work Handling](guidance/workflow.md) |
-| Agent intents, delegation, concurrency, candidate acceptance | [Agent Collaboration](guidance/agent-dispatch.md) |
-| debugging and RED/GREEN | [Engineering Methods](guidance/engineering-methods.md) |
+| Agent intents, delegation, concurrency, context transitions, candidate acceptance | [Agent Collaboration](guidance/agent-dispatch.md) |
+| debugging, RED/GREEN, review, prototype | [Engineering Methods](guidance/engineering-methods.md) |
 | independent Proof, fallback, read-only checks | [Independent Proof](guidance/independent-checks.md) |
 | multi-Work phase orchestration | [Milestones](guidance/milestones.md) |
 | runtime, adapter, registry, migration maintenance | [Maintenance](guidance/maintenance.md) |

@@ -85,13 +85,16 @@ test("Understand may structure complex Work without adding an artifact or status
   assert.match(workflow, /dependency edges separately[\s\S]*sequencing[\s\S]*ownership[\s\S]*parallelism[\s\S]*risk/i);
   assert.match(workflow, /Confirmed[\s\S]*Proposed[\s\S]*Open/);
   assert.match(workflow, /local discussion notes[\s\S]*not Work status[\s\S]*Proof[\s\S]*Approval[\s\S]*schema fields/i);
+  assert.match(workflow, /Resolve every discoverable source-backed fact[\s\S]*Ask the user[\s\S]*material decisions[\s\S]*blocking facts[\s\S]*only they can provide/i);
+  assert.match(workflow, /current decision frontier[\s\S]*prerequisites are settled[\s\S]*unblock the first\s+slice/i);
+  assert.match(workflow, /Group independent blockers[\s\S]*defer contingent or non-blocking questions/i);
   assert.match(workflow, /first thin end-to-end delivery slice[\s\S]*acceptance[\s\S]*required Proof/i);
   assert.match(workflow, /every blocking dependency[\s\S]*satisfied[\s\S]*authorized executable resolution[\s\S]*accountable owner/i);
-  assert.match(workflow, /no\s+blocking `Open`[\s\S]*Non-blocking `Open`[\s\S]*deferred/i);
+  assert.match(workflow, /no\s+blocking `Open`[\s\S]*decision-frontier question[\s\S]*Non-blocking `Open`[\s\S]*deferred/i);
   assert.match(workflow, /Direct Work[\s\S]*conversation[\s\S]*existing Plan/i);
   assert.match(workflow, /Do not create a Tree\/Map artifact[\s\S]*independently[\s\S]*verifiable outcome/i);
   assert.match(workflow, /optional Milestone/i);
-  assert.match(plan, /structurally complex Work[\s\S]*scope tree[\s\S]*dependency edges[\s\S]*decision annotations[\s\S]*end-to-end slice/i);
+  assert.match(plan, /structurally complex Work[\s\S]*scope tree[\s\S]*dependency edges[\s\S]*decision annotations[\s\S]*decision frontier[\s\S]*end-to-end slice/i);
   assert.match(milestones, /不是用户必须学习的第四个核心概念/);
   assert.doesNotMatch(workflow, /^## (?:Tree|Map|Decision Ledger)$/m);
 });
@@ -134,6 +137,20 @@ test("bounded delegation preserves authority, isolation, and candidate boundarie
   assert.match(text, /No Agent[\s\S]*can accept its\s+own output/i);
 });
 
+test("phase context transitions preserve only the information the next action needs", async () => {
+  const [text, workflow] = await Promise.all([
+    runtimeText("guidance/agent-dispatch.md"),
+    runtimeText("guidance/workflow.md"),
+  ]);
+  assert.match(text, /^## Context Transitions$/m);
+  assert.match(text, /continue the current context[\s\S]*discard it/i);
+  assert.match(text, /portable handoff[\s\S]*canonical sources[\s\S]*exact `Next`[\s\S]*gaps/i);
+  assert.match(text, /delegate a bounded[\s\S]*compact only/i);
+  assert.match(text, /pointers for stable source material[\s\S]*copy only volatile state/i);
+  assert.match(text, /handoff is not a board artifact[\s\S]*Proof[\s\S]*Approval/i);
+  assert.match(workflow, /phase boundary[\s\S]*Context Transitions[\s\S]*agent-dispatch\.md#context-transitions/i);
+});
+
 test("scoped local Git permits bounded build commits without transferring adoption", async () => {
   const text = await runtimeText("guidance/agent-dispatch.md");
   assert.match(text, /current-tool `build` actor[\s\S]*bounded local commits/i);
@@ -147,14 +164,27 @@ test("scoped local Git permits bounded build commits without transferring adopti
 });
 
 test("engineering methods stay trigger-based and produce Proof without new user concepts", async () => {
-  const text = await runtimeText("guidance/engineering-methods.md");
+  const [text, workflow] = await Promise.all([
+    runtimeText("guidance/engineering-methods.md"),
+    runtimeText("guidance/workflow.md"),
+  ]);
   assert.match(text, /^# Engineering Methods$/m);
   assert.match(text, /^## Debugging$/m);
-  assert.match(text, /Reproduce[\s\S]*Trace[\s\S]*Hypothesis[\s\S]*Probe[\s\S]*Fix[\s\S]*Verify/i);
+  assert.match(text, /Loop[\s\S]*Minimize[\s\S]*Trace[\s\S]*Hypotheses[\s\S]*Probe[\s\S]*Fix[\s\S]*Verify/i);
+  assert.match(text, /red-capable[\s\S]*已脱敏/i);
+  assert.match(text, /load-bearing[\s\S]*3–5[\s\S]*可证伪假设/i);
+  assert.match(text, /唯一 tag[\s\S]*redact credentials[\s\S]*敏感用户数据/i);
+  assert.match(text, /mitigation[\s\S]*recovery[\s\S]*architecture finding/i);
   assert.match(text, /^## RED\/GREEN$/m);
   assert.match(text, /behavior-sensitive|regression risk/i);
   assert.match(text, /RED[\s\S]*expected fail[\s\S]*GREEN[\s\S]*pass/i);
   assert.match(text, /pure documentation|configuration|exploratory spike/i);
+  assert.match(text, /^## Review$/m);
+  assert.match(text, /Contract[\s\S]*Engineering[\s\S]*scope creep[\s\S]*maintainability/i);
+  assert.match(text, /两个 actor\/context[\s\S]*Primary agent[\s\S]*fixed point/i);
+  assert.match(text, /^## Prototype$/m);
+  assert.match(text, /只回答一个 material question[\s\S]*可复现答案[\s\S]*不授予 Git[\s\S]*adoption/i);
+  assert.match(workflow, /expand ->\s+migrate bounded batches ->\s+contract/i);
   assert.match(text, /^## Proof And Handoff$/m);
   assert.doesNotMatch(text, /delete.*start over|every conversation|user approval after each/i);
 });
@@ -175,15 +205,19 @@ test("independent Proof requires another actor and cannot manufacture Approval",
 });
 
 test("managed Agent transports remain read-only options with observable evidence", async () => {
-  const text = await runtimeText("providers/README.md");
+  const [text, independent] = await Promise.all([
+    runtimeText("providers/README.md"),
+    runtimeText("guidance/independent-checks.md"),
+  ]);
   assert.match(text, /`cc`[\s\S]*`cx`/);
   assert.match(text, /not the complete\s+Agent roster/i);
   assert.match(text, /read-only[\s\S]*cannot carry a\s+writable `build` task/i);
   assert.match(text, /fallback[\s\S]*primary-agent/i);
   assert.match(text, /zero exit[\s\S]*does not prove completion/i);
   assert.match(text, /complete bounded delegation facts/i);
-  assert.match(text, /sensitive state[\s\S]*credentials[\s\S]*production data/i);
-  assert.match(text, /Unexpected mutation makes the output failed/i);
+  assert.match(text, /Read-only Enforcement[\s\S]*independent-checks\.md#read-only-enforcement/i);
+  assert.match(independent, /sensitive user state[\s\S]*credentials[\s\S]*production\s+data/i);
+  assert.match(text, /Unexpected mutation makes[\s\S]*output failed/i);
   assert.match(text, /neither output nor Proof grants Approval/i);
 });
 

@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.4.1
+These documents explain the architecture and decisions behind CatPaw 3.4.2
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 
@@ -12,9 +12,9 @@ Current behavior has one owner per concern:
 |---|---|
 | Always-on routing and safety | [`runtime-policy.md`](../src/runtime/runtime-policy.md) |
 | Work handling and internal risk routing | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
-| Agent intents, bounded delegation, scheduling, and concurrency | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
+| Agent intents, delegation, scheduling, concurrency, and context transitions | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
 | Machine-readable Agent intents | [`catalog/intents.json`](../src/runtime/catalog/intents.json) |
-| Debugging and RED/GREEN | [`guidance/engineering-methods.md`](../src/runtime/guidance/engineering-methods.md) |
+| Debugging, RED/GREEN, review, and prototype methods | [`guidance/engineering-methods.md`](../src/runtime/guidance/engineering-methods.md) |
 | Independent judgment | [`guidance/independent-checks.md`](../src/runtime/guidance/independent-checks.md) |
 | Multi-Work phases | [`guidance/milestones.md`](../src/runtime/guidance/milestones.md) |
 | Runtime and local-state maintenance | [`guidance/maintenance.md`](../src/runtime/guidance/maintenance.md) |
@@ -97,30 +97,17 @@ ADR bodies and references describe the source tree at decision time and may
 name removed paths or commands. They never override the current authority map
 above, and historical names must not be copied into new operating guidance.
 
-The current architecture is owned by
-[ADR-0019: CatPaw 3 Hybrid Runtime](decisions/0019-catpaw-3-hybrid-runtime.md)
-and its user-facing vocabulary by
-[ADR-0026: User-Facing Concept Consolidation](decisions/0026-user-facing-concept-consolidation.md),
-with its executable command layers owned by
-[ADR-0027: Layered CLI Facade](decisions/0027-layered-cli-facade.md), and the
-optional complex-Work Understand method owned by
-[ADR-0028: Structured Understand Without New Concepts](decisions/0028-structured-understand-without-new-concepts.md).
-Its safety and collaboration contracts were developed through
-[ADR-0022: Tiered Local Git Authority And Engineering Methods](decisions/0022-tiered-local-git-authority-and-engineering-methods.md) and
-[ADR-0023: Task Envelopes And Risk-based Agent Dispatch](decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md), with its bounded Git delegation refined by
-[ADR-0024: Bounded Builder Slice Commits](decisions/0024-bounded-builder-slice-commits.md), and both amended by
-[ADR-0025: Executor-Owned Advisory Orchestration](decisions/0025-executor-owned-advisory-orchestration.md).
-[ADR-0021: Zero-touch Semantic Schema 1 Migration](decisions/0021-zero-touch-semantic-schema-1-migration.md)
-owns schema 1 conversion. ADR-0019 defines the compact runtime model; ADR-0021
-makes schema 1 conversion complete and zero-touch while retaining provenance and
-structural blockers; ADR-0022 delegates bounded local Git and adds CatPaw-owned
-engineering methods; ADR-0023 introduced bounded delegation; ADR-0024 introduced
-exact-opt-in isolated build commits; ADR-0025 made orchestration contextual and
-advisory; ADR-0026 exposes only Work, Proof, Approval and three Agent task
-intents while retaining the hard authority, independence, and isolation gates;
-ADR-0027 maps that vocabulary onto the daily, contract, and advanced CLI layers;
-ADR-0028 adds trigger-based problem structuring while keeping Plan as the only
-durable home and preserving the same concept budget.
+Current decision ownership is compactly indexed here:
+
+| Concern | Decision |
+|---|---|
+| Hybrid Runtime | [ADR-0019](decisions/0019-catpaw-3-hybrid-runtime.md) |
+| schema 1 conversion | [ADR-0021](decisions/0021-zero-touch-semantic-schema-1-migration.md) |
+| local Git and engineering-method foundation | [ADR-0022](decisions/0022-tiered-local-git-authority-and-engineering-methods.md) |
+| delegation, isolated commits, contextual orchestration | [ADR-0023](decisions/0023-task-envelopes-and-risk-based-agent-dispatch.md), [ADR-0024](decisions/0024-bounded-builder-slice-commits.md), [ADR-0025](decisions/0025-executor-owned-advisory-orchestration.md) |
+| public vocabulary and CLI layers | [ADR-0026](decisions/0026-user-facing-concept-consolidation.md), [ADR-0027](decisions/0027-layered-cli-facade.md) |
+| structured Understand method | [ADR-0028](decisions/0028-structured-understand-without-new-concepts.md) |
+| internal method density and writing constraints | [ADR-0029](decisions/0029-method-density-without-concept-growth.md) |
 
 ## Writing Rules
 

@@ -54,9 +54,10 @@ selection, not to make users manage a seven-step ceremony.
 ## Optional Execution Methods
 
 Select a specific method only when its trigger changes the next action or Proof:
-design exploration, root-cause debugging, RED/GREEN, parallel investigation,
-adversarial review, interactive verification, or completion checks. CatPaw-owned
-debugging and RED/GREEN contracts are in [Engineering Methods](engineering-methods.md).
+decision-frontier clarification, root-cause debugging, RED/GREEN, bounded
+prototyping, parallel investigation, two-axis review, interactive verification,
+or completion checks. CatPaw-owned engineering contracts are in
+[Engineering Methods](engineering-methods.md).
 
 - Do not reload a method for an unchanged context.
 - A method cannot choose board storage, grant Approval, accept a candidate, or
@@ -69,8 +70,9 @@ debugging and RED/GREEN contracts are in [Engineering Methods](engineering-metho
 ## Understand
 
 - Establish the user outcome, constraints, non-goals, and Approval already given.
-- Inspect the real source of truth; bugs and anomalies require a demonstrated
-  root cause before repair.
+- Inspect the real source of truth. A causal repair requires a demonstrated root
+  cause. Urgent containment before that point is a separate mitigation: name the
+  causal uncertainty, recovery path, and continuing diagnosis.
 - Choose internal risk handling and the Proof needed for completion.
 - Use `explore` Agents when independent facts or alternatives add information;
   avoid delegation whose handoff cost exceeds its value.
@@ -92,6 +94,11 @@ the shape before execution. Simple Work does not need this method.
   `Proposed`, or `Open`.
   `Confirmed` requires an explicit user decision or verified fact; these labels
   are local discussion notes, not Work status, Proof, Approval, or schema fields.
+- Resolve every discoverable source-backed fact through the available
+  authorities. Ask the user only for material decisions or blocking facts that
+  only they can provide, and expose only the current decision frontier: questions
+  whose prerequisites are settled and whose answers unblock the first slice.
+  Group independent blockers; defer contingent or non-blocking questions.
 - Select the first thin end-to-end delivery slice and give it acceptance plus
   required Proof. Prefer a user-visible path through the necessary layers over
   completing every infrastructure layer first.
@@ -99,9 +106,10 @@ the shape before execution. Simple Work does not need this method.
 Execution is ready when outcome and non-goals are clear, material dependencies
 are visible, every blocking dependency of the first slice is satisfied or has
 an authorized executable resolution with an accountable owner, the slice has no
-blocking `Open`, acceptance and Proof are defined, and future Approval boundaries
-are named. Otherwise stay in Understand. Non-blocking `Open` items may be
-explicitly deferred; Understand does not require total certainty.
+blocking `Open` or unresolved decision-frontier question, acceptance and Proof
+are defined, and future Approval boundaries are named. Otherwise stay in
+Understand. Non-blocking `Open` items may be explicitly deferred; Understand
+does not require total certainty.
 
 Direct Work keeps this structure in the conversation. Durable Work persists
 only the useful parts in the existing Plan, normally under Approach, Contracts,
@@ -115,6 +123,12 @@ verifiable outcome; several such Work items may use an optional Milestone.
 - A delegated writer receives one exact isolated mutable surface; different
   Agents never concurrently write the same surface.
 - Behavior-sensitive Work uses RED/GREEN when the trigger applies.
+- Prefer a thin vertical slice. When a cross-cutting contract change cannot keep
+  mixed old/new callers valid that way, use the compatibility sequence
+  `expand -> migrate bounded batches -> contract`: keep each step buildable and
+  reversible, and remove the old path only after migration and blast-radius Proof.
+- Use a prototype only to answer one material unknown. Time-box it, capture the
+  answer, and do not treat disposable code as adopted implementation.
 - After a meaningful unit, update durable Work and Proof facts and report current
   progress plus `Next`.
 - If an assumption fails, return to Understand instead of pretending execution
@@ -122,7 +136,8 @@ verifiable outcome; several such Work items may use an optional Milestone.
 
 ## Check
 
-- Review the facts, contracts, boundaries, failure paths, and likely regressions.
+- Review both the delivery contract and the engineering quality of the change;
+  use the two-axis Review method for non-trivial Work.
 - Run the smallest relevant verification first, then expand with blast radius.
 - Distinguish pass, fail, not-run, blocked, and environment-limited outcomes.
 - High-risk Work uses a `check` actor different from the actor that built the
@@ -151,3 +166,7 @@ Authorized multi-step Work continues without asking the user for each internal
 step. Pause only for a material product choice, new authority, external or
 irreversible effect, user acceptance of a required Proof gap, or a real blocker.
 Neither an Agent output nor a successful tool result supplies Approval.
+
+When a phase boundary crosses an Agent, tool, repository, session, owner, or
+available context capacity, apply [Context Transitions](agent-dispatch.md#context-transitions)
+instead of copying the whole conversation.

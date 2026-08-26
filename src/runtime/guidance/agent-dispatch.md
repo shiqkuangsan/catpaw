@@ -85,7 +85,8 @@ allowed actions: <explicit mutations and scoped Git grant when applicable>
 This contract is transient execution state, not a board artifact or source of
 Approval. Follow-up work includes the previous claim, primary-agent critique,
 accepted facts, and the narrowed next question; do not depend on global Agent
-memory or provider customization for critical constraints.
+memory or provider customization for critical constraints. Apply the context
+transition rules below instead of copying the whole conversation.
 
 ## Scheduling Signals And Patterns
 
@@ -106,6 +107,23 @@ build slices, competing implementations, build-to-check handoff, reciprocal
 critique, isolated fan-in, and primary-selected fallback. Cost, latency, context
 copy, integration overhead, and expected information gain are scheduling inputs.
 Available capacity alone is not a reason to add Agents.
+
+## Context Transitions
+
+At each phase boundary choose the cheapest option that preserves the facts and
+reasoning needed for the next action:
+
+- continue the current context when the causal history still matters and useful
+  capacity remains;
+- discard it when the next action is independent;
+- create a portable handoff only when crossing an Agent, tool, repository,
+  session, or owner: point to canonical sources, then state accepted facts,
+  decisions, exact `Next`, verification, and gaps;
+- delegate a bounded independent or unattended scope through the normal contract;
+- compact only when relevant context must continue but cannot remain intact.
+
+Use pointers for stable source material and copy only volatile state. Do not put
+secrets into a handoff. A handoff is not a board artifact, Proof, or Approval.
 
 ## Concurrency And Isolation
 

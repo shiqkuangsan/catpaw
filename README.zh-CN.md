@@ -14,7 +14,7 @@ Approval  哪一项新增权限或风险接受必须由用户决定
 三者是并列问题，不是强制线性阶段。用户授权任务后，大部分 Work 不需要反复
 Approval。
 
-Source runtime 版本：`3.4.1`。项目工作板使用 **schema 2**。
+Source runtime 版本：`3.4.2`。项目工作板使用 **schema 2**。
 
 ## 用户模型
 

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 3.4.1 Hybrid Runtime.
+This repository is the versioned source for CatPaw 3.4.2 Hybrid Runtime.
 
 ## Repository Role
 
@@ -25,8 +25,8 @@ Read the smallest canonical source that owns the operation:
 |---|---|
 | Always-on routing, progress, safety | `src/runtime/runtime-policy.md` |
 | Work handling and internal risk selection | `src/runtime/guidance/workflow.md` |
-| Agent intents, bounded delegation, advisory orchestration and concurrency | `src/runtime/guidance/agent-dispatch.md` |
-| Root-cause debugging and RED/GREEN | `src/runtime/guidance/engineering-methods.md` |
+| Agent intents, delegation, orchestration, concurrency, context transitions | `src/runtime/guidance/agent-dispatch.md` |
+| Debugging, RED/GREEN, review, and prototype methods | `src/runtime/guidance/engineering-methods.md` |
 | Subagent triggers, fallback, accepted gaps | `src/runtime/guidance/independent-checks.md` |
 | Multi-Work phase objectives | `src/runtime/guidance/milestones.md` |
 | Runtime, adapter, registry, legacy import | `src/runtime/guidance/maintenance.md` |
@@ -101,6 +101,13 @@ the user has explicitly requested and completed installation.
 ## Editing Rules
 
 - Prefer compact protocol wording and keep one canonical owner per behavior.
+- Keep the common path inline. Branch-specific detail belongs behind a pointer
+  that names its trigger and canonical authority.
+- Make completion criteria observable. Treat repository state, schema, CLI
+  output, configuration, and executed checks as sources of truth; do not restate
+  them as drifting prose.
+- Remove duplicated authority, historical sediment, and instructions that do not
+  change an action, boundary, or Proof requirement.
 - Runtime-facing documentation is Simplified Chinese by default; keep
   established technical terms in English where clearer.
 - Use `apply_patch` for manual edits and `rg` for search.

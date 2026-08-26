@@ -67,17 +67,9 @@ customization for critical context.
 
 ## Sensitive State And Side Effects
 
-Prompt-only read-only is not isolation. Enforced read-only must prevent
-write/delete/rename at the tool boundary through a sandbox, read-only mount or
-URI, or minimal allowlist. Do not expose unrelated coding-tool state, user
-configuration, credentials, production data, or workspaces. Provide a minimal
-export or snapshot when needed.
-
-If the environment cannot prevent writes, label the call
-`no-write requested + audited`; it cannot satisfy an enforced read-only gate.
-Record the protected scope and audit relevant writes, deletes, renames, and
-worktree diff afterward. Unexpected mutation makes the output failed even when
-its content is useful.
+All transport calls follow [Read-only Enforcement](../guidance/independent-checks.md#read-only-enforcement).
+Expose only the minimal provider-visible snapshot. Unexpected mutation makes
+the output failed even when its content is useful.
 
 ## Proof And Approval
 

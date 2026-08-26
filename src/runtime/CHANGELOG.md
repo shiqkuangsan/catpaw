@@ -6,6 +6,34 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 3.4.2 - 2026-08-26
+
+- Keep the public model unchanged while adding internal decision-frontier,
+  debugging-loop, two-axis review, bounded prototype, context-transition, and
+  `expand -> migrate -> contract` guidance.
+- Keep discoverable facts Agent-owned; ask the user only for material decisions
+  or blocking facts only they can provide. Execute may start when the first slice
+  has no blocking frontier question; other unknowns remain deferrable.
+- Make causal repair, urgent mitigation, reproducible diagnosis, redaction,
+  instrumentation cleanup, fixed-point review, and prototype adoption boundaries
+  explicit.
+- Add runtime-writing constraints for progressive disclosure, observable
+  completion criteria, canonical authorities, and removal of no-op or duplicated
+  guidance. Replace repeated transport read-only rules with one canonical link.
+- Add ADR-0029 and executable guidance/concept-budget contracts. Board schema,
+  CLI, artifacts, intent catalog, and Approval boundaries are unchanged.
+
+Migration note (3.4.1 -> 3.4.2):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately to expose the strengthened methods.
+Adapter impact: none; current adapters already route method detail through installed runtime authorities.
+Non-goals: no new user concept, artifact, schema field, CLI command, automatic Agent, commit, activation, adapter/registry mutation, push, PR, deploy, or cleanup is implied.
+Rollback: retain the verified 3.4.1 runtime until strict 3.4.2 activation succeeds.
+```
+
 ## 3.4.1 - 2026-08-16
 
 - Add a trigger-based Understand method for Work with multiple concerns,
