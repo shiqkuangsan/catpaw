@@ -73,7 +73,50 @@ test("workflow maps the visible flow to compatible internal modes and stages", a
   assert.match(text, /push[\s\S]*PR[\s\S]*explicit[\s\S]*Approval/i);
 });
 
-test("Understand may structure complex Work without adding an artifact or status model", async () => {
+test("Understand exposes material ambiguity without interviewing clear Work", async () => {
+  const [policy, workflow] = await Promise.all([
+    runtimeText("runtime-policy.md"),
+    runtimeText("guidance/workflow.md"),
+  ]);
+  const combined = `${policy}\n${workflow}`;
+  const scenarios = [
+    {
+      name: "small Work still receives readiness",
+      pattern: /every Work[\s\S]*including (?:small|short)[\s\S]*readiness pass/i,
+    },
+    {
+      name: "material ambiguity is delivery-changing",
+      pattern: /ambiguity is material[\s\S]*outcome[\s\S]*scope[\s\S]*acceptance[\s\S]*Proof[\s\S]*(?:data|permission)[\s\S]*(?:external|irreversible)/i,
+    },
+    {
+      name: "discoverable facts stay Agent-owned",
+      pattern: /Resolve every discoverable source-backed fact[\s\S]*Ask the user only[\s\S]*material decision[\s\S]*blocking fact/i,
+    },
+    {
+      name: "clear Work stays low ceremony",
+      pattern: /no material ambiguity[\s\S]*(?:avoid a clarification ceremony|keep the interaction brief)[\s\S]*continue/i,
+    },
+    {
+      name: "material ambiguity gets an observable current-frontier readback",
+      pattern: /material ambiguity[\s\S]*(?:compact|visible) readback[\s\S]*current understanding[\s\S]*(?:facts|assumptions)[\s\S]*current decision frontier[\s\S]*why[\s\S]*(?:first|next) slice/i,
+    },
+    {
+      name: "questions are batched only when useful",
+      pattern: /(?:Ask|Group) independent blockers[\s\S]*defer\s+contingent\s+or\s+non-blocking\s+questions/i,
+    },
+    {
+      name: "delegated judgment selects only a bounded reversible default",
+      pattern: /delegates a material judgment[\s\S]*(?:select|choose)\s+and\s+state\s+a\s+reversible\s+default[\s\S]*(?:scope growth|wider scope)[\s\S]*(?:external|irreversible)[\s\S]*permission\s+expansion[\s\S]*Proof\s+gap/i,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    assert.match(combined, scenario.pattern, scenario.name);
+  }
+  assert.match(combined, /not a required template[\s\S]*headings/i);
+});
+
+test("Understand may additionally structure complex Work without adding an artifact or status model", async () => {
   const [workflow, plan, milestones] = await Promise.all([
     runtimeText("guidance/workflow.md"),
     runtimeText("templates/plan.md"),
@@ -85,16 +128,13 @@ test("Understand may structure complex Work without adding an artifact or status
   assert.match(workflow, /dependency edges separately[\s\S]*sequencing[\s\S]*ownership[\s\S]*parallelism[\s\S]*risk/i);
   assert.match(workflow, /Confirmed[\s\S]*Proposed[\s\S]*Open/);
   assert.match(workflow, /local discussion notes[\s\S]*not Work status[\s\S]*Proof[\s\S]*Approval[\s\S]*schema fields/i);
-  assert.match(workflow, /Resolve every discoverable source-backed fact[\s\S]*Ask the user[\s\S]*material decisions[\s\S]*blocking facts[\s\S]*only they can provide/i);
-  assert.match(workflow, /current decision frontier[\s\S]*prerequisites are settled[\s\S]*unblock the first\s+slice/i);
-  assert.match(workflow, /Group independent blockers[\s\S]*defer contingent or non-blocking questions/i);
   assert.match(workflow, /first thin end-to-end delivery slice[\s\S]*acceptance[\s\S]*required Proof/i);
   assert.match(workflow, /every blocking dependency[\s\S]*satisfied[\s\S]*authorized executable resolution[\s\S]*accountable owner/i);
   assert.match(workflow, /no\s+blocking `Open`[\s\S]*decision-frontier question[\s\S]*Non-blocking `Open`[\s\S]*deferred/i);
   assert.match(workflow, /Direct Work[\s\S]*conversation[\s\S]*existing Plan/i);
   assert.match(workflow, /Do not create a Tree\/Map artifact[\s\S]*independently[\s\S]*verifiable outcome/i);
   assert.match(workflow, /optional Milestone/i);
-  assert.match(plan, /structurally complex Work[\s\S]*scope tree[\s\S]*dependency edges[\s\S]*decision annotations[\s\S]*decision frontier[\s\S]*end-to-end slice/i);
+  assert.match(plan, /outcome[\s\S]*non-goals[\s\S]*first delivery slice[\s\S]*material assumptions[\s\S]*structurally complex Work[\s\S]*scope tree[\s\S]*dependency edges[\s\S]*decision[\s\S]*decision frontier/i);
   assert.match(milestones, /不是用户必须学习的第四个核心概念/);
   assert.doesNotMatch(workflow, /^## (?:Tree|Map|Decision Ledger)$/m);
 });
@@ -232,7 +272,7 @@ test("primary public docs stay within the concept budget", async () => {
     assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
     assert.match(text, /Understand -> Execute -> Check -> Finish/);
     assert.match(text, /explore[\s\S]*build[\s\S]*check/i);
-    assert.match(text, /(?:optional method|可选方法|trigger-based method)[\s\S]*not[\s\S]*(?:artifact|user concept)|可选方法[\s\S]*不新增 artifact 或用户概念/i);
+    assert.match(text, /(?:adds? no|none of this adds|不新增)[\s\S]*(?:stage|artifact)[\s\S]*(?:user concept|用户概念)/i);
     assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
   }
 });

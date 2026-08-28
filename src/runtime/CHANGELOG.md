@@ -6,6 +6,34 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 3.4.3 - 2026-08-29
+
+- Apply one lightweight Understand readiness pass to every Work, including
+  short or apparently simple requests; brevity no longer implies clarity.
+- Define material ambiguity around outcome, scope/non-goals, acceptance/Proof,
+  data or permission boundaries, and external or irreversible choices.
+- Keep clear Work brief. When material ambiguity remains, require a compact
+  visible readback of current understanding, relevant facts or assumptions,
+  current-frontier decisions, their delivery impact, and the first slice they
+  unblock.
+- Keep discoverable facts Agent-owned, group independent blockers, defer
+  contingent questions, and let delegated material judgment select only stated
+  reversible defaults inside the existing scope and Approval.
+- Preserve optional complex-Work structure and the public model. Add ADR-0030
+  and contract scenarios without a Clarify stage, artifact, schema field, CLI
+  command, mandatory headings, or changed Approval boundary.
+
+Migration note (3.4.2 -> 3.4.3):
+
+```text
+Runtime activation: explicit; source and dist completion do not modify ~/.catpaw/.
+Project impact: board schema remains 2; no project-board migration or artifact rewrite is required.
+Required actions: build and verify source/dist, then activate the runtime separately to expose the strengthened Understand behavior.
+Adapter impact: none; current adapters already route CatPaw work through the installed runtime policy.
+Non-goals: no new user concept, stage, artifact, schema field, CLI command, Agent call, commit, activation, adapter/registry mutation, push, PR, deploy, or cleanup is implied.
+Rollback: retain the verified 3.4.2 runtime until strict 3.4.3 activation succeeds.
+```
+
 ## 3.4.2 - 2026-08-26
 
 - Keep the public model unchanged while adding internal decision-frontier,

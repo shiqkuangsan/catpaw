@@ -1,9 +1,9 @@
 {
   "name": "catpaw-runtime",
-  "version": "3.4.2",
+  "version": "3.4.3",
   "runtimePath": "~/.catpaw",
   "boardSchemaVersion": 2,
-  "released": "2026-08-26",
+  "released": "2026-08-29",
   "canonicalFiles": [
     "VERSION",
     "runtime-manifest.json",

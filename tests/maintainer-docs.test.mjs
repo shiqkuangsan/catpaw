@@ -161,7 +161,7 @@ function currentInterpretation(text, file) {
 test("public docs present CatPaw 3 without claiming global activation", async () => {
   for (const file of ["README.md", "README.zh-CN.md"]) {
     const text = await readFile(path.join(REPO, file), "utf8");
-    assert.match(text, /3\.4\.2/);
+    assert.match(text, /3\.4\.3/);
     assert.match(text, /schema 2/i);
     assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
     assert.match(text, /Understand -> Execute -> Check -> Finish/);
@@ -204,7 +204,7 @@ test("every ADR declares lifecycle status and amended core ADRs lead with curren
   const decisions = (await readdir(decisionDir))
     .filter((file) => /^\d{4}-.+\.md$/.test(file))
     .sort();
-  assert.equal(decisions.length, 29);
+  assert.equal(decisions.length, 30);
 
   for (const file of decisions) {
     const text = await readFile(path.join(decisionDir, file), "utf8");
@@ -388,6 +388,25 @@ test("ADR-0029 increases method density without growing the public model", async
   assert.match(text, /expand -> migrate bounded batches -> contract/);
   assert.match(text, /portable handoff[\s\S]*canonical pointers/i);
   assert.match(text, /no user concept[\s\S]*artifact[\s\S]*CLI[\s\S]*Git authority/i);
+});
+
+test("ADR-0030 makes Understand observable without adding clarification ceremony", async () => {
+  const text = await readFile(
+    path.join(
+      REPO,
+      "docs/decisions/0030-observable-understand-without-clarification-ceremony.md",
+    ),
+    "utf8",
+  );
+  assert.match(text, /^# ADR-0030:/m);
+  assert.match(text, /^Status: Accepted$/m);
+  assert.match(text, /every[\s\S]*Work[\s\S]*including small Work/i);
+  assert.match(text, /Material ambiguity[\s\S]*outcome[\s\S]*scope[\s\S]*acceptance[\s\S]*Proof[\s\S]*permission[\s\S]*irreversible/i);
+  assert.match(text, /Clear Work[\s\S]*low-ceremony[\s\S]*proceeds/i);
+  assert.match(text, /compact visible readback[\s\S]*current understanding[\s\S]*decision-frontier[\s\S]*first slice/i);
+  assert.match(text, /delegates a material judgment[\s\S]*reversible default[\s\S]*does not grant/i);
+  assert.match(text, /no Clarify stage[\s\S]*artifact[\s\S]*schema field[\s\S]*CLI command/i);
+  assert.match(text, /cannot prove[\s\S]*every host or model complies/i);
 });
 
 test("maintainer architecture documents the three runtime surfaces and version split", async () => {

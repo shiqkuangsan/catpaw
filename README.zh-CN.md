@@ -14,7 +14,7 @@ Approval  哪一项新增权限或风险接受必须由用户决定
 三者是并列问题，不是强制线性阶段。用户授权任务后，大部分 Work 不需要反复
 Approval。
 
-Source runtime 版本：`3.4.2`。项目工作板使用 **schema 2**。
+Source runtime 版本：`3.4.3`。项目工作板使用 **schema 2**。
 
 ## 用户模型
 
@@ -54,9 +54,12 @@ Understand -> Execute -> Check -> Finish
 CatPaw 在内部选择轻量、持久或高风险处理，并保留精确生命周期与 metadata 以支持
 连续性，但不要求用户操作这些内部概念。
 
-当 Work 的结构确实复杂时，Understand 可以临时拆出浅层 scope tree、会影响顺序或
-风险的 dependency edges、局部 `Confirmed | Proposed | Open` 决策注记，以及首个
-端到端 slice。这是可选方法，不新增 artifact 或用户概念；需要持久化时复用内部 Plan。
+每个 Work 都会经过一次轻量 Understand readiness pass。没有会实质改变交付的歧义时
+保持简短并继续推进；当歧义可能改变结果、范围、验收、数据或权限边界、外部或不可逆
+选择时，CatPaw 会用紧凑回读说明当前理解，只询问能够解锁首个 slice 的决策。结构复杂
+的 Work 还可以按需拆出浅层 scope tree、material dependency edges 和局部
+`Confirmed | Proposed | Open` 注记。这不新增 stage、artifact、强制标题或用户概念；
+需要持久化时仍复用内部 Plan。
 
 ## Agent 协作
 

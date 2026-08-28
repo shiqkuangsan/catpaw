@@ -9,9 +9,10 @@ Work Item: [{{WORK_ID}}]({{WORK_PATH}})
 
 ## Approach
 
-Describe the implementation approach. For structurally complex Work, keep any
-shallow scope tree, material dependency edges, local decision annotations,
-current blocking decision frontier, and first end-to-end slice here; omit them
+State the outcome, non-goals, first delivery slice, and material assumptions or
+blocking decisions only when they add continuity. For structurally complex Work,
+keep any shallow scope tree, material dependency edges, local decision
+annotations, and current blocking decision frontier here; omit that structure
 for simple Work.
 
 ## Contracts / Invariants

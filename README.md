@@ -16,7 +16,7 @@ Approval  the exact decision needed for new authority or accepted risk
 These are parallel concerns. Most Work needs no new Approval after you authorize
 the task.
 
-Source runtime version: `3.4.2`. Project boards use **schema 2**.
+Source runtime version: `3.4.3`. Project boards use **schema 2**.
 
 ## The User Model
 
@@ -60,10 +60,14 @@ CatPaw chooses lightweight, durable, or high-risk handling internally. It keeps
 the detailed lifecycle and board metadata for continuity without making the user
 operate them.
 
-When Work is structurally complex, Understand may briefly separate a shallow
-scope tree, material dependency edges, local `Confirmed | Proposed | Open`
-decision notes, and the first end-to-end slice. This is an optional method, not
-a new artifact or user concept; durable output reuses the internal Plan.
+Every Work gets a lightweight Understand readiness pass. Clear Work stays brief
+and proceeds. When ambiguity could materially change outcome, scope, acceptance,
+data or permission boundaries, or an external or irreversible choice, CatPaw
+shows a compact readback and asks only the decisions that unblock the first
+slice. Structurally complex Work may also separate a shallow scope tree,
+material dependency edges, and local `Confirmed | Proposed | Open` notes. This
+adds no stage, artifact, mandatory headings, or user concept; durable output
+reuses the internal Plan.
 
 ## Agent Collaboration
 

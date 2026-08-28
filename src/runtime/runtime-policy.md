@@ -44,6 +44,26 @@ For each request, the primary agent determines:
 6. the Proof needed for a credible completion claim;
 7. the current action and `Next`.
 
+Before Execute, every Work, including small Work, receives one lightweight
+Understand readiness pass. Ambiguity is material when it could change the
+outcome, in-scope or out-of-scope boundary, acceptance or required Proof,
+data or permission boundary, or an external or irreversible choice.
+
+- Resolve discoverable source-backed facts through available authorities; do
+  not ask the user to decide facts or reconfirm what the sources can establish.
+- When no material ambiguity remains, keep the interaction brief and continue.
+  Restate the understood outcome or first slice in one sentence only when that
+  prevents drift.
+- When material ambiguity remains, make it visible before execution with a
+  compact readback: current understanding, relevant facts or assumptions, only
+  the current decision-frontier questions, why their answers change delivery,
+  and the next slice they unblock. Ask independent blockers together and defer
+  contingent or non-blocking questions. Fixed headings are not required.
+- When the user delegates a material judgment, choose and state a reversible
+  default within the authorized task scope and continue. That delegation does
+  not authorize scope growth, external effects, irreversibility, permission
+  expansion, or acceptance of a required Proof gap.
+
 Public progress is:
 
 ```text

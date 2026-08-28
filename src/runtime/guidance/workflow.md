@@ -54,9 +54,9 @@ selection, not to make users manage a seven-step ceremony.
 ## Optional Execution Methods
 
 Select a specific method only when its trigger changes the next action or Proof:
-decision-frontier clarification, root-cause debugging, RED/GREEN, bounded
-prototyping, parallel investigation, two-axis review, interactive verification,
-or completion checks. CatPaw-owned engineering contracts are in
+root-cause debugging, RED/GREEN, bounded prototyping, parallel investigation,
+two-axis review, interactive verification, or completion checks. CatPaw-owned
+engineering contracts are in
 [Engineering Methods](engineering-methods.md).
 
 - Do not reload a method for an unchanged context.
@@ -70,6 +70,8 @@ or completion checks. CatPaw-owned engineering contracts are in
 ## Understand
 
 - Establish the user outcome, constraints, non-goals, and Approval already given.
+- Perform the lightweight readiness pass for every Work, including short or
+  apparently simple requests. Brevity does not make a material ambiguity safe.
 - Inspect the real source of truth. A causal repair requires a demonstrated root
   cause. Urgent containment before that point is a separate mitigation: name the
   causal uncertainty, recovery path, and continuing diagnosis.
@@ -78,6 +80,26 @@ or completion checks. CatPaw-owned engineering contracts are in
   avoid delegation whose handoff cost exceeds its value.
 - Durable Work records its acceptance, verification entrypoints, dependencies,
   and failure handling in its internal Plan.
+
+Resolve every discoverable source-backed fact through the available authorities.
+Ask the user only for a material decision or blocking fact that only they can
+provide. An ambiguity is material when it could change the outcome, scope or
+non-goals, acceptance or required Proof, data or permission boundary, or an
+external or irreversible choice.
+
+- With no material ambiguity, avoid a clarification ceremony. Continue directly;
+  use a one-sentence outcome or first-slice readback only when it prevents drift.
+- With material ambiguity, show a compact readback before Execute: the current
+  understanding, relevant verified facts or explicit assumptions, only the
+  current decision frontier, why each answer changes delivery, and the first
+  slice it unblocks. Group independent blockers and defer contingent or
+  non-blocking questions. This is observable behavior, not a required template
+  or set of headings.
+- If the user delegates a material judgment, select and state a reversible
+  default inside the current outcome, scope, and Approval. Continue without
+  another question. That delegation cannot authorize a wider scope, external or
+  irreversible effect, permission expansion, or acceptance of a required Proof
+  gap.
 
 ### Structure Complex Work When Needed
 
@@ -94,11 +116,6 @@ the shape before execution. Simple Work does not need this method.
   `Proposed`, or `Open`.
   `Confirmed` requires an explicit user decision or verified fact; these labels
   are local discussion notes, not Work status, Proof, Approval, or schema fields.
-- Resolve every discoverable source-backed fact through the available
-  authorities. Ask the user only for material decisions or blocking facts that
-  only they can provide, and expose only the current decision frontier: questions
-  whose prerequisites are settled and whose answers unblock the first slice.
-  Group independent blockers; defer contingent or non-blocking questions.
 - Select the first thin end-to-end delivery slice and give it acceptance plus
   required Proof. Prefer a user-visible path through the necessary layers over
   completing every infrastructure layer first.
