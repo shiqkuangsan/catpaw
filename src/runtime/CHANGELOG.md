@@ -6,6 +6,25 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 4.0.0 - 2026-09-05
+
+- Work 成为主要入口，默认一份记录，Plan 按需创建；Evidence 为首选命令，保留
+  proof 别名。产品决定、动作授权、风险接受分开，记录不能授予权限。
+- 新 Work 使用 schema 2 内的显式 contract 4：candidate 绑定范围内文件内容/
+  模式、验收、owner 与周期。新高风险完成要求当前候选的通过测试和独立检查；
+  后续失败覆盖旧通过。旧工件保持原有读取语义，旧 CLI 可拒绝新字段。
+- `evidence run` 默认预览，apply 后捕获退出状态、时长及命令/输出摘要；不保存
+  原始参数或输出，不把进程成功等同于测试充分。`work continue` 保留历史完成。
+- 支持有界的历史 Evidence 逐项修复；无关完成缺口不阻塞健康 Work，schema/
+  路径/身份错误仍阻塞，修复期间不重写 dashboard。
+- 正式 runtime/adapter inspect、plan、apply、recover：持久计划、preimage 绑定、
+  备份和漂移安全恢复。runtime 保留本地状态，adapter 只改一个文件中的托管块。
+- 加入可执行行为场景与事务故障测试；文本契约和有限 Agent smoke 分开报告。
+
+Migration note: activate runtime and host adapters explicitly. No project fleet
+migration, registry rewrite or legacy cleanup is included. Recovering a 3.x
+runtime does not make that runtime able to write contract 4 records.
+
 ## 3.4.4 - 2026-09-05
 
 - 全局和项目 adapter 改为短路由；保留常用安全边界，委派和 Git grant 细则由

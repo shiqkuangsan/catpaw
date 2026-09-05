@@ -207,5 +207,19 @@ export function validateMetadata(kind, metadata, schema = loadBoardSchema()) {
   const workTypeFinding = validateWorkType(kind, metadata, schema);
   if (workTypeFinding) findings.push(workTypeFinding);
 
+  if (["workItem", "evidence"].includes(kind) && metadata.contract === 4) {
+    const fields = kind === "workItem" ? ["acceptance", "scope", "owner", "cycle", "candidate"] : ["result", "candidate", "claim", "cycle", "sequence", "origin"];
+    for (const field of fields) {
+      if (!Object.hasOwn(metadata, field)) findings.push({ code: "contract", path: field, message: `${kind}.${field} is required by contract 4.` });
+    }
+    for (const field of ["cycle", ...(kind === "evidence" ? ["sequence"] : [])]) {
+      if (!Number.isSafeInteger(metadata[field]) || metadata[field] < 1) findings.push({ code: "contract", path: field, message: `${kind}.${field} must be a positive safe integer.` });
+    }
+    if (kind === "workItem") {
+      if (metadata.status === "done" && !metadata.candidate) findings.push({ code: "contract", path: "candidate", message: "Completed contract 4 Work must pin its accepted candidate." });
+      if (typeof metadata.scope === "string" && (metadata.scope.startsWith("/") || metadata.scope.split(/[\\/]/).includes("..") || /[\u0000-\u001f]/.test(metadata.scope))) findings.push({ code: "contract", path: "scope", message: "Work scope must be a safe project-relative path." });
+    }
+  }
+
   return findings;
 }

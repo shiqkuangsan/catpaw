@@ -8,8 +8,8 @@ Usage:
 Core commands:
   catpaw status                         Show active Work, visible Phase, Proof, and Next
   catpaw work start|show|update         Create, inspect, or advance Work
-  catpaw work finish|cancel             Finish or cancel Work
-  catpaw proof add|list|show            Record or inspect Proof
+  catpaw work finish|cancel|continue    Close Work or start its next cycle
+  catpaw evidence add|list|show|run     Record facts or capture a check
   catpaw milestone start|show|add       Manage an optional Work grouping
   catpaw milestone finish|cancel        Finish or cancel a Milestone
 
@@ -17,6 +17,8 @@ Maintenance and advanced commands:
   catpaw board init|status|doctor|migrate
   catpaw intent list|show
   catpaw transport check|open|send|status|read|close
+  catpaw runtime inspect|plan|apply|recover
+  catpaw adapter inspect|plan|apply|recover
 
 Global options:
   --project <path>               Project root (default: current directory)
@@ -30,6 +32,29 @@ Run 'catpaw <command> --help' for command details.
 `;
 
 const HELP = Object.freeze({
+  runtime: `Usage:
+  catpaw runtime inspect --package <runtime-dir> --target <installed-dir>
+  catpaw runtime plan --package <runtime-dir> --target <installed-dir>
+                      [--out <plan.json> --apply]
+  catpaw runtime apply --plan-file <plan.json> --target <installed-dir>
+                       [--backup-root <dir>] [--receipt <file>] [--apply]
+  catpaw runtime recover --receipt <file> --target <installed-dir> [--apply]
+
+Plans bind package and target preimages. Apply/recover preview by default.
+Runtime publication uses guarded renames with a durable recovery journal;
+directory publication has a brief unavailable interval. Drift refuses recovery.
+`,
+  adapter: `Usage:
+  catpaw adapter inspect --target <actual-rule-file> --scope global|project [--package <runtime-dir>]
+  catpaw adapter plan --target <actual-rule-file> --scope global|project
+                      [--package <runtime-dir>] [--out <plan.json> --apply]
+  catpaw adapter apply --plan-file <plan.json> --target <actual-rule-file>
+                       [--backup-root <dir>] [--receipt <file>] [--apply]
+  catpaw adapter recover --receipt <file> --target <actual-rule-file> [--apply]
+
+Only one CATPAW managed block is changed. Other bytes and file mode are preserved.
+Ambiguous markers and symlink targets are refused; records never grant authority.
+`,
   status: `Usage: catpaw status [--project <path>] [--json]
 
 Show active Work and Milestones, visible Phase, Proof coverage, board health,
@@ -42,6 +67,7 @@ and the most useful Next action. 'catpaw board status' remains compatible.
                      [--status active|blocked] [--apply]
   catpaw work finish --id <id> [--accept-gap <reason>] [--apply]
   catpaw work cancel --id <id> [--apply]
+  catpaw work continue --id <id> --next <text> [--apply]
 
 Phases: understand | execute | check | finish
 Legacy 'work close' and '--mode tracked|gated' inputs remain compatible.
@@ -51,7 +77,11 @@ Legacy 'work close' and '--mode tracked|gated' inputs remain compatible.
 Options:
   --high-risk                    Require independent completion Proof
   --date <YYYY-MM-DD>            Override the local date
-  --apply                        Create the Work and its internal Plan
+  --acceptance <text>            Concrete acceptance (default: title)
+  --scope <relative-path>        Candidate deliverables (default: .)
+  --owner <actor>                Accountable implementer (default: primary)
+  --with-plan                    Also create an optional separate Plan
+  --apply                        Create the Work
   --json                         Emit the schema-shaped report
 `,
   "work show": `Usage: catpaw work show --id <id> [--json]
@@ -70,11 +100,30 @@ At least one of --phase, --next, or --status is required.
   "work finish": `Usage: catpaw work finish --id <id> [options]
 
 Options:
-  --accept-gap <reason>          Record an explicitly user-approved missing gate
+  --accept-gap <reason>          Legacy records only: explicitly accepted gap
   --date <YYYY-MM-DD>
   --apply
 
 Approval must already exist; this command cannot manufacture it.
+Contract 4 requires passing current-candidate test and independent review for high-risk completion.
+`,
+  "work continue": `Usage: catpaw work continue --id <id> --next <text> [--apply]
+
+Preserve the terminal closure and begin a new contract 4 cycle.
+`,
+  evidence: `Usage:
+  catpaw evidence add --work <id> --type <type> --title <title> --body <text>
+                      [--result passed|failed|blocked|not-run] [--candidate <sha>]
+                      [--independent --agent <actor>] [--apply]
+  catpaw evidence list [--work <id>] [--type <type>]
+  catpaw evidence show --path <board-relative-path>
+  catpaw evidence run --work <id> --title <purpose> [--timeout-ms <n>] [--apply]
+                      -- <executable> [args]
+
+Use work show to obtain the checked candidate. Passing assertions require its SHA.
+run previews without execution; --apply executes only within existing authorization.
+Command arguments and raw output are not retained. Exit zero does not prove test adequacy.
+proof add|list|show remain compatible aliases (proof add defaults to research).
 `,
   "work cancel": `Usage: catpaw work cancel --id <id> [--date <YYYY-MM-DD>] [--apply]
 `,
@@ -86,7 +135,7 @@ Approval must already exist; this command cannot manufacture it.
   catpaw proof show --path <board-relative-path>
 
 Stored Proof types: research | review | test | provider | reflection
-'evidence add' remains a compatibility command for schema 2 storage.
+'evidence add|list|show|run' is the preferred interface. See 'evidence --help'.
 `,
   "proof add": `Usage: catpaw proof add --title <title> [options]
 
@@ -96,6 +145,8 @@ Options:
   --body <text>                  Inline record body
   --body-file <path|->           Read body from a file or stdin
   --independent --agent <actor>  Record the asserted independent actor
+  --result <result>              passed | failed | blocked | not-run
+  --candidate <sha>              Required for contract 4 passing assertions
   --date <YYYY-MM-DD>
   --apply
 
@@ -152,7 +203,7 @@ function normalizedTopic(topic) {
     if (command === "intent") return "intent";
     return "transport";
   }
-  if (group === "evidence") return command ? `proof ${command}` : "proof";
+  if (group === "evidence") return "evidence";
   if (group === "work" && command === "close") return "work finish";
   if (group === "milestone" && command === "close") return "milestone";
   return [group, command].filter(Boolean).join(" ");

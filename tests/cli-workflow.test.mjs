@@ -16,11 +16,18 @@ import test from "node:test";
 
 import { SCHEMA_2_LAYOUT } from "../src/runtime/lib/board.mjs";
 import { renderMutationReport } from "../src/runtime/lib/commands/workflow.mjs";
-import { parseFrontmatter } from "../src/runtime/lib/frontmatter.mjs";
+import { parseFrontmatter, stringifyFrontmatter } from "../src/runtime/lib/frontmatter.mjs";
 import { validateMetadata } from "../src/runtime/lib/schema.mjs";
 
 const CLI = new URL("../src/runtime/bin/catpaw.mjs", import.meta.url);
 const DATE = "2026-07-11";
+const legacyRoots = new Set();
+async function legacyFixture(t) {
+  const root = await fixture(t);
+  legacyRoots.add(root);
+  t.after(() => legacyRoots.delete(root));
+  return root;
+}
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(os.tmpdir(), "catpaw-cli-workflow-"));
@@ -82,8 +89,8 @@ runtime: 2.1.7
   });
 }
 
-function runCli(args, options = {}) {
-  return new Promise((resolve, reject) => {
+async function runCli(args, options = {}) {
+  const result = await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [CLI.pathname, ...args], {
       cwd: options.cwd,
       env: { ...process.env, HOME: options.home ?? process.env.HOME },
@@ -99,6 +106,18 @@ function runCli(args, options = {}) {
     child.on("error", reject);
     child.on("close", (code, signal) => resolve({ code, signal, stdout, stderr }));
   });
+  const root = args[args.indexOf("--project") + 1];
+  // Explicit historical fixtures exercise legacy gates, never downgrade production records.
+  if (legacyRoots.has(root) && args[0] === "work" && args[1] === "start" && args.includes("--apply") && result.code === 0) {
+    for (const file of await readdir(path.join(root, ".catpaw/work"))) {
+      const target = path.join(root, ".catpaw/work", file);
+      const parsed = parseFrontmatter(await readFile(target, "utf8"));
+      if (parsed.data.contract !== 4) continue;
+      for (const field of ["contract", "acceptance", "scope", "owner", "cycle", "candidate"]) delete parsed.data[field];
+      await writeFile(target, `${stringifyFrontmatter(parsed.data)}${parsed.body}`);
+    }
+  }
+  return result;
 }
 
 async function exists(target) {
@@ -138,7 +157,7 @@ async function treeSnapshot(root) {
   return entries;
 }
 
-test("work start defaults to a byte-identical dry-run preview", async (t) => {
+test("work start with optional Plan defaults to a byte-identical dry-run preview", async (t) => {
   const root = await fixture(t);
   await createSchema2Board(root);
   const before = await treeSnapshot(root);
@@ -152,6 +171,7 @@ test("work start defaults to a byte-identical dry-run preview", async (t) => {
     "FR-101",
     "--title",
     "Deterministic Workflow",
+    "--with-plan",
     "--date",
     DATE,
     "--json",
@@ -206,6 +226,7 @@ test("work start applies valid templates and is path-safe and idempotent", async
   const firstArgs = [
     "work",
     "start",
+    "--with-plan",
     "--project",
     root,
     "--id",
@@ -263,7 +284,7 @@ test("work start applies valid templates and is path-safe and idempotent", async
   assert.equal(bug.data.type, "bug");
   assert.equal(bug.data.mode, "gated");
   assert.match(work.body, /^\n# FR-101: Deterministic Workflow\n/m);
-  assert.match(work.body, /## Acceptance\n/);
+  assert.match(work.body, /## Approach\n/);
   assert.match(plan.body, /Work Item: \[FR-101\]\(\.\.\/work\/FR-101-deterministic-workflow\.md\)/);
 
   const index = await readFile(path.join(root, ".catpaw/index.md"), "utf8");
@@ -499,6 +520,7 @@ test("template replacements keep user-supplied token text opaque", async (t) => 
     "FR-101",
     "--title",
     "{{PLAN_PATH}}",
+    "--with-plan",
     "--date",
     DATE,
     "--apply",
@@ -766,6 +788,7 @@ test("tracked work close defaults to done and preserves Plan and Evidence", asyn
   const start = await runCli([
     "work",
     "start",
+    "--with-plan",
     "--project",
     root,
     "--id",
@@ -927,7 +950,7 @@ test("Evidence apply requires a substantive body while dry-run may preview", asy
 });
 
 test("gated work closes with bound test and independent review Evidence", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   const start = await runCli([
     "work",
@@ -1027,7 +1050,7 @@ test("gated work closes with bound test and independent review Evidence", async 
 });
 
 test("independent review Evidence without a named agent does not satisfy the gate", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   const started = await runCli([
     "work",
@@ -1102,7 +1125,7 @@ lens: null
 });
 
 test("accepted gap closes gated work and persists typed Evidence atomically", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   const start = await runCli([
     "work",
@@ -1255,7 +1278,7 @@ test("work close replay on another date preserves terminal history exactly", asy
 });
 
 test("accepted-gap replay across dates is one immutable record", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   const started = await runCli([
     "work",
@@ -1316,7 +1339,7 @@ test("accepted-gap replay across dates is one immutable record", async (t) => {
 });
 
 test("accepted-gap replay does not read a reason from the next line", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   const start = await runCli([
     "work",
@@ -2147,7 +2170,7 @@ test("workflow human output is deterministic and preserves apply diagnostics", a
   assert.equal(second.stdout, first.stdout);
   assert.match(first.stdout, /^work start\nAction: preview\nStatus: preview\n/);
   assert.match(first.stdout, /Patch:\nREADY\n/);
-  assert.match(first.stdout, /Next: Run catpaw work start --apply to create the Work and Plan\.\n$/);
+  assert.match(first.stdout, /Next: Run catpaw work start --apply to create the Work\.\n$/);
 
   const output = renderMutationReport({
     command: "work close",
@@ -2539,7 +2562,7 @@ test("accept-gap refuses closures that are not missing Gated done Evidence", asy
 });
 
 test("provider Evidence satisfies only the exact bound Work independent gate", async (t) => {
-  const root = await fixture(t);
+  const root = await legacyFixture(t);
   await createSchema2Board(root);
   for (const command of [
     [

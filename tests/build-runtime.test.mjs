@@ -76,9 +76,12 @@ test("runtime manifest declares schema 2 and executable CLI package entries", as
   assert.deepEqual(manifest.cli.commands, [
     "status",
     "board init|status|doctor|migrate",
-    "work start|show|update|finish|cancel",
+    "work start|show|update|finish|cancel|continue",
     "milestone start|show|add|finish|cancel",
+    "evidence add|list|show|run",
     "proof add|list|show",
+    "runtime inspect|plan|apply|recover",
+    "adapter inspect|plan|apply|recover",
     "intent list|show",
     "transport check|open|send|status|read|close",
   ]);

@@ -17,12 +17,16 @@ dist/runtime      generated package
 
 ## Runtime Install
 
+使用 `runtime inspect|plan|apply|recover` 完成安装，不再临时编写安装脚本。
+精确命令、计划文件、备份与恢复契约由 [Maintenance](guidance/maintenance.md) 持有。
+用户已授权整段升级时按该范围持续执行，下面的检查点不要求重复确认。
+
 1. 读取 source/dist 的 `runtime-manifest.json` 与 `VERSION`。
 2. 验证 manifest 中每个 canonical file、hash、可执行入口和本地链接。
 3. 比较 `~/.catpaw/`，输出 exact dry-run：新增、替换、保留与冲突。
 4. 明确保留 `~/.catpaw/state/projects.json`、整个 `state/`、未知用户文件和备份。
-5. 将 manifest `legacyRuntimePaths` 视为退役 managed content：先备份，再从 sibling
-   stage 排除；不得把它们误当 unknown files 保留在 live runtime。
+5. 对旧 manifest 确认拥有的退役路径先备份，再从 sibling stage 排除；新 managed
+   路径与用户未知文件冲突时拒绝接管，不能仅凭新 manifest 声明删除未知内容。
 6. 用户授权后，在 sibling stage 组装完整 runtime，验证后再替换 managed files。
 7. 复查 installed `VERSION`、manifest/hash、CLI smoke 与 obvious secret scan。
 

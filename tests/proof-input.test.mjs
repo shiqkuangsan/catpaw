@@ -55,11 +55,12 @@ test("empty stdin produces a structured error before a write or transport call",
 test("Markdown headings in recorded Proof satisfy the existing completion contract", async (t) => {
   const root = await fixture(t);
   assert.equal(run(["work", "start", "--id", "FR-950", "--title", "Structured Proof", "--high-risk", "--apply"], root).status, 0);
+  const candidate = JSON.parse(run(["work", "show", "--id", "FR-950"], root).stdout).candidate;
   for (const [type, body, extra] of [
     ["test", "## Verification\n\nFocused tests passed.\n\n## Limits\nOnly the scoped fixture was tested.", []],
     ["review", "## Findings\n\nNo blocking findings in the checked scope.", ["--independent", "--agent", "independent-checker"]],
   ]) {
-    const added = run(["proof", "add", "--work", "FR-950", "--type", type, "--title", type, "--body", body, ...extra, "--apply"], root);
+    const added = run(["proof", "add", "--work", "FR-950", "--type", type, "--title", type, "--body", body, "--result", "passed", "--candidate", candidate, ...extra, "--apply"], root);
     assert.equal(added.status, 0, added.stderr || added.stdout);
   }
   const finished = run(["work", "finish", "--id", "FR-950", "--apply"], root);

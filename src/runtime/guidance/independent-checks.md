@@ -57,8 +57,11 @@ Agents when that produces useful information.
 - If a call returns no usable result, say so and select another actor/transport,
   narrow the question, handle it inline with an explicit gap, or stop.
 - Required independence cannot be replaced with primary self-review. If no
-  independent actor is usable, record the exact gap. Gated Work closes only when
-  the user explicitly approves every current missing Proof gate.
+  independent actor is usable, record the exact gap. Legacy Gated Work may close
+  with explicit user acceptance of every missing gate. Contract 4 cannot mark
+  completion passed until its current-candidate independent check passes;
+  risk acceptance may stop or cancel Work, not convert failure into verification.
+  Candidate freshness and valid Evidence reuse follow [Evidence Contract](evidence.md).
 - Multi-round checks may reuse an observable session, but every round receives
   the updated bounded delegation facts and next question. Stable output is not
   completion.

@@ -47,15 +47,15 @@ test("runtime keeps five internal checklists without exposing a role tree", asyn
   }
 });
 
-test("runtime policy exposes only Work, Proof, and Approval as parallel user concerns", async () => {
+test("runtime policy centers Work and separates Evidence from authorization", async () => {
   const text = await runtimeText("runtime-policy.md");
   assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
-  assert.match(text, /三者并列，不是审批流水线/);
+  assert.match(text, /以 Work 推进交付[\s\S]*Authorization 约束具体动作/);
   assert.match(text, /Understand -> Execute -> Check -> Finish/);
-  assert.match(text, /Approval 不存成看板工件/);
+  assert.match(text, /授权记录不形成权限凭证/);
   assert.match(text, /Proof[\s\S]*不能生成 Approval/);
   assert.match(text, /高风险 Work[\s\S]*不同于[\s\S]*实现者[\s\S]*独立检查/);
-  assert.match(text, /用户明确接受当前逐项缺口[\s\S]*自审不能替代独立性/);
+  assert.match(text, /风险接受不能把失败或未检验标记为通过/);
   assert.match(text, /explore[\s\S]*build[\s\S]*check/);
   assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
 });
@@ -70,8 +70,8 @@ test("workflow maps the visible flow to compatible internal modes and stages", a
   for (const stage of ["think", "plan", "build", "review", "test", "ship", "reflect"]) {
     assert.match(text, new RegExp(`\\b${stage}\\b`, "i"));
   }
-  assert.match(text, /Gated[\s\S]*independent Proof/i);
-  assert.match(text, /Proof stored through `proof add`[\s\S]*typed schema 2 Evidence/i);
+  assert.match(text, /Gated[\s\S]*independent\s+Evidence/i);
+  assert.match(text, /`evidence add` \(`proof add` alias\)[\s\S]*typed schema 2 Evidence/i);
   assert.match(text, /push[\s\S]*PR[\s\S]*explicit[\s\S]*Approval/i);
 });
 

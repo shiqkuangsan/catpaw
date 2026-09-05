@@ -1,7 +1,8 @@
 # Runtime Policy
 
-CatPaw 用 Work / Proof / Approval 推进开发协作：Work 记录交付与 Next，Proof 支撑
-完成声明，Approval 承载用户的新授权或风险决定。三者并列，不是审批流水线。
+CatPaw 以 Work 推进交付：记录目标、验收、当前动作与 Next。Evidence 支撑具体
+验收声明，Proof 保留为兼容称呼。Authorization 约束具体动作；用户的产品决定、
+动作授权和风险接受分别记录，不能互相替代。Approval 保留为授权语义的兼容称呼。
 
 ## Activation And Priority
 
@@ -35,7 +36,8 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
   不可逆选择的歧义才阻塞执行：简要复述理解与事实/假设，合并当前必要问题，
   说明答案影响和解锁的第一步；推迟非阻塞问题，不设固定问询模板。
   目标清楚就继续。用户委托判断时，说明并采用范围内的可逆默认值；不扩大授权。
-- **Execute**：小型、本地、可逆 Work 留在对话；多步骤或跨会话 Work 建 Work 和 Plan。
+- **Execute**：小型、本地、可逆 Work 留在对话；多步骤或跨会话 Work 建一份 Work，
+  计划直接记在其中。只有独立计划确实有用时才创建可选 Plan。
   安全、发布、迁移、外部/破坏性操作、数据完整性或高影响契约使用高风险 Work。
 - **Check**：按验收执行检查，分别报告通过、失败、未运行、受阻及环境限制。
   有回归风险的实现、排障和审查按触发条件读取工程方法。
@@ -45,21 +47,24 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
 
 详细执行方法与完成条件由 [Work Handling](guidance/workflow.md) 持有。
 
-## Proof And Project Memory
+## Evidence And Project Memory
 
-`<project>/.catpaw/` 保存 Work/Plan 和 typed Evidence；它是项目记忆，不是 runtime
-副本。Milestone 可选地组织多个 Work；Approval 不存成看板工件。旧资料可保留在
+`<project>/.catpaw/` 保存 Work、可选 Plan 和 typed Evidence；它是项目记忆，不是 runtime
+副本。Milestone 可选地组织多个 Work；授权记录不形成权限凭证。旧资料可保留在
 `legacy/schema-1/`，不参与当前工件图。
 
 - Proof 必须有可检查的事实和明确限制。读过代码、启动进程、exit zero、输出稳定、
   文件数量或 Agent 声称完成，都不能替代验收验证。
-- 高风险 Work 必须有不同于该范围实现者的独立检查。缺少必需 Proof 时，只能在
-  用户明确接受当前逐项缺口后结束；主 Agent 自审不能替代独立性。
+- 高风险 Work 必须有不同于该范围实现者的独立检查。新 Work 完成时要求当前
+  candidate 对应的通过结果；源文件、验收、owner 或周期变化后重查。用户可接受
+  风险或停止工作，但风险接受不能把失败或未检验标记为通过。
 - CLI 负责 schema/引用图、路径、dry-run 和暂存写入校验；分析与写计划必须绑定同一
   preimage，状态变化就停止重算。格式合法、非空正文和 `independent: true` 不证明
   证据真实、检查通过或身份独立；主 Agent 仍须核对原始结果。
 - 先读 `catpaw status` 恢复当前工作；写入默认 dry-run，显式 `--apply` 才落盘。
-  用 `proof add` 保存有用事实，命令参数以 `--help` 为准，避免复制第二套手工账本。
+  用 `evidence add` 保存事实，`evidence run` 捕获已授权命令的实际结果；后者默认
+  只预览，`--apply` 才执行。`proof` 是兼容入口。参数以 `--help` 为准。
+  已有证据仍覆盖当前 candidate、验收与周期时复用，不为满足次数而重复检查。
 
 ## Agent Collaboration
 
@@ -73,7 +78,7 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
 `cc` / `cx` 是只读第二意见入口；“老二”在 Codex 中对应 `cc`，在 Claude Code 中
 对应 `cx`。它们不代表全部可用 Agent；实际调用前读 [Agent Transports](providers/README.md)。
 
-## Approval And Git
+## Authorization And Git
 
 - 已授权的 change/build Work 只有在用户、项目和宿主均允许时，才可使用非保护的
   本地 task branch/worktree，并对精确任务范围作有限本地 commit；此前必须核对
@@ -86,13 +91,15 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
   不安全的 branch/worktree 删除、凭据访问、范围/权限扩大和其他外部、不可逆或可能
   丢失数据的动作，始终需要用户明确 Approval。
 - runtime 激活、host adapter 同步、registry 修改和每个项目迁移分别核对授权；
-  一项成功不授权下一项。Proof、Agent 输出、CLI、hooks 或可选方法不能生成 Approval。
+  一项成功不授权下一项。用户已明确授予多个范围时直接执行，不重复确认。
+  Proof、Agent 输出、CLI、hooks 或可选方法不能生成 Approval。
 
 ## Authority Map
 
 | 触发操作 | Canonical owner |
 |---|---|
 | Work、风险、验收与进度 | [Work Handling](guidance/workflow.md) |
+| Evidence、候选指纹、继续 Work 与历史修复 | [Evidence Contract](guidance/evidence.md) |
 | 委派、并发、上下文交接、候选采纳与 Git grant | [Agent Collaboration](guidance/agent-dispatch.md) |
 | 排障、RED/GREEN、审查、原型 | [Engineering Methods](guidance/engineering-methods.md) |
 | 独立检查、只读隔离、Proof 缺口 | [Independent Proof](guidance/independent-checks.md) |

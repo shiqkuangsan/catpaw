@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 3.4.4 Hybrid Runtime.
+This repository is the versioned source for CatPaw 4.0.0 Work Runtime.
 
 ## Repository Role
 
@@ -25,6 +25,7 @@ Read the smallest canonical source that owns the operation:
 |---|---|
 | Always-on routing, progress, safety | `src/runtime/runtime-policy.md` |
 | Work handling and internal risk selection | `src/runtime/guidance/workflow.md` |
+| Candidate-bound Evidence, continuation, historical repair | `src/runtime/guidance/evidence.md` |
 | Agent intents, delegation, orchestration, concurrency, context transitions | `src/runtime/guidance/agent-dispatch.md` |
 | Debugging, RED/GREEN, review, and prototype methods | `src/runtime/guidance/engineering-methods.md` |
 | Subagent triggers, fallback, accepted gaps | `src/runtime/guidance/independent-checks.md` |
@@ -145,10 +146,10 @@ the user has explicitly requested and completed installation.
 
 ## Architecture Boundary
 
-CatPaw exposes three parallel user concerns:
+CatPaw centers delivery on Work:
 
 ```text
-Work | Proof | Approval
+Work -> acceptance supported by Evidence; actions bounded by Authorization
 ```
 
 The visible flow is `Understand -> Execute -> Check -> Finish`; internal schema

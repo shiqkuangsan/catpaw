@@ -3,9 +3,8 @@
 CatPaw is a local-first runtime for reliable coding-agent Work:
 
 ```text
-Work      outcome, progress, and Next
-Proof     checked facts and remaining gaps
-Approval  exact user authority or accepted risk
+Work -> outcome, acceptance, progress and Next
+        Evidence supports claims; Authorization bounds actions
 ```
 
 The visible flow is `Understand -> Execute -> Check -> Finish`. Internal schema
@@ -17,7 +16,7 @@ brief and proceeds; material ambiguity produces a compact readback of the curren
 understanding, relevant facts or assumptions, only the decisions that unblock
 the first slice, and why they matter. Structurally complex Work may additionally
 use a shallow containment tree, material dependency edges, and local
-`Confirmed | Proposed | Open` notes. Durable output reuses the existing Plan;
+`Confirmed | Proposed | Open` notes. Durable output reuses Work or its optional Plan;
 none of this adds a stage, artifact, schema, CLI surface, mandatory headings, or
 user concept.
 
@@ -25,7 +24,7 @@ user concept.
 
 | Surface | Responsibility |
 |---|---|
-| [runtime-policy.md](runtime-policy.md) | always-on Work / Proof / Approval routing and safety |
+| [runtime-policy.md](runtime-policy.md) | Work-centered routing, Evidence and Authorization boundaries |
 | [catalog/](catalog/) | machine-readable `explore`, `build`, and `check` intent contracts |
 | [guidance/](guidance/) | internal Work handling, Agent collaboration, methods, independent Proof, Milestone, and maintenance |
 | [lenses/](lenses/) | internal professional checklists |
@@ -47,7 +46,7 @@ Project-local `.catpaw/` is durable memory, not a runtime copy:
     └── topics/
 ```
 
-User-facing Work maps to Work Item and Plan storage. Proof facts map to typed
+User-facing Work maps to one Work Item and optional Plan storage. Proof facts map to typed
 Evidence (`research | review | test | provider | reflection`). Approval remains
 a user boundary, not an artifact. A schema 1 migration may preserve an isolated
 `legacy/schema-1/` checksum archive without changing the native graph.
@@ -59,9 +58,12 @@ Preferred commands:
 ```text
 catpaw status
 catpaw board init|status|doctor|migrate
-catpaw work start|show|update|finish|cancel
+catpaw work start|show|update|finish|cancel|continue
 catpaw milestone start|show|add|finish|cancel
+catpaw evidence add|list|show|run
 catpaw proof add|list|show
+catpaw runtime inspect|plan|apply|recover
+catpaw adapter inspect|plan|apply|recover
 catpaw intent list|show
 catpaw transport check|open|send|status|read|close
 ```
@@ -69,8 +71,10 @@ catpaw transport check|open|send|status|read|close
 Use `catpaw --help`, command help, and `catpaw --version` for discovery. Daily
 `status` renders Work, Proof, visible Phase, and Next; `board` retains storage
 and maintenance detail. Mutations default to dry-run and write only with
-`--apply`. `proof add` accepts inline, file, or stdin bodies and shares schema 2
-storage with compatible `evidence add`. `--high-risk` maps to internal
+`--apply`. `evidence add` accepts inline, file, or stdin bodies; `proof` remains
+compatible. New Work uses explicit contract 4 metadata, bound candidate/result
+Evidence, and a fresh cycle on continuation; old records keep their semantics.
+Older runtimes may reject new records. `--high-risk` maps to internal
 `mode: gated`; existing `--mode tracked|gated` remains accepted. Existing
 `board status`, `work close`, `milestone close`, and `agent ...` calls also
 remain compatible.

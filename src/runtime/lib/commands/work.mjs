@@ -1,4 +1,5 @@
 import path from "node:path";
+import { candidateFor } from "../candidate.mjs";
 
 import {
   COMPLETION_EVIDENCE,
@@ -94,8 +95,14 @@ async function runStart(options) {
     created: options.date,
     updated: options.date,
     closed: null,
+    contract: 4,
+    acceptance: options.acceptance,
+    scope: options.scope,
+    owner: options.owner,
+    cycle: 1,
+    candidate: null,
   };
-  const workContent = await instantiateTemplate({
+  let workContent = await instantiateTemplate({
     name: "work-item.md",
     kind: "workItem",
     metadata,
@@ -106,7 +113,8 @@ async function runStart(options) {
       PLAN_PATH: `../${planPath}`,
     },
   });
-  const planContent = await instantiateTemplate({
+  if (!options.withPlan) workContent = workContent.replace(/\n## Links\n[\s\S]*$/, "\n");
+  const planContent = options.withPlan ? await instantiateTemplate({
     name: "plan.md",
     kind: "plan",
     metadata: { work: options.id, updated: options.date },
@@ -116,7 +124,7 @@ async function runStart(options) {
       TITLE: neutralizeCatPawMarkers(options.title),
       WORK_PATH: `../${workPath}`,
     },
-  });
+  }) : null;
   const syntheticWork = {
     ...metadata,
     title: options.title,
@@ -128,11 +136,13 @@ async function runStart(options) {
   };
   const dashboard = rebuildDashboard(inspected.board.indexText, inspected.board, {
     workItems: [syntheticWork],
-    plans: [syntheticPlan],
+    plans: options.withPlan ? [syntheticPlan] : [],
   });
   const plan = await createMutationPlan(options, inspected, [
+    { type: "ensure-dir", path: "work" },
+    ...(options.withPlan ? [{ type: "ensure-dir", path: "plans" }] : []),
     { type: "write-file", path: workPath, content: workContent, mode: "create" },
-    { type: "write-file", path: planPath, content: planContent, mode: "create" },
+    ...(options.withPlan ? [{ type: "write-file", path: planPath, content: planContent, mode: "create" }] : []),
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
   ]);
   const applyResult = await applyMutationPlan(plan, options);
@@ -143,11 +153,11 @@ async function runStart(options) {
     applyResult,
     artifacts: [
       { kind: "workItem", path: workPath },
-      { kind: "plan", path: planPath },
+      ...(options.withPlan ? [{ kind: "plan", path: planPath }] : []),
     ],
     nextAction: options.apply
       ? "Work Item is active at the plan stage."
-      : "Run work start --apply to create the Work Item and Plan.",
+      : "Run work start --apply to create the Work.",
   });
 }
 
@@ -174,7 +184,8 @@ async function runShow(options) {
     });
   }
   const proof = inspected.board.evidence.filter((item) => item.work === work.id);
-  const coverage = completionEvidenceState(inspected.board, work.id);
+  const candidate = work.terminal ? work.candidate ?? null : await candidateFor(options, work);
+  const coverage = completionEvidenceState(inspected.board, work.id, candidate);
   return {
     exitCode: 0,
     report: {
@@ -184,6 +195,8 @@ async function runShow(options) {
       schema: 2,
       status: "ok",
       work: workSummary(work, inspected.board.boardPath),
+      candidate,
+      contract: work.contract === 4 ? { version: 4, cycle: work.cycle, acceptance: work.acceptance, scope: work.scope, owner: work.owner } : { version: 3 },
       proof: {
         count: proof.length,
         types: [...new Set(proof.map((item) => item.type))].sort(),
@@ -390,8 +403,9 @@ async function runClose(options) {
   if (["done", "cancelled"].includes(work.status)) {
     return terminalNoop(options, work, inspected, workPath, command);
   }
+  const candidate = options.status === "done" ? await candidateFor(options, work) : null;
   const missing = work.mode === "gated" && options.status === "done"
-    ? completionEvidenceState(inspected.board, options.id).missing
+    ? completionEvidenceState(inspected.board, options.id, candidate).missing
     : [];
   if (
     options.acceptGap !== null &&
@@ -404,7 +418,7 @@ async function runClose(options) {
       nextAction: "Remove --accept-gap or use it only to record an actual Gated completion gap.",
     });
   }
-  if (missing.length > 0 && !options.acceptGap) {
+  if (missing.length > 0 && (!options.acceptGap || work.contract === 4)) {
     return refusedMutation({
       command,
       options,
@@ -416,7 +430,7 @@ async function runClose(options) {
           acceptedGap: false,
         },
       },
-      nextAction: "Add the missing Evidence or pass --accept-gap with a reason.",
+      nextAction: work.contract === 4 ? "Record passing current-candidate Evidence. Record risk acceptance separately; it does not turn missing verification into a passed result." : "Add the missing Evidence or pass --accept-gap with a reason.",
     });
   }
 
@@ -426,6 +440,7 @@ async function runClose(options) {
     stage: "reflect",
     updated: options.date,
     closed: options.date,
+    ...(work.contract === 4 ? { candidate } : {}),
   };
   const body = updateWorkProgress(work.body, {
     phase: "Finish",
@@ -486,7 +501,9 @@ async function runClose(options) {
     { type: "write-file", path: workPath, content, mode: "replace" },
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
   ]);
-  const applyResult = await applyMutationPlan(plan, options);
+  const applyResult = await applyMutationPlan(plan, { ...options, validateCandidate: async ({ stageRoot }) => {
+    if (options.status === "done" && candidate !== await candidateFor({ ...options, candidateExclusions: [stageRoot] }, work)) throw Object.assign(new Error("Candidate changed before completion publication."), { code: "ERR_WORKFLOW_CANDIDATE" });
+  } });
   return mutationResult({
     command,
     options,
@@ -522,10 +539,36 @@ async function runClose(options) {
   });
 }
 
+async function runContinue(options) {
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
+  const refusal = schemaRefusal("work continue", options, inspected.board, inspected.findings);
+  if (refusal) return refusal;
+  const work = inspected.board.workItems.find(item => item.id === options.id);
+  if (!work?.terminal) return refusedMutation({ command: "work continue", options, reason: "Only terminal Work can start a new cycle.", nextAction: "Use work update for active Work." });
+  const cycle = work.cycle ?? 0;
+  const metadata = { ...work.metadata, contract: 4, acceptance: work.acceptance ?? work.id, scope: work.scope ?? ".", owner: work.owner ?? "primary", cycle: cycle + 1, candidate: null, status: "active", stage: "plan", updated: options.date, closed: null };
+  const body = updateWorkProgress(work.body, { phase: "Understand", next: neutralizeCatPawMarkers(options.next) });
+  const workPath = boardRelative(inspected.board, work.filePath);
+  const historyPath = `evidence/${work.id}/${options.date}-reflection-closure-cycle-${cycle}.md`;
+  const history = await instantiateTemplate({ name: "evidence.md", kind: "evidence", metadata: { type: "reflection", work: work.id, stage: "reflect", created: options.date, updated: options.date }, order: EVIDENCE_ORDER, replacements: { TITLE: `Closure cycle ${cycle}: ${work.id}`, BODY: `Historical closure, preserved before continuation.\n\n${work.text}` } });
+  const dashboard = rebuildDashboard(inspected.board.indexText, inspected.board, { workItems: [{ ...work, ...metadata, body, boardRelativePath: workPath }] });
+  const milestones = milestoneScopeUpdates(inspected.board, metadata, options.date);
+  const plan = await createMutationPlan(options, inspected, [
+    { type: "ensure-dir", path: `evidence/${work.id}` },
+    { type: "write-file", path: historyPath, content: history, mode: "create" },
+    { type: "write-file", path: workPath, content: `${stringifyFrontmatter(metadata, WORK_ORDER)}${body}`, mode: "replace" },
+    { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
+    ...milestones.operations,
+  ]);
+  const applyResult = await applyMutationPlan(plan, options);
+  return mutationResult({ command: "work continue", options, plan, applyResult, artifacts: [{ kind: "workItem", path: workPath }, { kind: "evidence", path: historyPath }, ...milestones.artifacts], nextAction: options.apply ? options.next : "Run work continue --apply to preserve the closure and begin a new cycle." });
+}
+
 export async function runWorkCommand(options) {
   if (options.command === "start") return runStart(options);
   if (options.command === "show") return runShow(options);
   if (options.command === "update") return runUpdate(options);
   if (options.command === "close") return runClose(options);
+  if (options.command === "continue") return runContinue(options);
   throw new TypeError(`Unsupported work command: ${options.command}`);
 }

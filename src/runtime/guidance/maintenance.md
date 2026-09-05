@@ -1,6 +1,6 @@
 # Runtime Maintenance
 
-本文件保留尚未全部 CLI 化的 runtime、adapter 与 registry 运维能力。它们是
+本文件持有 runtime、adapter 与 registry 运维边界。Runtime/adapter 使用正式 CLI；它们是
 显式 maintenance actions，不属于普通 task dispatch。
 
 ## Runtime Inspect And Upgrade
@@ -10,6 +10,18 @@ Inspect 分别报告 source、dist 与 installed `VERSION`/manifest/hash。Sourc
 
 Upgrade 默认 dry-run：列出 managed files 的 add/replace/remove、未知文件、
 `state/`、adapter impact 与 project migration impact。Apply 前：
+
+```text
+catpaw runtime inspect --package /abs/dist/runtime --target /abs/installed/runtime
+catpaw runtime plan --package /abs/dist/runtime --target /abs/installed/runtime --out /abs/plan.json --apply
+catpaw runtime apply --plan-file /abs/plan.json --target /abs/installed/runtime
+catpaw runtime apply --plan-file /abs/plan.json --target /abs/installed/runtime --apply
+```
+
+`plan --apply` 只保存计划；实际激活由 `runtime apply --apply` 执行。目标和包发生
+漂移时重新生成计划，不重放陈旧声明。计划不能携带任意脚本或扩大原有授权。
+默认备份位于目标同级 `.catpaw-operations/<target-name>/operation-<UUID>/`；可用
+`--backup-root` 指定同一文件系统上、目标和包之外的位置。报告包含持久 receipt。
 
 - 备份现有 managed runtime；
 - preserve `~/.catpaw/state/projects.json` 和整个 `state/`；
@@ -50,9 +62,11 @@ Deterministic merge：
 - 发现 unmanaged CatPaw section 时先报告 overlap，要求 user decision：保留并只加
   managed block，或由用户确认 exact range 后替换；不得静默留下两套 authority。
 
-默认只显示目标文件与 exact patch。Apply 前把原文件备份到
-`~/.catpaw/backups/adapters/<target-key>/<UTC-timestamp>/`，recheck preimage digest，
-再用同目录 temporary file + atomic rename。Apply 后验证恰好一个 managed block、
+用 `adapter plan --target /abs/actual-rule-file --scope global|project` 预览；
+`--out /abs/adapter-plan.json --apply` 保存计划。随后用
+`adapter apply --plan-file /abs/adapter-plan.json --target /abs/actual-rule-file --apply`
+写入。备份与 receipt 采用上面的 operation 目录布局；preimage digest 变化即拒绝。
+整个操作只接管一个文件，不复制其所在的 Claude/Codex 配置目录。Apply 后验证恰好一个 managed block、
 runtime-policy link 可读且用户内容 byte-preserved。Source changes 不自动 refresh
 adapter，也不把 runtime package 复制进 host config 或 project。
 
@@ -202,5 +216,10 @@ digest；preimage 有变化就基于最新 snapshot 重新 stage，不覆盖或�
 
 ## Recovery
 
-Apply 失败时保留 live preimage；已发布 backup 不自动删除。报告 backup path、
-失败阶段、验证 finding 与下一步，不把 rollback 或 cleanup 当作隐含授权。
+`runtime recover --receipt /abs/receipt.json --target /abs/runtime` 或对应
+`adapter recover` 先预览，`--apply` 才恢复。操作在移动 live 前持久记录阶段；失败
+时只有实际旧副本和新候选仍匹配才自动恢复，否则保留所有副本并报告 recovery-required。
+Runtime 目录发布使用两个受保护的 rename，存在短暂不可用窗口；这不是跨目录原子
+交换，也不是防御同用户恶意绕过协作锁的隔离边界。恢复拒绝覆盖漂移后的用户数据。
+成功激活的完整旧 runtime 保留在 receipt 指向的 backup；不自动清理备份。
+3.x runtime 恢复后不能写 contract 4 Work；项目 board 从未被 runtime 恢复重写。

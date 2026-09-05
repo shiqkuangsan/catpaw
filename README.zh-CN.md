@@ -6,15 +6,16 @@ CatPaw 是面向 coding agent 的 local-first 可靠执行 runtime。它让 Agen
 持续推进，用可检查的事实支撑完成声明，只在真正属于用户的决策或风险边界前停下。
 
 ```text
-Work      要交付什么结果、当前做到哪里、下一步是什么
-Proof     检查了什么、事实说明什么、还存在哪些未知或缺口
-Approval  哪一项新增权限或风险接受必须由用户决定
+Work -> 目标、验收、当前进度与 Next
+        Evidence 支撑验收；Authorization 约束动作
 ```
 
-三者是并列问题，不是强制线性阶段。用户授权任务后，大部分 Work 不需要反复
-Approval。
+Work 是主要入口。Evidence 是验证记录的首选名称，Proof 保留为兼容称呼；
+Authorization 表达动作授权，Approval 保留为兼容称呼。产品决定、动作授权与
+风险接受分开记录，已有授权跨步骤持续有效，不增加反复审批。
 
-Source runtime 版本：`3.4.4`。项目工作板使用 **schema 2**。
+Source runtime 版本：`4.0.0`。项目工作板保留 **schema 2**，新 Work 使用显式
+contract 4 字段。旧记录继续可读；旧 runtime 可能拒绝新记录。无需批量迁移项目。
 
 ## 用户模型
 
@@ -27,16 +28,20 @@ Work 负责把一个用户结果从理解推进到 clean handoff。小型、局�
 多个相关 Work 可以按需组成 Milestone。用户不需要管理内部风险模式、生命周期阶段
 或 Agent topology。
 
-### Proof
+持久 Work 默认只建一份记录，计划写在其中；独立 Plan 按需创建。
+`work continue` 保留上一轮完成记录，再开启新的证据周期。
+
+### Evidence（兼容 Proof）
 
 Proof 是支持判断的可检查事实：已经执行的检查、可复现 finding、独立 review，以及
 明确的 remaining gap。进程启动、exit zero、session 稳定、代码阅读或 Agent 自称
 “完成”，都不能单独作为完成 Proof。
 
-高风险 Work 必须由不同于实施者的 actor 提供独立 Proof。需要持久化时，Proof 仍以
-schema 2 typed `Evidence` 存储；Evidence 是兼容存储术语，不是第四个用户概念。
+新高风险 Work 要求测试和独立检查均通过，并绑定当前 candidate、验收与周期。
+后来的失败会覆盖先前通过。`evidence run` 捕获真实执行结果，但 exit zero 不证明
+测试充分，填写 actor 名称也不认证身份；主执行者自审不能满足独立检查。
 
-### Approval
+### Authorization（兼容 Approval）
 
 只有必须由用户提供新增权限或明确接受风险时才需要 Approval，例如：实质改变结果、
 缺失必要 Proof、外部或不可逆影响、protected/base 更新、破坏性或改写历史的 Git、
@@ -44,6 +49,7 @@ secret access、权限扩张。
 
 Approval 不是 workflow stage。已经授权的 Work 应连续推进，不为每个内部步骤重复
 请示。Proof 永远不能制造 Approval。
+产品选择、动作授权和风险接受分别记录；接受风险不能把未通过的检查标成通过。
 
 ## 可见流程
 
@@ -59,7 +65,7 @@ CatPaw 在内部选择轻量、持久或高风险处理，并保留精确生命�
 选择时，CatPaw 会用紧凑回读说明当前理解，只询问能够解锁首个 slice 的决策。结构复杂
 的 Work 还可以按需拆出浅层 scope tree、material dependency edges 和局部
 `Confirmed | Proposed | Open` 注记。这不新增 stage、artifact、强制标题或用户概念；
-需要持久化时仍复用内部 Plan。
+需要持久化时复用 Work 或其可选 Plan。
 
 ## Agent 协作
 
@@ -94,7 +100,7 @@ CatPaw 管理的 reciprocal read-only transport 是 `cc`（Claude Code）和 `cx
 └── evidence/
 ```
 
-`Work` 映射为 schema 2 Work Item/Plan；`Proof` facts 映射为 typed Evidence；
+`Work` 映射为 schema 2 Work Item 与可选 Plan；`Proof` facts 映射为 typed Evidence；
 `Approval` 仍是用户授权边界，不新增 artifact。Schema 1 migration 可能保留带 checksum
 的 `legacy/schema-1/` archive，所有原始材料都会保留。
 
@@ -105,9 +111,12 @@ CatPaw 管理的 reciprocal read-only transport 是 `cc`（Claude Code）和 `cx
 ```text
 catpaw status
 catpaw board init|status|doctor|migrate
-catpaw work start|show|update|finish|cancel
+catpaw work start|show|update|finish|cancel|continue
 catpaw milestone start|show|add|finish|cancel
+catpaw evidence add|list|show|run
 catpaw proof add|list|show
+catpaw runtime inspect|plan|apply|recover
+catpaw adapter inspect|plan|apply|recover
 catpaw intent list|show
 catpaw transport check|open|send|status|read|close
 ```

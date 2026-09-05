@@ -235,7 +235,11 @@ export async function inspectMutationBoard(options, { capturePreimage = false } 
 }
 
 export function schemaRefusal(command, options, board, findings) {
-  if (board.schema === 2 && !findings.some((item) => item.severity === "error")) {
+  const scoped = ["work", "evidence", "proof"].includes(options.group);
+  const selected = options.id ?? options.work;
+  const repairing = ["evidence", "proof"].includes(options.group) && options.command === "add";
+  const blocks = item => item.severity === "error" && !(scoped && repairableCompletion(item, board) && (item.work !== selected || repairing));
+  if (board.schema === 2 && !findings.some(blocks)) {
     return null;
   }
   const migrationRequired = board.schema === 1;
@@ -258,26 +262,41 @@ export function schemaRefusal(command, options, board, findings) {
   };
 }
 
+function repairableCompletion(item, board) {
+  return item.code === "gated-work-missing-completion-evidence" && typeof item.work === "string" && board.workItems.some(work => work.id === item.work) && Array.isArray(item.missing);
+}
+const mutationBaselines = new WeakMap();
+
 export async function createMutationPlan(options, inspected, operations) {
   if (typeof inspected?.rootDigest !== "string" || inspected.rootDigest === "") {
     throw workflowError("ERR_WORKFLOW_PREIMAGE_REQUIRED", "Workflow writes require the analyzed board preimage.");
   }
-  return createPatchPlan({
+  const errors = inspected.findings.filter(item => item.severity === "error");
+  // In a degraded board, retain the dashboard verbatim until global doctor is clean.
+  if (errors.length > 0) operations = operations.filter(operation => operation.path !== "index.md");
+  const plan = await createPatchPlan({
     root: options.boardPath, operations, expectedRootDigest: inspected.rootDigest,
   });
+  mutationBaselines.set(plan, errors.filter(item => repairableCompletion(item, inspected.board)));
+  return plan;
 }
 
 export async function applyMutationPlan(plan, options) {
   if (!options.apply || plan.status === "blocked") return null;
   return applyPatchPlan(plan, {
     validate: async ({ stageRoot }) => {
+      if (options.validateCandidate) await options.validateCandidate({ stageRoot });
       const inspected = await inspectMutationBoard({
         projectRoot: options.projectRoot,
         boardPath: stageRoot,
       });
       if (
         inspected.board.schema !== 2 ||
-        inspected.findings.some((item) => item.severity === "error")
+        inspected.findings.some(item => {
+          if (item.severity !== "error") return false;
+          const baseline = mutationBaselines.get(plan)?.find(old => old.code === item.code && old.work === item.work);
+          return !baseline || !repairableCompletion(item, inspected.board) || item.missing.some(gate => !baseline.missing.includes(gate));
+        })
       ) {
         throw workflowError(
           "ERR_WORKFLOW_STAGED_VALIDATION",
@@ -312,7 +331,7 @@ export function mutationResult({
       ...reportFields,
       patch: patchReport(plan),
       ...(applyResult
-        ? { warnings: applyResult.warnings, backupPath: applyResult.backupPath }
+        ? { warnings: [...applyResult.warnings, ...(mutationBaselines.get(plan)?.length ? [{ code: "dashboard-preserved", path: options.boardPath, message: "Existing completion gaps remain scoped; dashboard was preserved. Run board doctor after repair." }] : [])], backupPath: applyResult.backupPath }
         : {}),
       nextAction: blocked ? "Resolve the patch blockers." : nextAction,
     },
@@ -362,6 +381,7 @@ export function renderMutationReport(report) {
       `State: ${report.work.status}`,
       `Phase: ${report.work.phase}`,
       `Risk: ${report.work.risk}`,
+      ...(report.contract?.version === 4 ? [`Acceptance: ${report.contract.acceptance}`, `Scope: ${report.contract.scope}`, `Cycle: ${report.contract.cycle}`, `Candidate: ${report.candidate ?? "Not checked"}`] : []),
       `Proof: ${report.proof.count}${report.proof.types.length > 0 ? ` (${report.proof.types.join(", ")})` : ""}`,
       ...(report.proof.missingCompletion.length > 0
         ? [`Missing Proof: ${report.proof.missingCompletion.join(", ")}`]
@@ -385,17 +405,17 @@ export function renderMutationReport(report) {
       "",
     ].join("\n");
   }
-  if (report.command === "proof list") {
+  if (["proof list", "evidence list"].includes(report.command)) {
     return [
       `Proof: ${report.proof.length}`,
       ...report.proof.map(
-        (item) => `- ${item.title} | ${item.type} | ${item.work ?? "topic"}${item.independent ? ` | independent: ${item.agent}` : ""}\n  ${item.path}`,
+        (item) => `- ${item.title} | ${item.type} | ${item.work ?? "topic"}${item.result ? ` | ${item.result}` : ""}${item.independent ? ` | independent: ${item.agent}` : ""}\n  ${item.path}`,
       ),
       `Next: ${report.nextAction}`,
       "",
     ].join("\n");
   }
-  if (report.command === "proof show" && report.proof) {
+  if (["proof show", "evidence show"].includes(report.command) && report.proof) {
     return [
       `Proof: ${report.proof.path}`,
       `Type: ${report.proof.type}`,

@@ -51,6 +51,12 @@
       "additionalProperties": false,
       "required": ["id", "type", "mode", "status", "stage", "created", "updated", "closed"],
       "properties": {
+        "contract": { "type": "integer", "enum": [4] },
+        "acceptance": { "type": "string", "pattern": "\\S" },
+        "scope": { "type": "string", "pattern": "\\S" },
+        "owner": { "type": "string", "pattern": "^\\S(?:[^\\r\\n]*\\S)?$" },
+        "cycle": { "type": "integer" },
+        "candidate": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
         "id": {
           "type": "string",
           "pattern": "^(?:FR|BUG|CHORE)-[0-9]{3,}$"
@@ -109,6 +115,18 @@
       "additionalProperties": false,
       "required": ["type", "work", "stage", "created", "updated"],
       "properties": {
+        "contract": { "type": "integer", "enum": [4] },
+        "result": { "type": "string", "enum": ["passed", "failed", "blocked", "not-run"] },
+        "candidate": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "claim": { "type": "string", "pattern": "\\S" },
+        "cycle": { "type": "integer" },
+        "sequence": { "type": "integer" },
+        "origin": { "type": "string", "enum": ["asserted", "captured"] },
+        "commandDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "exitCode": { "type": ["integer", "null"] },
+        "durationMs": { "type": "integer" },
+        "stdoutDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "stderrDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "type": {
           "type": "string",
           "enum": ["research", "review", "test", "provider", "reflection"]

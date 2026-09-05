@@ -241,7 +241,7 @@ test("public notice keeps attribution without a removed source-evidence claim", 
   assert.doesNotMatch(text, /source-evidence/i);
 });
 
-test("repository instructions route operations to v3.4 authorities", async () => {
+test("repository instructions route operations to v4 authorities", async () => {
   const text = await readFile(path.join(REPO, "AGENTS.md"), "utf8");
   for (const authority of [
     "src/runtime/runtime-policy.md",
@@ -260,7 +260,7 @@ test("repository instructions route operations to v3.4 authorities", async () =>
   assert.match(text, /CatPaw-managed[\s\S]*cc[\s\S]*cx[\s\S]*not[\s\S]*complete roster/i);
   assert.match(text, /primary agent[\s\S]*task-intent composition[\s\S]*final adoption/i);
   assert.match(text, /delegated integration owner[\s\S]*exact build grant[\s\S]*clean inbound adoption/i);
-  assert.match(text, /Work \| Proof \| Approval/);
+  assert.match(text, /Work -> acceptance supported by Evidence; actions bounded by Authorization/);
 });
 
 test("ADR-0023 retains history while routing current delegation to three intents", async () => {

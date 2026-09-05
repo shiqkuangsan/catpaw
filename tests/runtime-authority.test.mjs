@@ -268,8 +268,8 @@ test("maintenance retains deterministic adapter merge targets and conflicts", as
   assert.match(text, /one managed block[\s\S]*replace/i);
   assert.match(text, /multiple managed blocks[\s\S]*block/i);
   assert.match(text, /unmanaged CatPaw section[\s\S]*user decision/i);
-  assert.match(text, /backups\/adapters/);
-  assert.match(text, /exact patch/i);
+  assert.match(text, /adapter plan[\s\S]*adapter apply/);
+  assert.match(text, /operation-<UUID>[\s\S]*receipt/);
 });
 
 test("observable Agent command examples keep the project-scoped session key", async () => {
@@ -319,10 +319,10 @@ test("adapter snippets activate the compact policy without copying runtime files
   ]);
   const combined = `${globalAdapter}\n${projectAdapter}`;
   assert.match(combined, /~\/\.catpaw\/runtime-policy\.md/);
-  assert.match(projectAdapter, /\.catpaw\/` 保存 Work、Plan 和 Proof/);
+  assert.match(projectAdapter, /\.catpaw\/` 保存 Work、可选 Plan 和 Evidence/);
   assert.match(projectAdapter, /legacy\/schema-1\/[\s\S]*历史参考/);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
-  assert.match(combined, /Work \/ Proof \/ Approval[\s\S]*Understand -> Execute -> Check -> Finish/i);
+  assert.match(combined, /Work[\s\S]*Evidence[\s\S]*Authorization[\s\S]*Understand -> Execute -> Check -> Finish/i);
   for (const adapter of [globalAdapter, projectAdapter]) {
     assert.equal(adapter.match(/<!-- CATPAW:BEGIN -->/g)?.length, 1);
     assert.equal(adapter.match(/<!-- CATPAW:END -->/g)?.length, 1);

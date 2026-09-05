@@ -11,10 +11,6 @@ closed: null
 
 # {{WORK_ID}}: {{TITLE}}
 
-## Outcome
-
-State the verifiable outcome.
-
 ## Progress
 
 <!-- catpaw:work-progress:start -->
@@ -27,9 +23,9 @@ State the verifiable outcome.
 - In scope:
 - Out of scope:
 
-## Acceptance
+## Approach
 
-- [ ] Acceptance condition
+Record only decisions, steps and verification entrypoints needed for this Work.
 
 ## Links
 

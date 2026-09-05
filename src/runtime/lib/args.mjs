@@ -13,10 +13,12 @@ export class CliUsageError extends Error {
 
 const COMMANDS = Object.freeze({
   board: Object.freeze(["init", "status", "doctor", "migrate"]),
-  work: Object.freeze(["start", "show", "update", "close"]),
+  work: Object.freeze(["start", "show", "update", "close", "continue"]),
   milestone: Object.freeze(["start", "show", "add", "close"]),
   proof: Object.freeze(["add", "list", "show"]),
-  evidence: Object.freeze(["add"]),
+  evidence: Object.freeze(["add", "list", "show", "run"]),
+  runtime: Object.freeze(["inspect", "plan", "apply", "recover"]),
+  adapter: Object.freeze(["inspect", "plan", "apply", "recover"]),
   agent: Object.freeze([
     "intents",
     "intent",
@@ -56,6 +58,17 @@ const VALUE_OPTIONS = new Set([
   "--path",
   "--body-file",
   "--prompt-file",
+  "--acceptance",
+  "--scope",
+  "--owner",
+  "--result",
+  "--candidate",
+  "--timeout-ms",
+  "--package",
+  "--out",
+  "--plan-file",
+  "--receipt",
+  "--backup-root",
 ]);
 
 const FLAG_OPTIONS = new Set([
@@ -65,6 +78,7 @@ const FLAG_OPTIONS = new Set([
   "--fix",
   "--independent",
   "--high-risk",
+  "--with-plan",
 ]);
 
 const EVIDENCE_DEFAULT_STAGE = Object.freeze({
@@ -250,6 +264,13 @@ function parseWorkOptions(command, parsed) {
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
   }
+  if (command === "continue") {
+    rejectIrrelevantOptions(seen, new Set(["--project", "--board", "--json", "--id", "--next", "--date", "--apply", "--dry-run"]), "work continue");
+    requireOption(values, "id");
+    requireOption(values, "next");
+    if (!values.next.trim() || /[\r\n]/.test(values.next)) throw new CliUsageError("--next requires a nonempty single-line value");
+    return { id: values.id, next: values.next.trim(), date: values.date ?? localDate(), apply: flags.apply === true, dryRun: !flags.apply };
+  }
   if (command === "show") {
     rejectIrrelevantOptions(
       seen,
@@ -378,6 +399,10 @@ function parseWorkOptions(command, parsed) {
       "--title",
       "--mode",
       "--high-risk",
+      "--with-plan",
+      "--acceptance",
+      "--scope",
+      "--owner",
       "--date",
     ]),
     `work ${command}`,
@@ -414,6 +439,10 @@ function parseWorkOptions(command, parsed) {
     title: values.title,
     mode,
     date,
+    withPlan: flags["with-plan"] === true,
+    acceptance: values.acceptance ?? values.title,
+    scope: values.scope ?? ".",
+    owner: values.owner?.trim() ?? "primary",
   };
 }
 
@@ -614,13 +643,16 @@ function parseProofOptions(command, parsed, group) {
       "--independent",
       "--body",
       "--body-file",
+      "--result",
+      "--candidate",
+      "--timeout-ms",
     ]),
     `${group} ${command}`,
   );
   if (flags["dry-run"] && flags.apply) {
     throw new CliUsageError("--dry-run and --apply are mutually exclusive");
   }
-  if (group === "evidence") requireOption(values, "type");
+  if (group === "evidence" && command !== "run") requireOption(values, "type");
   requireOption(values, "title");
   const agent = values.agent?.trim() ?? null;
   if (values.agent !== undefined && agent === "") {
@@ -635,13 +667,21 @@ function parseProofOptions(command, parsed, group) {
   if (
     values["body-file"] === undefined &&
     (values.body?.trim() ?? "") === "" &&
-    (group === "proof" || flags.apply)
+    (group === "proof" || flags.apply) && command !== "run"
   ) {
     const label = group === "proof" ? "Proof" : "Evidence";
     throw new CliUsageError(`--body or --body-file is required to record ${label}`);
   }
 
-  const type = values.type ?? "research";
+  const type = command === "run" ? "test" : values.type ?? "research";
+  if (values.result !== undefined && !["passed", "failed", "blocked", "not-run"].includes(values.result)) throw new CliUsageError("--result must be passed, failed, blocked, or not-run");
+  if (values.candidate !== undefined && !/^[a-f0-9]{64}$/.test(values.candidate)) throw new CliUsageError("--candidate must be a SHA-256 digest");
+  const timeoutMs = Number(values["timeout-ms"] ?? 120000);
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3600000) throw new CliUsageError("--timeout-ms must be an integer from 1 to 3600000");
+  if (command === "run") {
+    requireOption(values, "work");
+    if (["--result", "--candidate", "--body", "--body-file", "--independent", "--agent", "--type"].some(key => seen.has(key))) throw new CliUsageError("evidence run captures test results and cannot accept asserted result fields");
+  } else if (seen.has("--timeout-ms")) throw new CliUsageError("--timeout-ms is only supported by evidence run");
   const date = values.date ?? localDate();
   const stage = values.stage ?? EVIDENCE_DEFAULT_STAGE[type] ?? "think";
   const metadata = {
@@ -667,6 +707,9 @@ function parseProofOptions(command, parsed, group) {
     body: values.body ?? "",
     bodyFile: values["body-file"] ?? null,
     date,
+    result: values.result ?? "not-run",
+    candidate: values.candidate ?? null,
+    timeoutMs,
   };
 }
 
@@ -763,7 +806,32 @@ function parseAgentOptions(command, parsed) {
   };
 }
 
+function parseOperationOptions(group, command, parsed, projectRoot) {
+  const { values, flags, seen } = parsed;
+  const common = ["--project", "--json", "--target"];
+  const allowed = command === "inspect" ? [...common, "--package", "--scope"]
+    : command === "plan" ? [...common, "--package", "--scope", "--out", "--apply", "--dry-run"]
+    : command === "apply" ? [...common, "--package", "--plan-file", "--receipt", "--backup-root", "--apply", "--dry-run"]
+    : [...common, "--receipt", "--apply", "--dry-run"];
+  rejectIrrelevantOptions(seen, new Set(allowed), `${group} ${command}`);
+  if (flags.apply && flags["dry-run"]) throw new CliUsageError("--dry-run and --apply are mutually exclusive");
+  requireOption(values, "target");
+  if (command === "plan" && flags.apply) requireOption(values, "out");
+  if (command === "apply") requireOption(values, "plan-file");
+  if (command === "recover") requireOption(values, "receipt");
+  if (group === "runtime" && values.scope !== undefined) throw new CliUsageError("--scope is only supported for adapter plans");
+  if (group === "adapter" && ["inspect", "plan"].includes(command) && !["global", "project"].includes(values.scope)) throw new CliUsageError("adapter inspect/plan requires --scope global|project");
+  const resolve = value => value === undefined ? undefined : path.resolve(projectRoot, value);
+  return { target: resolve(values.target), packageRoot: resolve(values.package), out: resolve(values.out), planFile: resolve(values["plan-file"]), receipt: resolve(values.receipt), backupRoot: resolve(values["backup-root"]), scope: values.scope, apply: flags.apply === true, dryRun: !flags.apply };
+}
+
 export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
+  const separator = argv.indexOf("--");
+  const execution = separator === -1 ? [] : argv.slice(separator + 1);
+  if (separator !== -1) {
+    if (argv[0] !== "evidence" || argv[1] !== "run" || execution.length === 0) throw new CliUsageError("-- <executable> [args] is supported only by evidence run");
+    argv = argv.slice(0, separator);
+  }
   const meta = metaRequest(argv);
   if (meta) return meta;
   const normalized = normalizeInvocation(argv);
@@ -779,6 +847,7 @@ export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
 
   const group = argv[0];
   const command = argv[1];
+  if (group === "evidence" && command === "run" && execution.length === 0) throw new CliUsageError("evidence run requires -- <executable> [args]");
   const parsed = parseOptions(argv, 2);
   const project = parsed.values.project ?? cwd;
   const projectRoot = path.resolve(cwd, project);
@@ -793,7 +862,9 @@ export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
         ? parseMilestoneOptions(command, parsed)
         : group === "proof" || group === "evidence"
           ? parseProofOptions(command, parsed, group)
-          : parseAgentOptions(command, parsed);
+          : ["runtime", "adapter"].includes(group)
+            ? parseOperationOptions(group, command, parsed, projectRoot)
+            : parseAgentOptions(command, parsed);
 
   return {
     group,
@@ -804,5 +875,6 @@ export function parseCliArgs(argv, { cwd = process.cwd() } = {}) {
     invokedAs: normalized.original.slice(0, 2).join(" "),
     preferredGroup: normalized.original[0],
     ...commandOptions,
+    execution,
   };
 }

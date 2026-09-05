@@ -22,16 +22,16 @@ The primary agent still understands, executes, checks, and reports the result.
 
 ### Tracked
 
-Multi-step Work, shared behavior, or cross-session continuity creates a Work
-Item and Plan. Useful research, review, test, or reflection facts are stored as
+Multi-step Work, shared behavior, or cross-session continuity creates one Work
+Item with inline planning. A separate Plan is optional (`--with-plan`). Useful research, review, test, or reflection facts are stored as
 typed Evidence that supplies durable Proof.
 
 ### Gated
 
 Security, release, migration, external, destructive, data-integrity, permission,
-or high-impact contract Work creates a Work Item and Plan and requires
-independent Proof. Missing required Proof can close only with the user's explicit
-Approval of every current gap.
+or high-impact contract Work creates a Work Item and requires independent
+Evidence. Contract 4 completion requires passing current-candidate results;
+risk acceptance does not convert missing checks into passing results.
 
 Start with the lightest safe handling and upgrade immediately when scope, blast
 radius, irreversibility, or uncertainty grows. Internal mode never grants an
@@ -78,8 +78,8 @@ engineering contracts are in
 - Choose internal risk handling and the Proof needed for completion.
 - Use `explore` Agents when independent facts or alternatives add information;
   avoid delegation whose handoff cost exceeds its value.
-- Durable Work records its acceptance, verification entrypoints, dependencies,
-  and failure handling in its internal Plan.
+- Durable Work records acceptance, verification entrypoints, dependencies and
+  failure handling inline, or in its optional existing Plan. Do not duplicate them.
 
 Resolve every discoverable source-backed fact through the available authorities.
 Ask the user only for a material decision or blocking fact that only they can
@@ -129,7 +129,7 @@ Understand. Non-blocking `Open` items may be explicitly deferred; Understand
 does not require total certainty.
 
 Direct Work keeps this structure in the conversation. Durable Work persists
-only the useful parts in the existing Plan, normally under Approach, Contracts,
+only the useful parts in Work or an existing Plan, normally under Approach, Contracts,
 Steps, Verification, Risks, or Notes. Do not create a Tree/Map artifact or a
 second plan. A tree leaf becomes separate Work only when it has an independently
 verifiable outcome; several such Work items may use an optional Milestone.
@@ -160,10 +160,16 @@ verifiable outcome; several such Work items may use an optional Milestone.
 - High-risk Work uses a `check` actor different from the actor that built the
   checked scope. Review finds defects; verification reproduces acceptance. They
   are methods of one intent, not interchangeable claims.
-- Proof stored through `proof add` remains typed schema 2 Evidence. Applied Proof
+- Facts stored through `evidence add` (`proof add` alias) remain typed schema 2 Evidence. Applied Proof
   requires a substantive body; code reading and process status are not tests.
-- A Gated `done` Work requires usable test plus independent review/provider
-  Evidence, or explicit user Approval covering every current missing gate.
+- A contract 4 Gated `done` Work requires passed test plus passed independent
+  review/provider Evidence for the current candidate and cycle. Legacy Work
+  retains its historical usable-record/explicit-gap semantics; this does not
+  excuse fabricated results or authorize a new action.
+
+Evidence capture, candidate freshness, continuation, scoped historical repair and
+decision records are owned by [Evidence Contract](evidence.md). Read it when
+recording checks, finishing high-risk Work, continuing Work or repairing history.
 
 ## Finish
 

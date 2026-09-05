@@ -63,10 +63,24 @@ export function acceptedGapReasons(board, workId, missing = COMPLETION_EVIDENCE)
     .map((gap) => gap.reason);
 }
 
-export function completionEvidenceState(board, workId) {
-  const evidence = board.evidence.filter(
-    (item) => item.work === workId && isUsableEvidence(item),
+export function completionEvidenceState(board, workId, currentCandidate) {
+  const work = board.workItems?.find(item => item.id === workId);
+  let evidence = board.evidence.filter(
+    (item) => item.work === workId,
   );
+  if (work?.contract === 4) {
+    const candidate = currentCandidate ?? work.candidate;
+    evidence = evidence.filter(item => candidate && item.contract === 4 && item.candidate === candidate && item.cycle === work.cycle && item.claim === work.acceptance);
+    const latest = predicate => evidence.filter(predicate).sort((a, b) => b.sequence - a.sequence)[0];
+    const test = latest(item => item.type === "test");
+    const review = latest(item => ["review", "provider"].includes(item.type) && item.independent === true && typeof item.agent === "string" && item.agent.trim() !== "" && item.agent.trim() !== work.owner);
+    const missing = [];
+    if (test?.result !== "passed" || !isUsableEvidence(test)) missing.push("test");
+    const laterReviewFailure = evidence.some(item => ["review", "provider"].includes(item.type) && item.sequence > (review?.sequence ?? 0) && item.result !== "passed");
+    if (review?.result !== "passed" || !isUsableEvidence(review) || laterReviewFailure) missing.push("independent-review-or-provider");
+    return { missing, acceptedGap: false, gapReasons: [], candidate: candidate ?? null };
+  }
+  evidence = evidence.filter(isUsableEvidence);
   const missing = [];
   if (!evidence.some((item) => item.type === "test")) missing.push("test");
   if (!evidence.some(

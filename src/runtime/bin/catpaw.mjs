@@ -10,6 +10,8 @@ import { runWorkCommand } from "../lib/commands/work.mjs";
 import { renderMutationReport } from "../lib/commands/workflow.mjs";
 import { runMilestoneCommand } from "../lib/commands/milestone.mjs";
 import { runEvidenceCommand } from "../lib/commands/evidence.mjs";
+import { runRuntimeCommand } from "../lib/commands/runtime.mjs";
+import { runAdapterCommand } from "../lib/commands/adapter.mjs";
 import {
   renderAgentReport,
   runAgentCommand,
@@ -61,7 +63,11 @@ async function main(argv = process.argv.slice(2)) {
           ? await runMilestoneCommand(options)
           : options.group === "proof" || options.group === "evidence"
             ? await runEvidenceCommand(options)
-            : await runAgentCommand(options);
+            : options.group === "runtime"
+              ? await runRuntimeCommand(options)
+              : options.group === "adapter"
+                ? await runAdapterCommand(options)
+                : await runAgentCommand(options);
     process.stdout.write(
       options.json
         ? `${JSON.stringify(result.report, null, 2)}\n`
@@ -69,7 +75,9 @@ async function main(argv = process.argv.slice(2)) {
           ? renderBoardReport(result.report)
           : options.group === "agent"
             ? renderAgentReport(result.report)
-            : renderMutationReport(result.report),
+            : ["runtime", "adapter"].includes(options.group)
+              ? `${JSON.stringify(result.report, null, 2)}\n`
+              : renderMutationReport(result.report),
     );
     process.exitCode = result.exitCode;
   } catch (error) {

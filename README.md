@@ -8,15 +8,18 @@ completion claims, and stops only when a decision or risk genuinely belongs to
 you.
 
 ```text
-Work      what outcome is being delivered, what is current, and what is next
-Proof     what was checked, what the facts show, and what remains uncertain
-Approval  the exact decision needed for new authority or accepted risk
+Work -> goal, acceptance, progress and Next
+        Evidence supports acceptance; Authorization bounds actions
 ```
 
-These are parallel concerns. Most Work needs no new Approval after you authorize
-the task.
+Work is the primary entry. Evidence is the preferred name for durable Proof;
+Approval remains compatible terminology for user authority. Product decisions,
+action authorization and risk acceptance are distinct. Existing authorization
+continues across steps without repeated approval ceremonies.
 
-Source runtime version: `3.4.4`. Project boards use **schema 2**.
+Source runtime version: `4.0.0`. Project boards use **schema 2**, with explicit
+contract 4 metadata on new Work. Existing records remain readable; older runtime
+versions may reject new records. No fleet migration is required.
 
 ## The User Model
 
@@ -29,26 +32,31 @@ in the repository so another session can recover the goal, progress, and `Next`.
 Several related Work items may optionally share a Milestone. Users do not need
 to manage internal risk modes, lifecycle stages, or Agent topology.
 
-### Proof
+Durable Work is one record with inline planning. A separate Plan is optional.
+`work continue` preserves a terminal closure and starts a new evidence cycle.
+
+### Evidence (Proof compatibility)
 
 Proof is inspectable support for a claim: executed checks, reproducible findings,
 independent review, and explicit remaining gaps. Process start, exit zero,
 session stability, code reading, or an Agent saying “done” is not completion
 Proof by itself.
 
-High-risk Work requires Proof from an actor different from the actor that built
-the checked scope. Durable Proof is stored as typed schema 2 `Evidence`; this is
-a storage term, not a second user concept.
+New high-risk Work requires passing test and independent review/provider results
+bound to the current candidate, acceptance and cycle. Later failures supersede
+older passes. `evidence run` captures execution facts; an exit code does not prove
+test adequacy and asserted actor names do not authenticate identity.
 
-### Approval
+### Authorization (Approval compatibility)
 
-Approval is required only when the user must supply new authority or consciously
-accept risk: material outcome changes, missing required Proof, external or
+Authorization is required when the user must supply new authority: external or
 irreversible effects, protected/base updates, destructive or history-changing
 Git, secret access, or permission expansion.
 
 Approval is not a workflow stage. Already-authorized Work continues without
 asking for every internal step. Proof can never manufacture Approval.
+Record product choices and explicit risk acceptance separately from action
+authority. Risk acceptance cannot turn a failed check into a passing result.
 
 ## Visible Flow
 
@@ -67,7 +75,7 @@ shows a compact readback and asks only the decisions that unblock the first
 slice. Structurally complex Work may also separate a shallow scope tree,
 material dependency edges, and local `Confirmed | Proposed | Open` notes. This
 adds no stage, artifact, mandatory headings, or user concept; durable output
-reuses the internal Plan.
+reuses Work or its optional Plan.
 
 ## Agent Collaboration
 
@@ -105,7 +113,7 @@ The repository-local `.catpaw/` board stores durable project facts:
 └── evidence/
 ```
 
-`Work` maps to schema 2 Work Item/Plan records. `Proof` facts map to typed
+`Work` maps to one schema 2 Work Item with an optional Plan. `Proof` facts map to typed
 Evidence. `Approval` remains a user authority boundary and is not a new artifact.
 Schema 1 migration may additionally retain a checksummed
 `legacy/schema-1/` archive; original material is preserved.
@@ -117,9 +125,12 @@ Preferred commands:
 ```text
 catpaw status
 catpaw board init|status|doctor|migrate
-catpaw work start|show|update|finish|cancel
+catpaw work start|show|update|finish|cancel|continue
 catpaw milestone start|show|add|finish|cancel
+catpaw evidence add|list|show|run
 catpaw proof add|list|show
+catpaw runtime inspect|plan|apply|recover
+catpaw adapter inspect|plan|apply|recover
 catpaw intent list|show
 catpaw transport check|open|send|status|read|close
 ```
