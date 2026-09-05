@@ -7,8 +7,10 @@ function recordSection(body) {
   const lines = String(body ?? "").replaceAll("\r\n", "\n").split("\n");
   const record = lines.findIndex((line) => line.trim() === "## Record");
   if (record !== -1) {
-    const end = lines.findIndex(
-      (line, index) => index > record && /^##\s+/.test(line.trim()),
+    // The template's trailing Limits section is outside the Record. Caller
+    // Markdown headings, including an earlier Limits heading, remain content.
+    const end = lines.findLastIndex(
+      (line, index) => index > record && line.trim() === "## Limits",
     );
     return lines.slice(record + 1, end === -1 ? undefined : end).join("\n").trim();
   }

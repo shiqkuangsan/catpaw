@@ -6,6 +6,29 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 3.4.4 - 2026-09-05
+
+- 全局和项目 adapter 改为短路由；保留常用安全边界，委派和 Git grant 细则由
+  canonical guidance 持有，避免默认加载重复权威。
+- 明确宿主权限、user-global 约束和非指令资料边界；runtime 默认许可不能抵消
+  用户或项目的明确限制。Work / Proof / Approval 与 schema 2 保持不变。
+- 修复 Work/Proof/Milestone 分析到规划间的并发覆盖：所有九个写路径绑定分析前
+  preimage，漂移时拒绝写入；只读查询和 stage 校验不增加整树扫描。
+- 修复 `--body-file -` / `--prompt-file -`，共用 UTF-8 stdin/file 读取。
+- 修复以 Markdown 二级标题开始的 Proof 被判为空；保留模板空记录检查。
+- 澄清 invalid-board 的记录修复提示，保持完成条件和 schema 校验。
+
+Migration note (3.4.3 -> 3.4.4):
+
+```text
+Runtime activation: explicit; source build does not modify ~/.catpaw/.
+Project impact: board schema remains 2; no migration or artifact rewrite required.
+Adapter impact: shorter routing blocks; synchronize only explicitly authorized host/project targets and preserve outside content.
+Required actions: build and verify source/dist; activate runtime separately, then verify the installed package and each changed host block independently.
+Non-goals: no new user concept, schema, command, approval engine, automatic team, registry update, fleet migration, commit, push or publication.
+Rollback: preserve the previously installed runtime and each changed adapter preimage.
+```
+
 ## 3.4.3 - 2026-08-29
 
 - Apply one lightweight Understand readiness pass to every Work, including

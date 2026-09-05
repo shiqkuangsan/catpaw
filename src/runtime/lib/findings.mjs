@@ -600,7 +600,7 @@ function checkSchema2CompletionEvidence(board) {
         "evidence",
         work.path,
         `Gated Work ${work.id} closed as done is missing usable completion Evidence: ${state.missing.join(", ")}.`,
-        "Add substantive Evidence or record an explicitly accepted gap before treating the Work as done.",
+        "Repair the identified records directly from verified facts; normal workflow mutations refuse an invalid board. Re-run board doctor before treating the Work as done; any accepted gap requires prior explicit user Approval.",
         { work: work.id, missing: state.missing },
       ),
     );

@@ -218,7 +218,7 @@ function runCli(args, options) {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
@@ -227,6 +227,7 @@ function runCli(args, options) {
     child.stdout.on("data", (chunk) => { stdout += chunk; });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
     child.on("error", reject);
+    child.stdin.end(options.input ?? "");
     child.on("close", (code, signal) => resolve({
       code,
       signal,
@@ -443,6 +444,13 @@ test("observable Agent session is non-blocking and reports facts only", async (t
     state.sessions[openReport.session].output,
     /Follow-up: report only new contract findings/,
   );
+
+  const stdinSent = await runCli([
+    "transport", "send", ...common, "--prompt-file", "-",
+  ], { ...box, input: "Follow-up from stdin: 验证 🐾\nKeep the same read-only scope.\n" });
+  assert.equal(stdinSent.code, 0, stdinSent.stderr || stdinSent.stdout);
+  state = await readState(box.statePath);
+  assert.match(state.sessions[openReport.session].output, /Follow-up from stdin: 验证 🐾/);
 
   const changed = await runCli(["agent", "status", ...common], box);
   const changedReport = JSON.parse(changed.stdout);

@@ -16,7 +16,7 @@ Approval  the exact decision needed for new authority or accepted risk
 These are parallel concerns. Most Work needs no new Approval after you authorize
 the task.
 
-Source runtime version: `3.4.3`. Project boards use **schema 2**.
+Source runtime version: `3.4.4`. Project boards use **schema 2**.
 
 ## The User Model
 

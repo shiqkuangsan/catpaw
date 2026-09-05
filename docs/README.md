@@ -1,6 +1,6 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.4.3
+These documents explain the architecture and decisions behind CatPaw 3.4.4
 Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
 contract.
 
@@ -108,6 +108,7 @@ Current decision ownership is compactly indexed here:
 | public vocabulary and CLI layers | [ADR-0026](decisions/0026-user-facing-concept-consolidation.md), [ADR-0027](decisions/0027-layered-cli-facade.md) |
 | structured Understand method | [ADR-0028](decisions/0028-structured-understand-without-new-concepts.md) |
 | internal method density and writing constraints | [ADR-0029](decisions/0029-method-density-without-concept-growth.md) |
+| observable Understand and thin authority routing | [ADR-0030](decisions/0030-observable-understand-without-clarification-ceremony.md), [ADR-0031](decisions/0031-thin-entrypoints-and-bound-analysis.md) |
 
 ## Writing Rules
 

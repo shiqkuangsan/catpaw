@@ -6,7 +6,7 @@ import { loadBoard } from "../board.mjs";
 import { collectBoardFindings } from "../findings.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../frontmatter.mjs";
 import { buildArtifactGraph } from "../graph.mjs";
-import { createPatchPlan, renderPatchPlan } from "../patch-plan.mjs";
+import { createPatchPlan, renderPatchPlan, snapshotTree } from "../patch-plan.mjs";
 import {
   artifactTitle,
   publicCliText,
@@ -223,14 +223,15 @@ export function patchReport(plan) {
   };
 }
 
-export async function inspectMutationBoard(options) {
+export async function inspectMutationBoard(options, { capturePreimage = false } = {}) {
+  const preimage = capturePreimage ? await snapshotTree(options.boardPath) : null;
   const board = await loadBoard({
     projectRoot: options.projectRoot,
     boardPath: options.boardPath,
   });
   const graph = buildArtifactGraph(board);
   const findings = collectBoardFindings(board, graph);
-  return { board, graph, findings };
+  return { board, graph, findings, rootDigest: preimage?.digest };
 }
 
 export function schemaRefusal(command, options, board, findings) {
@@ -257,8 +258,13 @@ export function schemaRefusal(command, options, board, findings) {
   };
 }
 
-export async function createMutationPlan(options, operations) {
-  return createPatchPlan({ root: options.boardPath, operations });
+export async function createMutationPlan(options, inspected, operations) {
+  if (typeof inspected?.rootDigest !== "string" || inspected.rootDigest === "") {
+    throw workflowError("ERR_WORKFLOW_PREIMAGE_REQUIRED", "Workflow writes require the analyzed board preimage.");
+  }
+  return createPatchPlan({
+    root: options.boardPath, operations, expectedRootDigest: inspected.rootDigest,
+  });
 }
 
 export async function applyMutationPlan(plan, options) {

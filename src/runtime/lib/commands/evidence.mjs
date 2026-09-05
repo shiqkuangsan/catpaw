@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readTextInput } from "../text-input.mjs";
 
 import {
   applyMutationPlan,
@@ -27,12 +27,6 @@ function boardRelative(board, filePath) {
   return path.relative(board.boardPath, filePath).split(path.sep).join("/");
 }
 
-async function readInputFile(file, projectRoot) {
-  return file === "-"
-    ? readFile(0, "utf8")
-    : readFile(path.resolve(projectRoot, file), "utf8");
-}
-
 function evidenceMetadata(options) {
   return {
     type: options.type,
@@ -52,14 +46,14 @@ async function runAdd(options) {
   const label = publicProof ? "Proof" : "Evidence";
   const body = options.bodyFile === null
     ? options.body
-    : await readInputFile(options.bodyFile, options.projectRoot);
+    : await readTextInput(options.bodyFile, options.projectRoot);
   if (body.trim() === "" && (publicProof || options.apply)) {
     const error = new Error(`${label} body must not be empty.`);
     error.code = "ERR_WORKFLOW_EMPTY_PROOF";
     throw error;
   }
   options = { ...options, body };
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     command,
     options,
@@ -94,7 +88,7 @@ async function runAdd(options) {
       BODY: options.body || "_No body supplied._",
     },
   });
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     { type: "ensure-dir", path: directory },
     { type: "write-file", path: evidencePath, content, mode: "create" },
   ]);

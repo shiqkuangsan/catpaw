@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const RUNTIME_SOURCE = path.join(REPO, "src", "runtime");
+const VERSION = (await readFile(path.join(RUNTIME_SOURCE, "VERSION"), "utf8")).trim();
 const VERIFY = path.join(REPO, "scripts", "verify-runtime.mjs");
 
 function run(args, options) {
@@ -104,7 +105,7 @@ test("default verification passes with installed runtime pending activation", as
   assert.equal(result.stderr, "");
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "pass");
-  assert.equal(report.source.version, "3.4.3");
+  assert.equal(report.source.version, VERSION);
   assert.equal(report.source.boardSchemaVersion, 2);
   assert.equal(report.dist.matchesSource, true);
   assert.equal(report.installed.version, "2.1.7");

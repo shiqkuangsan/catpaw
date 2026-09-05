@@ -58,7 +58,7 @@ const MILESTONE_ORDER = [
 ];
 
 async function runStart(options) {
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     "work start",
     options,
@@ -130,7 +130,7 @@ async function runStart(options) {
     workItems: [syntheticWork],
     plans: [syntheticPlan],
   });
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     { type: "write-file", path: workPath, content: workContent, mode: "create" },
     { type: "write-file", path: planPath, content: planContent, mode: "create" },
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
@@ -197,7 +197,7 @@ async function runShow(options) {
 }
 
 async function runUpdate(options) {
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     "work update",
     options,
@@ -251,7 +251,7 @@ async function runUpdate(options) {
     metadata,
     options.date,
   );
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     ...milestoneUpdates.operations,
     { type: "write-file", path: workPath, content, mode: "replace" },
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
@@ -277,7 +277,8 @@ async function runUpdate(options) {
   });
 }
 
-async function terminalNoop(options, work, board, workPath, command) {
+async function terminalNoop(options, work, inspected, workPath, command) {
+  const { board } = inspected;
   const evidenceState = completionEvidenceState(board, work.id);
   const gapReasons = evidenceState.gapReasons;
   if (options.acceptGap !== null) {
@@ -303,7 +304,7 @@ async function terminalNoop(options, work, board, workPath, command) {
     ? evidenceState.missing
     : [];
   const acceptedGap = gapReasons.length > 0;
-  const plan = await createMutationPlan(options, []);
+  const plan = await createMutationPlan(options, inspected, []);
   const applyResult = await applyMutationPlan(plan, options);
   return mutationResult({
     command,
@@ -357,7 +358,7 @@ async function runClose(options) {
     : options.invokedAs === "work cancel"
       ? "work cancel"
       : "work close";
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     command,
     options,
@@ -387,7 +388,7 @@ async function runClose(options) {
   }
   const workPath = boardRelative(inspected.board, work.filePath);
   if (["done", "cancelled"].includes(work.status)) {
-    return terminalNoop(options, work, inspected.board, workPath, command);
+    return terminalNoop(options, work, inspected, workPath, command);
   }
   const missing = work.mode === "gated" && options.status === "done"
     ? completionEvidenceState(inspected.board, options.id).missing
@@ -479,7 +480,7 @@ async function runClose(options) {
       { type: "write-file", path: gapPath, content: gapContent, mode: "create" },
     );
   }
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     ...gapOperations,
     ...milestoneUpdates.operations,
     { type: "write-file", path: workPath, content, mode: "replace" },

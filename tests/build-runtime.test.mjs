@@ -16,6 +16,7 @@ import { validateRuntimeManifestPaths } from "../scripts/build-runtime.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const SOURCE = path.join(REPO, "src", "runtime");
+const VERSION = (await readFile(path.join(SOURCE, "VERSION"), "utf8")).trim();
 const DIST = path.join(REPO, "dist", "runtime");
 const BUILD = path.join(REPO, "scripts", "build-runtime.mjs");
 
@@ -69,7 +70,7 @@ test("runtime manifest declares schema 2 and executable CLI package entries", as
   const manifest = JSON.parse(
     await readFile(path.join(SOURCE, "runtime-manifest.json"), "utf8"),
   );
-  assert.equal(manifest.version, "3.4.3");
+  assert.equal(manifest.version, VERSION);
   assert.equal(manifest.boardSchemaVersion, 2);
   assert.equal(manifest.cli.entrypoint, "bin/catpaw.mjs");
   assert.deepEqual(manifest.cli.commands, [
@@ -113,7 +114,7 @@ test("build replaces stale dist with a hash-identical executable package", async
 
   assert.equal(result.code, 0, result.stderr || result.stdout);
   assert.equal(result.stderr, "");
-  assert.match(result.stdout, /Built CatPaw runtime 3\.4\.3/);
+  assert.ok(result.stdout.startsWith(`Built CatPaw runtime ${VERSION} at `));
   assert.deepEqual(await fileHashes(DIST), await fileHashes(SOURCE));
   await assert.rejects(stat(path.join(DIST, "stale.txt")), { code: "ENOENT" });
   const cliMode = (await stat(path.join(DIST, "bin", "catpaw.mjs"))).mode;

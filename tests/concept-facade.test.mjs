@@ -7,6 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const CLI = fileURLToPath(new URL("../src/runtime/bin/catpaw.mjs", import.meta.url));
+const VERSION = (await readFile(new URL("../src/runtime/VERSION", import.meta.url), "utf8")).trim();
 
 function runCli(args, cwd) {
   return new Promise((resolve, reject) => {
@@ -199,7 +200,7 @@ test("help and version make the preferred CLI discoverable", async (t) => {
   assert.equal(work.code, 0, work.stderr);
   assert.match(work.stdout, /--phase understand\|execute\|check\|finish/);
   assert.equal(version.code, 0, version.stderr);
-  assert.match(version.stdout, /^catpaw 3\.4\.3 \(board schema 2\)\n$/);
+  assert.equal(version.stdout, `catpaw ${VERSION} (board schema 2)\n`);
 });
 
 test("status and Work commands expose Phase, Proof, and Next without schema leakage", async (t) => {
@@ -269,7 +270,7 @@ test("status and Work commands expose Phase, Proof, and Next without schema leak
 
   const status = await runCli(["status", "--project", root], root);
   assert.equal(status.code, 0, status.stderr);
-  assert.match(status.stdout, /CatPaw 3\.4\.3/);
+  assert.ok(status.stdout.startsWith(`CatPaw ${VERSION}\n`));
   assert.match(status.stdout, /Phase: Execute \| Risk: Normal/);
   assert.match(status.stdout, /Next: Run the focused regression suite/);
   assert.doesNotMatch(status.stdout, /Schema:|Mode:|Evidence:/);

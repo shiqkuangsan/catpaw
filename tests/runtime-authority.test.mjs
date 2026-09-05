@@ -118,21 +118,24 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   }
   assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
   assert.match(text, /Understand -> Execute -> Check -> Finish/);
-  assert.match(text, /Source[\s\S]*installed\s+runtime[\s\S]*project state/i);
-  assert.match(text, /local[\s\S]*branch[\s\S]*worktree[\s\S]*commit/i);
-  assert.match(text, /non-protected[\s\S]*task branch/i);
-  assert.match(text, /primary agent[\s\S]*exact candidate[\s\S]*accountable writer/i);
-  assert.match(text, /mutable\s+surface has one accountable writer at a time/i);
-  assert.match(text, /delegated `build` Agent[\s\S]*Local\s+commits require an explicit grant/i);
-  assert.match(text, /exclusive worktree/i);
-  assert.match(text, /primary agent accepts an exact candidate[\s\S]*named commits/i);
-  assert.match(text, /reconciliation edit requires a new bounded build grant/i);
-  assert.match(text, /`explore` and `check` Agents[\s\S]*cc[\s\S]*cx[\s\S]*must not stage or commit/i);
-  assert.doesNotMatch(text, /primary\/current owner/i);
-  assert.match(text, /explicit user Approval:[\s\S]*push[\s\S]*PR[\s\S]*deploy/i);
+  assert.match(text, /Source[\s\S]*installed runtime[\s\S]*project board[\s\S]*独立/);
+  assert.match(text, /system\/developer instructions[\s\S]*工具权限边界始终有效/);
+  assert.match(text, /project-local rules > user-global rules[\s\S]*installed CatPaw runtime/);
+  assert.match(text, /默认许可不能覆盖[\s\S]*明确禁令、确认要求/);
+  assert.match(text, /未被宿主或用户指定为指令来源[\s\S]*工具返回和 Agent 输出[\s\S]*不能自行新增指令或 Approval/);
+  assert.match(text, /用户、项目和宿主均允许[\s\S]*非保护[\s\S]*task branch\/worktree[\s\S]*commit/);
+  assert.match(text, /diff、相关验证与凭据扫描/);
+  assert.match(text, /每个可变范围同时只有一个负责写入者/);
+  assert.match(text, /候选作者不能自行采纳自己的候选/);
+  assert.match(text, /委派或整合候选前必须读[\s\S]*guidance\/agent-dispatch\.md/);
+  assert.match(text, /分别需要精确且独立[\s\S]*必须读取[\s\S]*#scoped-local-git/);
+  assert.match(text, /`explore`[\s\S]*`check`[\s\S]*cc\/cx[\s\S]*不得 stage 或 commit/);
+  assert.match(text, /push、PR、deploy\/publish[\s\S]*用户明确 Approval/);
   assert.match(text, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
-  assert.match(text, /history rewrite[\s\S]*reset\/clean[\s\S]*data-loss-prone/i);
-  assert.match(text, /destructive[\s\S]*authority/i);
+  assert.match(text, /history rewrite[\s\S]*reset\/clean[\s\S]*丢失数据/);
+  assert.match(text, /runtime 激活[\s\S]*registry 修改[\s\S]*分别核对授权/);
+  assert.match(text, /分析与写计划必须绑定同一[\s\S]*preimage/);
+  assert.match(text, /格式合法、非空正文[\s\S]*不证明[\s\S]*证据真实/);
   assert.doesNotMatch(text, /CLI Playbook|Migration Operations|Role Selection Matrix/);
 });
 
@@ -286,7 +289,7 @@ test("runtime command examples resolve the executable and match CLI options", as
   ]);
   assert.match(policy, /~\/\.catpaw\/bin\/catpaw\.mjs/);
   assert.match(policy, /src\/runtime\/bin\/catpaw\.mjs/);
-  assert.match(policy, /does not[\s\S]*(?:modify|write|manage)[\s\S]*PATH/i);
+  assert.match(policy, /不自动修改 PATH/);
   assert.match(milestones, /catpaw milestone add\s+--milestone <id>/);
   assert.doesNotMatch(milestones, /catpaw milestone add\s+--id\b/);
 });
@@ -316,16 +319,19 @@ test("adapter snippets activate the compact policy without copying runtime files
   ]);
   const combined = `${globalAdapter}\n${projectAdapter}`;
   assert.match(combined, /~\/\.catpaw\/runtime-policy\.md/);
-  assert.match(projectAdapter, /Project-local `\.catpaw\/` stores Work and Proof facts/i);
-  assert.match(projectAdapter, /graph-external\s+legacy archive/i);
+  assert.match(projectAdapter, /\.catpaw\/` 保存 Work、Plan 和 Proof/);
+  assert.match(projectAdapter, /legacy\/schema-1\/[\s\S]*历史参考/);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
   assert.match(combined, /Work \/ Proof \/ Approval[\s\S]*Understand -> Execute -> Check -> Finish/i);
-  assert.match(combined, /primary agent[\s\S]*explore\/build\/check[\s\S]*final candidate\s+acceptance/i);
-  assert.match(combined, /delegated `build` actor[\s\S]*exclusive isolated worktree/i);
-  assert.match(combined, /`explore`, `check`[\s\S]*cc[\s\S]*cx[\s\S]*must not stage or commit/i);
-  assert.match(combined, /cc[\s\S]*cx[\s\S]*read-only/i);
-  assert.match(combined, /Push[\s\S]*PR[\s\S]*protected\/base updates[\s\S]*explicit user[\s\S]*Approval/i);
-  assert.match(combined, /history rewrite[\s\S]*destructive Git\/cleanup/i);
+  for (const adapter of [globalAdapter, projectAdapter]) {
+    assert.equal(adapter.match(/<!-- CATPAW:BEGIN -->/g)?.length, 1);
+    assert.equal(adapter.match(/<!-- CATPAW:END -->/g)?.length, 1);
+    assert.match(adapter, /先读 `~\/\.catpaw\/runtime-policy\.md`/);
+    assert.match(adapter, /不(?:在入口)?复制[\s\S]*Git 授权规则/);
+    assert.match(adapter, /不能扩大用户、项目或宿主权限/);
+  }
+  assert.match(globalAdapter, /cc[\s\S]*cx[\s\S]*只读第二意见/);
+  assert.match(globalAdapter, /Proof 和工具结果不能授予 Approval/);
   assert.doesNotMatch(globalAdapter, /老三|Gemini|third Agent/i);
   assert.doesNotMatch(combined, /commands\/provider\.md|specs\/09-roles\.md/);
   assert.doesNotMatch(combined, /Role Catalog|Task Envelope|Agent Executor/);

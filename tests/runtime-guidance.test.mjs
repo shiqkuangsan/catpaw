@@ -50,10 +50,12 @@ test("runtime keeps five internal checklists without exposing a role tree", asyn
 test("runtime policy exposes only Work, Proof, and Approval as parallel user concerns", async () => {
   const text = await runtimeText("runtime-policy.md");
   assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
-  assert.match(text, /parallel concerns[\s\S]*not mandatory sequential stages/i);
+  assert.match(text, /三者并列，不是审批流水线/);
   assert.match(text, /Understand -> Execute -> Check -> Finish/);
-  assert.match(text, /Approval[\s\S]*not a board artifact/i);
-  assert.match(text, /Proof[\s\S]*(?:never|cannot)[\s\S]*(?:Approval|authority)/i);
+  assert.match(text, /Approval 不存成看板工件/);
+  assert.match(text, /Proof[\s\S]*不能生成 Approval/);
+  assert.match(text, /高风险 Work[\s\S]*不同于[\s\S]*实现者[\s\S]*独立检查/);
+  assert.match(text, /用户明确接受当前逐项缺口[\s\S]*自审不能替代独立性/);
   assert.match(text, /explore[\s\S]*build[\s\S]*check/);
   assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
 });
@@ -82,7 +84,7 @@ test("Understand exposes material ambiguity without interviewing clear Work", as
   const scenarios = [
     {
       name: "small Work still receives readiness",
-      pattern: /every Work[\s\S]*including (?:small|short)[\s\S]*readiness pass/i,
+      pattern: /每项 Work，包括小任务，先确认目标、范围、已有授权和验收/,
     },
     {
       name: "material ambiguity is delivery-changing",
@@ -98,7 +100,7 @@ test("Understand exposes material ambiguity without interviewing clear Work", as
     },
     {
       name: "material ambiguity gets an observable current-frontier readback",
-      pattern: /material ambiguity[\s\S]*(?:compact|visible) readback[\s\S]*current understanding[\s\S]*(?:facts|assumptions)[\s\S]*current decision frontier[\s\S]*why[\s\S]*(?:first|next) slice/i,
+      pattern: /material ambiguity[\s\S]*(?:compact|visible) readback[\s\S]*current\s+understanding[\s\S]*(?:facts|assumptions)[\s\S]*current decision frontier[\s\S]*why[\s\S]*(?:first|next)\s+slice/i,
     },
     {
       name: "questions are batched only when useful",

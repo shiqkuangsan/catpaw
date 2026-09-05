@@ -32,7 +32,7 @@ function boardRelative(board, filePath) {
 }
 
 async function runStart(options) {
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     "milestone start",
     options,
@@ -80,7 +80,7 @@ async function runStart(options) {
       boardRelativePath: milestonePath,
     }],
   });
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     { type: "write-file", path: milestonePath, content, mode: "create" },
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
   ]);
@@ -98,7 +98,7 @@ async function runStart(options) {
 }
 
 async function runAdd(options) {
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const preflightFindings = inspected.findings.filter((item) =>
     item.code !== "malformed-milestone-scope" || item.req !== options.milestone
   );
@@ -146,7 +146,7 @@ async function runAdd(options) {
   const metadata = { ...milestone.metadata, updated: options.date };
   const content = `${stringifyFrontmatter(metadata, MILESTONE_ORDER)}${body}`;
   const milestonePath = boardRelative(inspected.board, milestone.filePath);
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     { type: "write-file", path: milestonePath, content, mode: "replace" },
   ]);
   const applyResult = await applyMutationPlan(plan, options);
@@ -220,7 +220,7 @@ async function runClose(options) {
     : options.invokedAs === "milestone cancel"
       ? "milestone cancel"
       : "milestone close";
-  const inspected = await inspectMutationBoard(options);
+  const inspected = await inspectMutationBoard(options, { capturePreimage: true });
   const refusal = schemaRefusal(
     command,
     options,
@@ -252,7 +252,7 @@ async function runClose(options) {
   }
   const milestonePath = boardRelative(inspected.board, milestone.filePath);
   if (["done", "cancelled"].includes(milestone.status)) {
-    const plan = await createMutationPlan(options, []);
+    const plan = await createMutationPlan(options, inspected, []);
     const applyResult = await applyMutationPlan(plan, options);
     return mutationResult({
       command,
@@ -312,7 +312,7 @@ async function runClose(options) {
       boardRelativePath: milestonePath,
     }],
   });
-  const plan = await createMutationPlan(options, [
+  const plan = await createMutationPlan(options, inspected, [
     { type: "write-file", path: milestonePath, content, mode: "replace" },
     { type: "write-file", path: "index.md", content: dashboard, mode: "replace" },
   ]);

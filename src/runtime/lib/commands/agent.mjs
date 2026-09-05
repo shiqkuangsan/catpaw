@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { accessSync, constants } from "node:fs";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { readTextInput } from "../text-input.mjs";
 
 import {
   agentSessionName,
@@ -723,9 +723,7 @@ export async function runAgentCommand(options) {
     };
   }
   if (options.command === "send" && options.promptFile !== null) {
-    const prompt = options.promptFile === "-"
-      ? await readFile(0, "utf8")
-      : await readFile(path.resolve(options.projectRoot, options.promptFile), "utf8");
+    const prompt = await readTextInput(options.promptFile, options.projectRoot);
     if (prompt.trim() === "") {
       throw agentError("ERR_AGENT_EMPTY_PROMPT", "Agent prompt must not be empty.");
     }

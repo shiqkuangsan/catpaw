@@ -38,6 +38,10 @@ Canonical targets：
 Global block 来自 `snippets/global-adapter.md`，project block 来自
 `snippets/project-adapter.md`。
 
+Adapter 仅负责触发、runtime 路径和不扩权提醒，细则由 runtime-policy 及其链接持有。
+同步时保留 block 外的个人约束；runtime 的默认许可不能抵消这些明确限制。
+分别报告 runtime parity 与实际 host block parity；前者通过不证明后者已同步。
+
 Deterministic merge：
 
 - zero managed blocks -> append 一个 block，并保留原 newline style；
@@ -120,6 +124,10 @@ Registry mutation never deletes or modifies the project board。Runtime upgrade 
 preserve `state/projects.json`。
 
 ## Legacy Project Import
+
+Schema 2 的手工编辑或历史漂移也可能使 board invalid。先用 `board doctor` 定位，
+根据原始验证事实修复具体记录，再复查；普通 Work/Proof 写命令会拒绝 invalid board。
+不要关闭 schema/完成条件检查以绕过恢复问题，也不要为消除报错捏造 Proof 或 Approval。
 
 遇到 `todos/` 或其它旧 artifact tree：
 
