@@ -16,11 +16,21 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { inspectPackage } from "../src/runtime/lib/runtime-package.mjs";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const RUNTIME_SOURCE = path.join(REPO, "src", "runtime");
 const VERSION = (await readFile(path.join(RUNTIME_SOURCE, "VERSION"), "utf8")).trim();
 const VERIFY = path.join(REPO, "scripts", "verify-runtime.mjs");
+
+test("runtime operation digest matches the release verifier's canonical source hash", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "catpaw-hash-parity-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const result = await run(["--json"], { env: { CATPAW_HOME: path.join(root, "installed"), CATPAW_DIST_ROOT: path.join(root, "dist") } });
+  const report = JSON.parse(result.stdout);
+  assert.match(report.source.hash, /^[a-f0-9]{64}$/);
+  assert.equal((await inspectPackage(RUNTIME_SOURCE)).runtimeHash, report.source.hash);
+});
 
 function run(args, options) {
   return new Promise((resolve, reject) => {

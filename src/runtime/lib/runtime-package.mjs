@@ -80,7 +80,8 @@ export async function inspectPackage(input = DEFAULT_PACKAGE_ROOT) {
   const cli = snapshot.entries.get(entrypoint);
   if (!cli || cli.type !== "file" || !(cli.mode & 0o111)) fail("PACKAGE", "Runtime CLI must be a regular executable file");
   const packageHash = createHash("sha256");
-  for (const [relative, entry] of [...snapshot.entries].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) if (entry.type === "file") packageHash.update(`${relative}\0${entry.sha256}\0`);
+  // Preserve the release verifier's published package-hash ordering.
+  for (const [relative, entry] of [...snapshot.entries].sort(([a], [b]) => a.localeCompare(b, "en"))) if (entry.type === "file") packageHash.update(`${relative}\0${entry.sha256}\0`);
   return { root, manifest, canonical, retired, snapshot, runtimeHash: packageHash.digest("hex") };
 }
 export async function runtimeCandidate(pkg, before, target) {
