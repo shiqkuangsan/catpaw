@@ -130,10 +130,10 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   assert.match(text, /委派或整合候选前必须读[\s\S]*guidance\/agent-dispatch\.md/);
   assert.match(text, /分别需要精确且独立[\s\S]*必须读取[\s\S]*#scoped-local-git/);
   assert.match(text, /`explore`[\s\S]*`check`[\s\S]*cc\/cx[\s\S]*不得 stage 或 commit/);
-  assert.match(text, /push、PR、deploy\/publish[\s\S]*用户明确 Approval/);
+  assert.match(text, /push、PR、deploy\/publish[\s\S]*用户明确许可/);
   assert.match(text, /direct commit[\s\S]*merge[\s\S]*cherry-pick[\s\S]*fast-forward/i);
   assert.match(text, /history rewrite[\s\S]*reset\/clean[\s\S]*丢失数据/);
-  assert.match(text, /runtime 激活[\s\S]*registry 修改[\s\S]*分别核对授权/);
+  assert.match(text, /runtime 激活[\s\S]*registry 修改[\s\S]*分别核对权限边界/);
   assert.match(text, /分析与写计划必须绑定同一[\s\S]*preimage/);
   assert.match(text, /格式合法、非空正文[\s\S]*不证明[\s\S]*证据真实/);
   assert.doesNotMatch(text, /CLI Playbook|Migration Operations|Role Selection Matrix/);
@@ -322,7 +322,7 @@ test("adapter snippets activate the compact policy without copying runtime files
   assert.match(projectAdapter, /\.catpaw\/` 保存 Work、可选 Plan 和 Evidence/);
   assert.match(projectAdapter, /legacy\/schema-1\/[\s\S]*历史参考/);
   assert.match(globalAdapter, /老二[\s\S]*Codex[\s\S]*`cc`[\s\S]*Claude Code[\s\S]*`cx`/);
-  assert.match(combined, /Work[\s\S]*Evidence[\s\S]*Authorization[\s\S]*Understand -> Execute -> Check -> Finish/i);
+  assert.match(combined, /Work[\s\S]*Evidence[\s\S]*(?:权限边界|permission boundaries)[\s\S]*Understand -> Execute -> Check -> Finish/i);
   for (const adapter of [globalAdapter, projectAdapter]) {
     assert.equal(adapter.match(/<!-- CATPAW:BEGIN -->/g)?.length, 1);
     assert.equal(adapter.match(/<!-- CATPAW:END -->/g)?.length, 1);

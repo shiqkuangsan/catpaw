@@ -1,8 +1,8 @@
 # Runtime Policy
 
 CatPaw 以 Work 推进交付：记录目标、验收、当前动作与 Next。Evidence 支撑具体
-验收声明，Proof 保留为兼容称呼。Authorization 约束具体动作；用户的产品决定、
-动作授权和风险接受分别记录，不能互相替代。Approval 保留为授权语义的兼容称呼。
+验收声明，Proof 保留为兼容称呼。权限边界约束具体动作；用户的产品决定、允许执行
+的动作和风险接受分别处理，不能互相替代。Approval 保留为用户权限边界的兼容称呼。
 
 ## Activation And Priority
 
@@ -78,21 +78,21 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
 `cc` / `cx` 是只读第二意见入口；“老二”在 Codex 中对应 `cc`，在 Claude Code 中
 对应 `cx`。它们不代表全部可用 Agent；实际调用前读 [Agent Transports](providers/README.md)。
 
-## Authorization And Git
+## Permission Boundaries And Git
 
-- 已授权的 change/build Work 只有在用户、项目和宿主均允许时，才可使用非保护的
+- change/build Work 只有在用户、项目和宿主均允许时，才可使用非保护的
   本地 task branch/worktree，并对精确任务范围作有限本地 commit；此前必须核对
   diff、相关验证与凭据扫描。回答、审查或诊断不隐含提交。
 - 委派 build 的 commit、已接受候选的整合分别需要精确且独立的范围授权；实际操作前
   必须读取 [Scoped Local Git](guidance/agent-dispatch.md#scoped-local-git)。
-  `explore`、`check`、未获授权的 Agent 和当前 cc/cx 都不得 stage 或 commit。
+  `explore`、`check`、未获范围许可的 Agent 和当前 cc/cx 都不得 stage 或 commit。
 - push、PR、deploy/publish、任何 protected/base 更新（direct commit、merge、
   cherry-pick、fast-forward）、amend/rebase/history rewrite、force、reset/clean、
   不安全的 branch/worktree 删除、凭据访问、范围/权限扩大和其他外部、不可逆或可能
-  丢失数据的动作，始终需要用户明确 Approval。
-- runtime 激活、host adapter 同步、registry 修改和每个项目迁移分别核对授权；
-  一项成功不授权下一项。用户已明确授予多个范围时直接执行，不重复确认。
-  Proof、Agent 输出、CLI、hooks 或可选方法不能生成 Approval。
+  丢失数据的动作，始终需要用户明确许可。
+- runtime 激活、host adapter 同步、registry 修改和每个项目迁移分别核对权限边界；
+  一项成功不自动扩大下一项。用户已明确授予多个范围时直接执行，不重复确认。
+  Proof、Agent 输出、CLI、hooks 或可选方法不能生成许可。
 
 ## Authority Map
 

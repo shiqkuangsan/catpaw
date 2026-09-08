@@ -47,13 +47,13 @@ test("runtime keeps five internal checklists without exposing a role tree", asyn
   }
 });
 
-test("runtime policy centers Work and separates Evidence from authorization", async () => {
+test("runtime policy centers Work and keeps permission boundaries below the user model", async () => {
   const text = await runtimeText("runtime-policy.md");
   assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
-  assert.match(text, /以 Work 推进交付[\s\S]*Authorization 约束具体动作/);
+  assert.match(text, /以 Work 推进交付[\s\S]*权限边界约束具体动作/);
   assert.match(text, /Understand -> Execute -> Check -> Finish/);
   assert.match(text, /授权记录不形成权限凭证/);
-  assert.match(text, /Proof[\s\S]*不能生成 Approval/);
+  assert.match(text, /Proof[\s\S]*不能生成许可/);
   assert.match(text, /高风险 Work[\s\S]*不同于[\s\S]*实现者[\s\S]*独立检查/);
   assert.match(text, /风险接受不能把失败或未检验标记为通过/);
   assert.match(text, /explore[\s\S]*build[\s\S]*check/);
@@ -72,7 +72,7 @@ test("workflow maps the visible flow to compatible internal modes and stages", a
   }
   assert.match(text, /Gated[\s\S]*independent\s+Evidence/i);
   assert.match(text, /`evidence add` \(`proof add` alias\)[\s\S]*typed schema 2 Evidence/i);
-  assert.match(text, /push[\s\S]*PR[\s\S]*explicit[\s\S]*Approval/i);
+  assert.match(text, /push[\s\S]*PR[\s\S]*explicit[\s\S]*permission/i);
 });
 
 test("Understand exposes material ambiguity without interviewing clear Work", async () => {
@@ -129,9 +129,9 @@ test("Understand may additionally structure complex Work without adding an artif
   assert.match(workflow, /shallow scope tree[\s\S]*containment only[\s\S]*not a task hierarchy/i);
   assert.match(workflow, /dependency edges separately[\s\S]*sequencing[\s\S]*ownership[\s\S]*parallelism[\s\S]*risk/i);
   assert.match(workflow, /Confirmed[\s\S]*Proposed[\s\S]*Open/);
-  assert.match(workflow, /local discussion notes[\s\S]*not Work status[\s\S]*Proof[\s\S]*Approval[\s\S]*schema fields/i);
+  assert.match(workflow, /local discussion notes[\s\S]*not Work status[\s\S]*Proof[\s\S]*permission[\s\S]*schema fields/i);
   assert.match(workflow, /first thin end-to-end delivery slice[\s\S]*acceptance[\s\S]*required Proof/i);
-  assert.match(workflow, /every blocking dependency[\s\S]*satisfied[\s\S]*authorized executable resolution[\s\S]*accountable owner/i);
+  assert.match(workflow, /every blocking dependency[\s\S]*satisfied[\s\S]*executable resolution within the granted boundary[\s\S]*accountable owner/i);
   assert.match(workflow, /no\s+blocking `Open`[\s\S]*decision-frontier question[\s\S]*Non-blocking `Open`[\s\S]*deferred/i);
   assert.match(workflow, /Direct Work[\s\S]*conversation[\s\S]*existing Plan/i);
   assert.match(workflow, /Do not create a Tree\/Map artifact[\s\S]*independently[\s\S]*verifiable outcome/i);

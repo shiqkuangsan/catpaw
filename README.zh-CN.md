@@ -7,14 +7,14 @@ CatPaw 是面向 coding agent 的 local-first 可靠执行 runtime。它让 Agen
 
 ```text
 Work -> 目标、验收、当前进度与 Next
-        Evidence 支撑验收；Authorization 约束动作
+        Evidence 支撑验收；权限边界约束动作
 ```
 
 Work 是主要入口。Evidence 是验证记录的首选名称，Proof 保留为兼容称呼；
-Authorization 表达动作授权，Approval 保留为兼容称呼。产品决定、动作授权与
-风险接受分开记录，已有授权跨步骤持续有效，不增加反复审批。
+Approval 保留为用户权限边界的兼容称呼。产品决定、允许执行的动作与风险接受
+分开处理，已有授权跨步骤持续有效，不增加反复审批。
 
-Source runtime 版本：`4.0.0`。项目工作板保留 **schema 2**，新 Work 使用显式
+Source runtime 版本：`4.0.1`。项目工作板保留 **schema 2**，新 Work 使用显式
 contract 4 字段。旧记录继续可读；旧 runtime 可能拒绝新记录。无需批量迁移项目。
 
 ## 用户模型
@@ -41,15 +41,15 @@ Proof 是支持判断的可检查事实：已经执行的检查、可复现 find
 后来的失败会覆盖先前通过。`evidence run` 捕获真实执行结果，但 exit zero 不证明
 测试充分，填写 actor 名称也不认证身份；主执行者自审不能满足独立检查。
 
-### Authorization（兼容 Approval）
+### 权限边界（兼容 Approval）
 
-只有必须由用户提供新增权限或明确接受风险时才需要 Approval，例如：实质改变结果、
-缺失必要 Proof、外部或不可逆影响、protected/base 更新、破坏性或改写历史的 Git、
-secret access、权限扩张。
+CatPaw 遵守用户、项目、宿主和工具已经提供的权限。只有动作需要新增或扩大边界时
+才暂停，例如：实质改变结果、外部或不可逆影响、protected/base 更新、破坏性或改写
+历史的 Git、secret access 或权限扩张。
 
-Approval 不是 workflow stage。已经授权的 Work 应连续推进，不为每个内部步骤重复
-请示。Proof 永远不能制造 Approval。
-产品选择、动作授权和风险接受分别记录；接受风险不能把未通过的检查标成通过。
+Approval 不是 workflow stage，也不是 board artifact。已有授权的 Work 应连续推进，
+不为每个内部步骤重复请示。Proof 永远不能产生权限。产品选择、动作边界和风险接受
+分别处理；接受风险不能把未通过的检查标成通过。
 
 ## 可见流程
 

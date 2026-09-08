@@ -9,15 +9,15 @@ you.
 
 ```text
 Work -> goal, acceptance, progress and Next
-        Evidence supports acceptance; Authorization bounds actions
+        Evidence supports acceptance; permission boundaries bound actions
 ```
 
 Work is the primary entry. Evidence is the preferred name for durable Proof;
-Approval remains compatible terminology for user authority. Product decisions,
-action authorization and risk acceptance are distinct. Existing authorization
+Approval remains compatible terminology for a user permission boundary. Product
+decisions, granted actions and risk acceptance are distinct. A granted scope
 continues across steps without repeated approval ceremonies.
 
-Source runtime version: `4.0.0`. Project boards use **schema 2**, with explicit
+Source runtime version: `4.0.1`. Project boards use **schema 2**, with explicit
 contract 4 metadata on new Work. Existing records remain readable; older runtime
 versions may reject new records. No fleet migration is required.
 
@@ -47,16 +47,18 @@ bound to the current candidate, acceptance and cycle. Later failures supersede
 older passes. `evidence run` captures execution facts; an exit code does not prove
 test adequacy and asserted actor names do not authenticate identity.
 
-### Authorization (Approval compatibility)
+### Permission boundaries (Approval compatibility)
 
-Authorization is required when the user must supply new authority: external or
+CatPaw follows the authority already supplied by the user, project, host, and
+tools. It pauses only when an action needs a new or wider boundary: external or
 irreversible effects, protected/base updates, destructive or history-changing
 Git, secret access, or permission expansion.
 
-Approval is not a workflow stage. Already-authorized Work continues without
-asking for every internal step. Proof can never manufacture Approval.
-Record product choices and explicit risk acceptance separately from action
-authority. Risk acceptance cannot turn a failed check into a passing result.
+Approval is not a workflow stage or a board artifact. Work with an existing
+granted scope continues without asking for every internal step. Proof can never
+create permission. Record product choices and explicit risk acceptance
+separately from the action boundary; risk acceptance cannot turn a failed check
+into a passing result.
 
 ## Visible Flow
 

@@ -4,7 +4,7 @@ CatPaw is a local-first runtime for reliable coding-agent Work:
 
 ```text
 Work -> outcome, acceptance, progress and Next
-        Evidence supports claims; Authorization bounds actions
+        Evidence supports claims; permission boundaries bound actions
 ```
 
 The visible flow is `Understand -> Execute -> Check -> Finish`. Internal schema
@@ -24,7 +24,7 @@ user concept.
 
 | Surface | Responsibility |
 |---|---|
-| [runtime-policy.md](runtime-policy.md) | Work-centered routing, Evidence and Authorization boundaries |
+| [runtime-policy.md](runtime-policy.md) | Work-centered routing, Evidence and permission boundaries |
 | [catalog/](catalog/) | machine-readable `explore`, `build`, and `check` intent contracts |
 | [guidance/](guidance/) | internal Work handling, Agent collaboration, methods, independent Proof, Milestone, and maintenance |
 | [lenses/](lenses/) | internal professional checklists |

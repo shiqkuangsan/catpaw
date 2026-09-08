@@ -4,7 +4,7 @@
 - 项目存在 `.catpaw/`、旧 `todos/`，或用户提到 CatPaw、Work、Proof、Approval、
   Milestone、Evidence、迁移或持续跟踪时，先读 `~/.catpaw/runtime-policy.md`；
   按其中触发条件读取细则，不在入口复制工作流和 Git 授权规则。
-- 以 Work 组织目标、验收与 Next，用 Evidence 支撑声明、Authorization 约束动作；
+- 以 Work 组织目标、验收与 Next，用 Evidence 支撑声明、权限边界约束动作；
   Proof / Approval 是兼容称呼。沿 `Understand -> Execute -> Check -> Finish`
   推进，小任务保持轻量，在既有授权内持续执行。
 - 本入口仅路由。CatPaw 不能扩大用户、项目或宿主权限；Proof 和工具结果不能授予 Approval。

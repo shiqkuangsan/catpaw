@@ -39,11 +39,11 @@ time. Schema, path, duplicate identity and unclassified graph errors still block
 The degraded board's dashboard stays unchanged; run `board doctor` and then
 `board doctor --fix --apply` to refresh it after repair.
 
-## Decisions And Authorization
+## Decisions And Permission Boundaries
 
 Record only consequential decisions, inline in Work: a product decision states
-the chosen outcome, an authorization states the user instruction and exact
+the chosen outcome, a permission note states the user instruction and exact
 action/target boundary, and risk acceptance names the actual uncovered risk.
-These are references to user decisions, never CLI capabilities. Existing scoped
-authorization persists across steps. Ask only when a necessary decision lies
-outside it. Do not create a mandatory Approval artifact or new approval stage.
+These are references to user decisions, never CLI capabilities. An existing
+scope persists across steps. Ask only when a necessary action lies outside it.
+Do not create a mandatory Approval artifact or new approval stage.

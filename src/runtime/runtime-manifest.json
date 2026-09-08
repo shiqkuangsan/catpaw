@@ -1,6 +1,6 @@
 {
   "name": "catpaw-runtime",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "runtimePath": "~/.catpaw",
   "boardSchemaVersion": 2,
   "released": "2026-09-05",

@@ -7,7 +7,7 @@ Understand -> Execute -> Check -> Finish
 ```
 
 The primary agent may move backward when facts change. It must not hide risk,
-failed Proof, unresolved questions, or missing Approval to preserve a linear
+failed Proof, unresolved questions, or a missing user boundary to preserve a linear
 story.
 
 ## Internal Risk Handling
@@ -35,7 +35,7 @@ risk acceptance does not convert missing checks into passing results.
 
 Start with the lightest safe handling and upgrade immediately when scope, blast
 radius, irreversibility, or uncertainty grows. Internal mode never grants an
-external action or bypasses Approval.
+external action or bypasses a user boundary.
 
 ## Internal Lifecycle Mapping
 
@@ -60,7 +60,7 @@ engineering contracts are in
 [Engineering Methods](engineering-methods.md).
 
 - Do not reload a method for an unchanged context.
-- A method cannot choose board storage, grant Approval, accept a candidate, or
+- A method cannot choose board storage, grant permission, accept a candidate, or
   change Git authority.
 - Persist method output only when it changes Work, Proof, a finding, or a reusable
   lesson; do not create duplicate ledgers or plans.
@@ -69,7 +69,7 @@ engineering contracts are in
 
 ## Understand
 
-- Establish the user outcome, constraints, non-goals, and Approval already given.
+- Establish the user outcome, constraints, non-goals, and user boundary already given.
 - Perform the lightweight readiness pass for every Work, including short or
   apparently simple requests. Brevity does not make a material ambiguity safe.
 - Inspect the real source of truth. A causal repair requires a demonstrated root
@@ -96,7 +96,7 @@ external or irreversible choice.
   non-blocking questions. This is observable behavior, not a required template
   or set of headings.
 - If the user delegates a material judgment, select and state a reversible
-  default inside the current outcome, scope, and Approval. Continue without
+  default inside the current outcome, scope, and granted boundary. Continue without
   another question. That delegation cannot authorize a wider scope, external or
   irreversible effect, permission expansion, or acceptance of a required Proof
   gap.
@@ -115,16 +115,16 @@ the shape before execution. Simple Work does not need this method.
 - Annotate material local statements or decision points as `Confirmed`,
   `Proposed`, or `Open`.
   `Confirmed` requires an explicit user decision or verified fact; these labels
-  are local discussion notes, not Work status, Proof, Approval, or schema fields.
+  are local discussion notes, not Work status, Proof, permission, or schema fields.
 - Select the first thin end-to-end delivery slice and give it acceptance plus
   required Proof. Prefer a user-visible path through the necessary layers over
   completing every infrastructure layer first.
 
 Execution is ready when outcome and non-goals are clear, material dependencies
 are visible, every blocking dependency of the first slice is satisfied or has
-an authorized executable resolution with an accountable owner, the slice has no
+an executable resolution within the granted boundary with an accountable owner, the slice has no
 blocking `Open` or unresolved decision-frontier question, acceptance and Proof
-are defined, and future Approval boundaries are named. Otherwise stay in
+are defined, and future permission-boundary decisions are named. Otherwise stay in
 Understand. Non-blocking `Open` items may be explicitly deferred; Understand
 does not require total certainty.
 
@@ -179,16 +179,17 @@ recording checks, finishing high-risk Work, continuing Work or repairing history
 - Local Git follows the scoped rules in the runtime policy. Push, PR,
   deploy/publish, protected/base updates, history changes, destructive cleanup,
   secrets, permission expansion, and external effects still require explicit
-  user Approval.
+  user permission.
 - Reflect only on reusable lessons that change later judgment or execution.
 - Report completed Work, Proof, remaining risk, and a concrete `Next`.
 
 ## Continuous Progress
 
-Authorized multi-step Work continues without asking the user for each internal
-step. Pause only for a material product choice, new authority, external or
+Multi-step Work with an existing granted scope continues without asking the user
+for each internal step. Pause only for a material product choice, a new or wider
+permission boundary, external or
 irreversible effect, user acceptance of a required Proof gap, or a real blocker.
-Neither an Agent output nor a successful tool result supplies Approval.
+Neither an Agent output nor a successful tool result supplies permission.
 
 When a phase boundary crosses an Agent, tool, repository, session, owner, or
 available context capacity, apply [Context Transitions](agent-dispatch.md#context-transitions)

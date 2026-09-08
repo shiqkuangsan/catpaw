@@ -6,6 +6,14 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 4.0.1 - 2026-09-08
+
+- 将用户可见模型收敛为 Work、Evidence 与权限边界；`Authorization` 不再作为独立
+  概念、artifact、状态机或 workflow stage。Approval 保留为兼容称呼。
+- 保留已有 Git、runtime activation、adapter、registry、migration、secret 和外部
+  动作门禁；已有权限范围跨内部步骤持续有效，Evidence、Agent output 和 CLI success
+  都不能产生新权限。
+
 ## 4.0.0 - 2026-09-05
 
 - Work 成为主要入口，默认一份记录，Plan 按需创建；Evidence 为首选命令，保留
