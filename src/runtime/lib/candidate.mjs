@@ -34,8 +34,32 @@ export async function candidateFor(options, work) {
     if (error.code !== 128 && error.code !== "ENOENT") throw failure("Cannot identify the candidate repository.");
   }
   if (git) {
-    const result = await exec("git", ["--literal-pathspecs", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", scope], { cwd: root, maxBuffer: 16 * 1024 * 1024 });
-    files = [...new Set(result.stdout.split("\0").filter(Boolean))];
+    // Follow only the explicitly scoped path, never discover sibling repositories.
+    let repository = root;
+    let cursor = root;
+    for (const segment of path.relative(root, target).split(path.sep).filter(Boolean)) {
+      if (segment === ".git") throw failure("Work scope must exclude Git state.");
+      cursor = path.join(cursor, segment);
+      let stat;
+      try { stat = await lstat(cursor); } catch (error) {
+        if (error.code === "ENOENT") break;
+        throw error;
+      }
+      if (stat.isSymbolicLink()) throw failure("Work scope contains an unsafe link.");
+      if (!stat.isDirectory()) break;
+      try {
+        const marker = await lstat(path.join(cursor, ".git"));
+        if (marker.isSymbolicLink() || (!marker.isDirectory() && !marker.isFile())) throw failure("Unsafe repository marker.");
+        const detected = await exec("git", ["rev-parse", "--show-toplevel"], { cwd: cursor });
+        if (await realpath(detected.stdout.trim()) !== cursor) throw failure("Candidate repository root mismatch.");
+        repository = cursor;
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+    const localScope = path.relative(repository, target) || ".";
+    const result = await exec("git", ["--literal-pathspecs", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", localScope], { cwd: repository, maxBuffer: 16 * 1024 * 1024 });
+    files = [...new Set(result.stdout.split("\0").filter(Boolean).map(name => path.relative(root, path.resolve(repository, name))))];
   } else {
     files = [];
     async function walk(file) {

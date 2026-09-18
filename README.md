@@ -17,7 +17,7 @@ Approval remains compatible terminology for a user permission boundary. Product
 decisions, granted actions and risk acceptance are distinct. A granted scope
 continues across steps without repeated approval ceremonies.
 
-Source runtime version: `4.0.1`. Project boards use **schema 2**, with explicit
+Source runtime version: `4.0.2` (unreleased). Project boards use **schema 2**, with explicit
 contract 4 metadata on new Work. Existing records remain readable; older runtime
 versions may reject new records. No fleet migration is required.
 

@@ -14,7 +14,7 @@ Work 是主要入口。Evidence 是验证记录的首选名称，Proof 保留为
 Approval 保留为用户权限边界的兼容称呼。产品决定、允许执行的动作与风险接受
 分开处理，已有授权跨步骤持续有效，不增加反复审批。
 
-Source runtime 版本：`4.0.1`。项目工作板保留 **schema 2**，新 Work 使用显式
+Source runtime 版本：`4.0.2`（尚未发布）。项目工作板保留 **schema 2**，新 Work 使用显式
 contract 4 字段。旧记录继续可读；旧 runtime 可能拒绝新记录。无需批量迁移项目。
 
 ## 用户模型

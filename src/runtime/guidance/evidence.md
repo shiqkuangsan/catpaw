@@ -9,6 +9,8 @@ Plan timestamp-only changes do not invalidate it. Write concrete acceptance befo
 checking. `work show` returns the candidate SHA-256. Scope is project-relative;
 Git projects include tracked and non-ignored untracked files, contents, deletions
 and modes. Board/Git state is excluded; non-Git projects include all scoped files.
+明确指向嵌套 Git 仓库内部的 scope 使用该子仓库的文件清单与忽略规则，路径仍相对
+项目根记录；不会自动遍历 scope 路径之外的其它仓库。
 Symlinks and unsupported content refuse hashing. No claim covers ignored files
 or effects outside the declared project scope.
 

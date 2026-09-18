@@ -6,6 +6,12 @@ must not be used as current operating guidance. Current behavior is owned by
 [runtime-policy.md](runtime-policy.md), its linked guidance, the schema, and the
 CLI; the newest release entry summarizes their versioned change.
 
+## 4.0.2 - Unreleased
+
+- 修复工作区根 Git 忽略子仓库时，明确指向子仓库内部的 Work scope 无法生成
+  candidate 的问题。使用子仓库自己的 Git 清单与忽略规则，保留删除记录和项目
+  相对路径；拒绝路径上的符号链接及 Git 内部状态，不自动枚举其它子仓库。
+
 ## 4.0.1 - 2026-09-08
 
 - 将用户可见模型收敛为 Work、Evidence 与权限边界；`Authorization` 不再作为独立
