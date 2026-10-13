@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { lstat, readFile, readdir, realpath } from "node:fs/promises";
+import { lstat, readFile, readdir, readlink, realpath } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { parseFrontmatter } from "./frontmatter.mjs";
@@ -73,6 +73,7 @@ export async function candidateFor(options, work) {
     await walk(target);
   }
   const entries = [];
+  const inventory = new Set(files.map(name => path.resolve(root, name)));
   for (const name of files.sort()) {
     const file = path.resolve(root, name);
     if (!inside(root, file)) throw failure("Candidate file escapes the project.");
@@ -83,7 +84,39 @@ export async function candidateFor(options, work) {
       entries.push([name, "deleted"]);
       continue;
     }
-    if (stat.isSymbolicLink() || !inside(root, await realpath(file))) throw failure(`Candidate contains an unsafe link: ${name}`);
+    if (stat.isSymbolicLink()) {
+      // Permit only direct links to ordinary files already covered by this inventory.
+      // Hash the link itself; the target's own entry accounts for its bytes and mode.
+      const link = await readlink(file);
+      const destination = path.resolve(path.dirname(file), link);
+      const unsafe = () => failure(`Candidate contains an unsafe link: ${name}`);
+      if (path.isAbsolute(link) || !inside(root, destination) || excluded(destination)
+        || path.relative(root, destination).split(path.sep).includes(".git") || !inventory.has(destination)) throw unsafe();
+      try {
+        // Validate raw traversal before collapsing '..'; a missing or linked parent
+        // must not disappear through path normalization.
+        let cursor = path.dirname(file);
+        for (const segment of link.split(path.sep).filter(Boolean)) {
+          if (!(await lstat(cursor)).isDirectory()) throw unsafe();
+          cursor = path.resolve(cursor, segment);
+          if (!inside(root, cursor) || excluded(cursor) || segment === ".git"
+            || (await lstat(cursor)).isSymbolicLink()) throw unsafe();
+        }
+        if (await realpath(file) !== destination) throw unsafe();
+        if (await realpath(destination) !== destination || !(await lstat(destination)).isFile()) throw unsafe();
+      } catch (error) {
+        if (["ENOENT", "ENOTDIR", "ELOOP"].includes(error.code)) throw unsafe();
+        throw error;
+      }
+      const after = await lstat(file);
+      if (!after.isSymbolicLink() || await readlink(file) !== link || stat.ino !== after.ino
+        || stat.size !== after.size || stat.mtimeMs !== after.mtimeMs || stat.mode !== after.mode) {
+        throw failure("Candidate changed while hashing; inspect it again.");
+      }
+      entries.push([name, "symlink", link]);
+      continue;
+    }
+    if (!inside(root, await realpath(file))) throw failure(`Candidate contains an unsafe link: ${name}`);
     if (!stat.isFile()) throw failure(`Candidate contains unsupported content: ${name}`);
     const bytes = await readFile(file);
     const after = await lstat(file);

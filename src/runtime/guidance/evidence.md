@@ -48,7 +48,10 @@ Git projects include tracked and non-ignored untracked files, contents, deletion
 and modes. Board/Git state is excluded; non-Git projects include all scoped files.
 明确指向嵌套 Git 仓库内部的 scope 使用该子仓库的文件清单与忽略规则，路径仍相对
 项目根记录；不会自动遍历 scope 路径之外的其它仓库。
-Symlinks and unsupported content refuse hashing. No claim covers ignored files
+候选清单允许直接指向同一清单内普通文件的相对符号链接（如 `CLAUDE.md -> AGENTS.md`）；
+链接文本与目标文件内容/模式均参与指纹。不跟随链接扩展清单；绝对、越界、断链、循环、
+链式、目录链接，以及指向忽略文件、看板或 Git 状态的链接仍拒绝。scope 路径本身不经过链接。
+Unsafe links and unsupported content refuse hashing. No claim covers ignored files
 or effects outside the declared project scope.
 
 `evidence add --result passed --candidate <sha>` records an assertion about that
