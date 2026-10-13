@@ -67,6 +67,9 @@ scope; changing intent on the same actor does not create independence.
 
 Every substantive delegation carries the minimum complete execution contract:
 
+下列内容是交接要素，不是必须逐项填写的表单。可合并成简短指令，省略无关的
+预算或依赖说明；目标、范围、允许动作、产物和验证边界必须清楚。
+
 ```text
 outcome: <one verifiable result>
 intents: <explore, build, check, or a useful composition>
@@ -179,8 +182,10 @@ checking it. Until then, mark it review pending.
 ACK, process start, exit zero, session stability, or an Agent's completion claim
 is not acceptance. The primary agent verifies material findings and checks
 candidate provenance, diff, Proof, credential scan, clean status, and conflicts.
-No Agent, catalog entry, session, checklist, Proof, or CLI result can accept its
-own output or supply user Approval.
+No delegated Agent can accept its own output on behalf of the primary agent.
+The primary agent may implement and accept delivery, but self-review cannot
+satisfy required independence. Catalog entries, sessions, checklists, Proof and
+CLI results never supply user Approval.
 
 CatPaw-managed cc/cx are read-only transport adapters, not the primary agent's
 complete roster. See [Agent Transports](../providers/README.md).

@@ -1,13 +1,15 @@
 # Runtime Policy
 
-CatPaw 以 Work 推进交付：记录目标、验收、当前动作与 Next。Evidence 支撑具体
-验收声明，Proof 保留为兼容称呼。权限边界约束具体动作；用户的产品决定、允许执行
-的动作和风险接受分别处理，不能互相替代。Approval 保留为用户权限边界的兼容称呼。
+CatPaw 为主 Agent 提供轻量工作协议与项目记忆，以 Work 推进交付：记录目标、验收、
+当前动作与 Next。主 Agent 负责判断、编排和最终采纳，CLI 检查记录与操作的一致性。
+Evidence 支撑具体验收声明，Proof 保留为兼容称呼。权限边界约束具体动作；产品决定、
+动作授权和风险接受分别处理。Approval 保留为用户权限边界的兼容称呼。
 
 ## Activation And Priority
 
-项目存在 `.catpaw/`、旧 `todos/`，或用户提到 CatPaw、Work、Proof、Approval、
-Milestone、Evidence、迁移或持续跟踪时，先读本文件。只在触发对应操作时读下方
+项目存在 `.catpaw/`、已确认用于 CatPaw 的旧 `todos/`，或用户明确要求 CatPaw、
+工作项/里程碑管理、证据归档或跨会话持续跟踪时，先读本文件。普通语境中的 Work、
+Proof、Approval、Evidence、“迁移”等词不单独触发。只在对应操作需要时读下方
 canonical owner；上下文与事实未变时不重复加载。
 
 宿主的 system/developer instructions 与工具权限边界始终有效。在其允许范围内：
@@ -40,10 +42,12 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
   计划直接记在其中。只有独立计划确实有用时才创建可选 Plan。
   安全、发布、迁移、外部/破坏性操作、数据完整性或高影响契约使用高风险 Work。
 - **Check**：按验收执行检查，分别报告通过、失败、未运行、受阻及环境限制。
-  有回归风险的实现、排障和审查按触发条件读取工程方法。
+  主 Agent 核对证据覆盖范围，不能把局部通过当成整项完成；见
+  [Evidence Contract](guidance/evidence.md#claim-coverage)。工程方法按风险读取。
 - **Finish**：核对交付物、Proof、剩余风险和恢复路径。多步骤 Work 每完成有意义
   单元就更新持久事实，报告已完成、Proof、当前动作和 Next，并继续已有授权内的工作。
-  只为关键产品决定、新授权、外部/不可逆动作、缺失 Proof 的风险接受或真实阻塞暂停。
+  只为尚缺的关键产品决定、未覆盖的动作授权、必要证据缺口或真实阻塞暂停；
+  外部/不可逆动作已有明确授权且前置检查通过时，按该范围继续。
 
 详细执行方法与完成条件由 [Work Handling](guidance/workflow.md) 持有。
 
@@ -62,8 +66,7 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
   preimage，状态变化就停止重算。格式合法、非空正文和 `independent: true` 不证明
   证据真实、检查通过或身份独立；主 Agent 仍须核对原始结果。
 - 先读 `catpaw status` 恢复当前工作；写入默认 dry-run，显式 `--apply` 才落盘。
-  用 `evidence add` 保存事实，`evidence run` 捕获已授权命令的实际结果；后者默认
-  只预览，`--apply` 才执行。`proof` 是兼容入口。参数以 `--help` 为准。
+  用 `evidence add` 保存事实，`evidence run` 捕获已授权命令的实际结果；参数以 `--help` 为准。
   已有证据仍覆盖当前 candidate、验收与周期时复用，不为满足次数而重复检查。
 
 ## Agent Collaboration
@@ -73,7 +76,8 @@ CatPaw 的默认许可不能覆盖用户或项目的明确禁令、确认要求�
 [Agent Collaboration](guidance/agent-dispatch.md)，绑定范围、输出、验证、停止条件和权限。
 
 每个可变范围同时只有一个负责写入者；竞争候选使用隔离 worktree 或等价空间。
-候选作者不能自行采纳自己的候选。冲突、漂移或意外改动时停止相关写入并重新核对。
+受委派的候选作者不能代替主 Agent 作最终采纳。主 Agent 可实现并最终负责交付，
+但不能把自检当作独立检查。冲突、漂移或意外改动时停止相关写入并重新核对。
 
 `cc` / `cx` 是只读第二意见入口；“老二”在 Codex 中对应 `cc`，在 Claude Code 中
 对应 `cx`。它们不代表全部可用 Agent；实际调用前读 [Agent Transports](providers/README.md)。

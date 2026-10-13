@@ -1,7 +1,7 @@
 # CatPaw Maintainer Docs
 
-These documents explain the architecture and decisions behind CatPaw 3.4.4
-Hybrid Runtime. They are maintainer-facing rationale, not an installed runtime
+These documents explain CatPaw's architecture and decisions.
+They are maintainer-facing rationale, not an installed runtime
 contract.
 
 ## Authority Boundary
@@ -12,6 +12,7 @@ Current behavior has one owner per concern:
 |---|---|
 | Always-on routing and safety | [`runtime-policy.md`](../src/runtime/runtime-policy.md) |
 | Work handling and internal risk routing | [`guidance/workflow.md`](../src/runtime/guidance/workflow.md) |
+| Evidence coverage and candidate freshness | [`guidance/evidence.md`](../src/runtime/guidance/evidence.md) |
 | Agent intents, delegation, scheduling, concurrency, and context transitions | [`guidance/agent-dispatch.md`](../src/runtime/guidance/agent-dispatch.md) |
 | Machine-readable Agent intents | [`catalog/intents.json`](../src/runtime/catalog/intents.json) |
 | Debugging, RED/GREEN, review, and prototype methods | [`guidance/engineering-methods.md`](../src/runtime/guidance/engineering-methods.md) |
@@ -44,13 +45,15 @@ metadata routes the reader to the controlling later ADR and runtime authority.
 
 ## Architecture Map
 
+- [Product Capabilities](product-capabilities.md) maps methods, Work/Evidence,
+  collaboration, and maintenance to their implementation, limits, and design choices.
 - [Three Runtime Surfaces](architecture/three-layer-model.md) explains
   Always-on Rules, On-demand Guidance, and Executable Tools.
 - [Sync and References](architecture/sync-and-references.md) explains the
   `source -> dist -> installed -> project board` chain.
 - [Migration Pipeline](architecture/migration-pipeline.md) explains explicit,
   staged board conversion from schema 1 to schema 2.
-- [Glossary](glossary.md) defines the compact CatPaw 3 vocabulary.
+- [Glossary](glossary.md) defines maintainer vocabulary.
 
 ## Document Lifecycle
 
@@ -58,6 +61,7 @@ metadata routes the reader to the controlling later ADR and runtime authority.
 
 | Surface | Retention rule |
 |---|---|
+| `product-capabilities.md` | Current product inventory, limits, and value criteria |
 | `architecture/` | Current explanatory models that clarify runtime boundaries |
 | `decisions/` | Accepted, amended, and superseded ADR history |
 | `glossary.md` | Current maintainer vocabulary |
@@ -109,6 +113,8 @@ Current decision ownership is compactly indexed here:
 | structured Understand method | [ADR-0028](decisions/0028-structured-understand-without-new-concepts.md) |
 | internal method density and writing constraints | [ADR-0029](decisions/0029-method-density-without-concept-growth.md) |
 | observable Understand and thin authority routing | [ADR-0030](decisions/0030-observable-understand-without-clarification-ceremony.md), [ADR-0031](decisions/0031-thin-entrypoints-and-bound-analysis.md) |
+| Work-centered operations and permission boundaries | [ADR-0032](decisions/0032-work-centered-runtime-and-verifiable-operations.md), [ADR-0033](decisions/0033-permission-boundaries-without-a-public-authorization-concept.md) |
+| positioning, value, and simplification | [ADR-0034](decisions/0034-agent-owned-judgment-and-lightweight-continuity.md) |
 
 ## Writing Rules
 

@@ -12,6 +12,6 @@ Lens 描述“需要什么判断”，Agent 描述“谁来提供判断”。Cat
 | [Security](security.md) | 信任、权限、输入、秘密与供应链 |
 | [Performance](performance.md) | 基线、热点、资源成本与语义等价 |
 
-按风险选择一个 primary Lens，再补真正相关的其它 Lens。不要为了“覆盖所有角色”
-逐卡走流程。Lens finding 需要事实或验证支持，并遵守
+按风险选取真正相关的问题，可组合多个 Lens，也可直接使用其中一个问题。
+不必先指定 primary Lens，也不要为了“覆盖所有角色”逐卡走流程。Lens finding 需要事实或验证支持，并遵守
 [`Independent Checks`](../guidance/independent-checks.md)。

@@ -51,7 +51,7 @@
       "purpose": "Challenge a candidate or independently reproduce whether its acceptance claims hold.",
       "methods": ["review", "verify"],
       "useWhen": ["non-primary judgment can change the outcome", "risk or a completion claim needs adversarial review or reproduction"],
-      "avoidWhen": ["the actor built the checked scope", "the request is to repair rather than assess the candidate"],
+      "avoidWhen": ["independent Proof is required and the actor built the checked scope", "the request is to repair rather than assess the candidate"],
       "requiredInputs": ["checked target and provenance", "acceptance and contracts", "exact read or verification scope", "expected Proof"],
       "outputs": ["prioritized reproducible findings or commands and results", "acceptance verdict", "coverage limits and remaining gaps"],
       "proofObligations": ["distinguish pass, fail, not-run, and blocked", "separate blockers from suggestions", "state actor independence and coverage"],

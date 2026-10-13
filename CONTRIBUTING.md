@@ -1,11 +1,14 @@
 # Contributing
 
-CatPaw 3.4 is a Hybrid Runtime. Users operate through `Work`, `Proof`, and
-`Approval`; the visible flow is `Understand -> Execute -> Check -> Finish`.
-Primary agents make contextual decisions, executable tools record and verify
-deterministic state, and users authorize new authority or accepted risk.
-Contributions should keep that public model compact while preserving exact
-internal contracts.
+CatPaw supplies a lightweight work protocol and local project memory for coding
+agents. The primary agent owns judgment and final acceptance; tools keep records
+and operations consistent. Work carries the outcome, Evidence supports claims,
+and user permissions bound actions. The visible flow is
+`Understand -> Execute -> Check -> Finish`.
+
+Strengthen continuity and inspectable delivery while reducing the attention
+required to use them. New guidance should change an action, boundary, or evidence
+requirement; prefer an existing mechanism before adding a command, field, or file.
 
 ## Source Layout
 
@@ -47,8 +50,8 @@ source verification.
 
 ## Runtime Change Checklist
 
-- Keep `Work`, `Proof`, and `Approval` as the complete user-facing model and
-  `Understand -> Execute -> Check -> Finish` as its progress language.
+- Keep Work as the primary entry, Evidence as support for claims, and permission
+  boundaries in operational rules. Proof and Approval remain compatibility terms.
 - Preserve the internal schema 2 lifecycle and risk metadata unless an accepted
   ADR changes their machine contract; do not make modes or stage values a user
   prerequisite.
@@ -58,8 +61,8 @@ source verification.
 - Keep board mutations dry-run by default and write only with explicit
   `--apply`.
 - Add a migration when a released project board schema must change.
-- Keep callable external Agents limited to `cc` and `cx` unless a future
-  accepted decision deliberately changes the boundary.
+- Keep CatPaw-managed external transports limited to `cc` and `cx`; they do not
+  limit the primary agent's host-provided roster.
 - Update public docs when installation, CLI, artifact, or activation behavior
   changes.
 

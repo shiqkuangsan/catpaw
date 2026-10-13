@@ -1,9 +1,9 @@
 <!-- CATPAW:BEGIN -->
 # CatPaw Protocol
 
-- 项目存在 `.catpaw/`、旧 `todos/`，或用户提到 CatPaw、Work、Proof、Approval、
-  Milestone、Evidence、迁移或持续跟踪时，先读 `~/.catpaw/runtime-policy.md`；
-  按其中触发条件读取细则，不在入口复制工作流和 Git 授权规则。
+- 项目存在 `.catpaw/`、已确认用于 CatPaw 的旧 `todos/`，或用户明确要求 CatPaw、
+  工作项/里程碑管理、证据归档或跨会话持续跟踪时，先读 `~/.catpaw/runtime-policy.md`。
+  普通词汇不单独触发；按需读取细则，不在入口复制工作流和 Git 授权规则。
 - 以 Work 组织目标、验收与 Next，用 Evidence 支撑声明、权限边界约束动作；
   Proof / Approval 是兼容称呼。沿 `Understand -> Execute -> Check -> Finish`
   推进，小任务保持轻量，在既有授权内持续执行。

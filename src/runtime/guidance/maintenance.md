@@ -139,80 +139,34 @@ preserve `state/projects.json`。
 
 ## Legacy Project Import
 
-Schema 2 的手工编辑或历史漂移也可能使 board invalid。先用 `board doctor` 定位，
-根据原始验证事实修复具体记录，再复查；普通 Work/Proof 写命令会拒绝 invalid board。
-不要关闭 schema/完成条件检查以绕过恢复问题，也不要为消除报错捏造 Proof 或 Approval。
+Schema 2 历史漂移先用 `board doctor` 定位，再按原始事实有界修复。Evidence 缺口的
+增量修复遵循 [Evidence Contract](evidence.md)；不能关闭检查或捏造验证结果。
 
-遇到 `todos/` 或其它旧 artifact tree：
+已有 schema 1 board 使用 [Schema 2 Migration](../migrations/schema-2.md)。
+该文件唯一持有推断顺序、保守默认值、mapping、checksum archive、链接、阻塞条件、
+事务和验收规则；维护时不要在本文件再复制一套。
+
+尚未成为 CatPaw board 的 `todos/` 按以下边界导入：
 
 | Legacy source | Schema 2 target |
 |---|---|
-| `todos/plan.md`, `todos/reqs.md` | `index.md` narrative 与 Work inventory；不原样复制 |
-| `todos/reqs/*` | `work/`；metadata 缺失由 migration inference 补齐 |
-| `todos/plans/active/*`, `todos/plans/archive/*` | `plans/`；从明确 binding 或 canonical filename 绑定 Work |
-| `todos/research/*` | work-bound 或 topic `research Evidence` |
-| `todos/tests.md`, `todos/tests/*` | work-bound 或 topic `test Evidence` |
-| `todos/reviews/*` | work-bound 或 topic `review Evidence` |
-| `todos/lessons.md` | 每条可独立复用且来源明确时转成 `reflection Evidence` |
-| `.claude/`, `.codex/` | inventory/report only；不复制到 board |
+| `plan.md`, `reqs.md` | `index.md` narrative 与 Work inventory |
+| `reqs/*` | `work/` |
+| `plans/active/*`, `plans/archive/*` | 有明确 Work binding 的可选 `plans/` |
+| `research/*`, `tests.md`, `tests/*`, `reviews/*` | 对应类型的 Work-bound 或 topic Evidence |
+| `lessons.md` | 来源明确、可独立复用的 reflection Evidence |
+| `.claude/`, `.codex/` | 只做 inventory/report，不复制配置 |
 
-Migration metadata 对普通用户是 implementation detail，不形成补录任务。Legacy
-artifact frontmatter 先按严格 scalar contract 解析；遇到嵌套字段或其它旧格式时，
-migration 保留原件、恢复可安全读取的 top-level scalar，并把其余 optional 字段记为
-`recovered-frontmatter` warning。无法解析的 `id/work/req`、invalid explicit identity 与
-unterminated frontmatter 属于 identity hazard，继续 block。按下列顺序自动解析，每个
-artifact 只报告聚合的 provenance：
+先 inventory 完整 legacy tree、tracked/ignored state、links、unknown/binary files
+和 board 外基线，再明确逐项 mapping 与授权范围。CLI 的 schema 1 converter 不等于
+任意 `todos/` importer；不支持的历史布局由 Agent 在授权内组织导入，保留原件和
+可复核的来源关系。无法安全绑定的结构先报告，不猜身份或伪造完成状态。
 
-1. explicit valid frontmatter；
-2. canonical alias normalization；
-3. filename、H1、artifact root 与唯一 path binding；
-4. `## Status` / `## 状态`、index 中该 ID 的行、Milestone 的 FR/Scope section；
-5. Plan/Test/Review graph 与 conservative defaults。
-
-Conservative defaults：未知 nonterminal `status -> blocked`，terminal history
-`mode -> tracked`，其它未知 Mode `-> gated`；terminal `stage -> reflect`，其它 stage
-按已有 Plan/Test/Review 推断。日期优先使用 metadata/正文中的合法日期，再使用 board
-中的最新日期，最后使用 migration observation date。Evidence 只有在 explicit boolean
-`independent: true` 且 Agent 非空时才算 independent；无法绑定的 Evidence 转 topic，
-不丢弃。原正文不改写语义，原文件全部进入 checksum archive。
-
-只有无法安全决定结构时 block：canonical identity 冲突/缺失、duplicate ID、Plan 无法
-绑定现有 Work、target collision、path escape、invalid index authority、invalid UTF-8、
-special/unsafe filesystem entry、stale preimage 或 staged validation failure。普通 artifact
-的 malformed/nested optional frontmatter 不阻塞；historical research/provider Evidence 或
-preserved unknown narrative 的缺失 in-board link 保留原链接并 warning，index/Work/Plan 等
-active authority 中的缺失链接仍 block。Legacy root 下的 UTF-8 symlink 只把 link target 文本归档为 inert
-sidecar，并在 manifest 分别记录原 alias 的 `sourceMode` 与 sidecar 的 `mode`，然后安全移除
-alias；不 dereference、不在 schema 2 active surface 重建。非 UTF-8 target、其它
-symlink 与 special entry 仍 block。Stale routing、缺少 lifecycle metadata 与 historical
-completion gate 不要求用户补 YAML；前两者归一化并 warning，后者生成明确列出 missing
-gates 的 migration reflection gap。
-
-Execution：
-
-1. inventory 完整 legacy tree、tracked/ignored state、links、unknown/binary files，
-   并记录 `.catpaw/` 外的 worktree baseline；
-2. 把 mapping 分析与 patch plan 绑定到同一 source tree digest；digest 变化即 block 并重算；
-3. 输出完整 source -> target mapping、inference summary、结构 blockers 与 target tree dry-run；
-4. 无结构 blocker 时，在 sibling stage 创建 schema 2 board；
-5. 保留 index narrative 与全部原件，重写可确定 local links，unknown files 原样保留；
-6. 对 staged board 运行 `board doctor`、schema/graph 检查，并自动对账 legacy manifest
-   的文件集合与 bytes/hash/mode/sourceMode；
-7. 验证通过且用户确认后发布 board，再按 registry contract 显式注册；
-8. preserve the legacy tree as read-only reference by default。
-
-Operator/release acceptance DoD：source artifact inventory 与 native
-mapping/preserved disposition 数量守恒；
-Work/Milestone identity 集合及 Plan/Evidence binding 与 mapping report 一致；
-manifest 中每个 regular file 的 bytes/hash/mode 可复验，symlink sidecar 的
-target/hash/sourceMode/mode 可复验；
-index narrative 保留；staged 与 published board 的 `status`/`doctor` 无 finding；再次
-`board migrate` 精确 `noop`；`.catpaw/` 外的 tracked/ignored baseline 不因迁移改变。
-Board 正在被其它 task 写入时，publish 前必须重算 tree
-digest；preimage 有变化就基于最新 snapshot 重新 stage，不覆盖或手工拼接并发改动。
-
-删除、移动、untrack、`.gitignore` 修改或 bulk cleanup 需要独立列出 exact targets
-并再次确认。Nested repository 的 legacy tree 默认 out of scope。
+发布前核对文件/identity/binding 数量、原件内容与模式、index narrative、schema/graph
+及 board 外基线；publish 前 recheck preimage，有并发改动就重新 stage。完成后才按
+独立 registry 授权更新索引。Nested repository 的 legacy tree 默认不在范围内。
+删除、移动、untrack、`.gitignore` 修改或 bulk cleanup 另列 exact targets；只有
+现有授权覆盖这些目标时才执行，不因 import 自动取得清理权。
 
 ## Recovery
 

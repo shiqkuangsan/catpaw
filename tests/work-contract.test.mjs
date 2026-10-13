@@ -24,6 +24,61 @@ async function fixture(t) {
 function passed(run, type, title, candidate, extra = []) {
   return run("evidence", "add", "--work", "FR-001", "--type", type, "--title", title, "--body", "Checked the declared acceptance against this candidate.", "--result", "passed", "--candidate", candidate, ...extra, "--apply");
 }
+test("status checks the current candidate and separates unavailable checks from missing Evidence", async t => {
+  const { root, run } = await fixture(t);
+  const candidate = run("work", "show", "--id", "FR-001").report.candidate;
+  assert.equal(passed(run, "test", "status test", candidate).code, 0);
+  assert.equal(passed(run, "review", "status review", candidate, ["--independent", "--agent", "checker"]).code, 0);
+  const current = run("status").report.activeWork[0];
+  assert.deepEqual(current.missingProof, []);
+  assert.equal(current.proofCheck, "checked");
+  await writeFile(path.join(root, "app.txt"), "changed\n");
+  assert.deepEqual(run("status").report.activeWork[0].missingProof, ["test", "independent-review-or-provider"]);
+  await rm(path.join(root, "app.txt"));
+  const unavailable = run("status");
+  assert.equal(unavailable.code, 1);
+  assert.equal(unavailable.report.activeWork[0].proofCheck, "unchecked");
+  assert.equal(unavailable.report.activeWork[0].missingProof, null);
+  assert.ok(unavailable.report.findings.some(item => item.code === "candidate-check-unavailable"));
+  assert.match(unavailable.report.nextAction, /declared deliverable scope/);
+  const human = spawnSync(process.execPath, [cli, "status", "--project", root], { encoding: "utf8" });
+  assert.match(human.stdout, /Coverage: unchecked/);
+  assert.match(human.stdout, /Board: healthy/);
+  assert.equal(run("board", "status").code, 0, "storage inspection does not require candidate access");
+});
+
+test("same-title captured reruns preserve each result and the latest failure blocks completion", async t => {
+  const { root, run } = await fixture(t);
+  const counter = path.join(os.tmpdir(), `catpaw-run-counter-${path.basename(root)}`);
+  t.after(() => rm(counter, { force: true }));
+  const candidate = run("work", "show", "--id", "FR-001").report.candidate;
+  assert.equal(passed(run, "review", "rerun review", candidate, ["--independent", "--agent", "checker"]).code, 0);
+  function capture(code) {
+    const script = `require('node:fs').appendFileSync(${JSON.stringify(counter)}, 'run\\n'); process.exit(${code})`;
+    const result = spawnSync(process.execPath, [cli, "evidence", "run", "--work", "FR-001", "--title", "same check", "--date", "2026-10-13", "--project", root, "--json", "--apply", "--", process.execPath, "-e", script], { encoding: "utf8" });
+    return { code: result.status, report: JSON.parse(result.stdout) };
+  }
+  assert.equal(capture(0).code, 0);
+  const failure = capture(7);
+  assert.equal(failure.code, 1);
+  assert.equal(failure.report.executionResult, "failed");
+  const tests = run("evidence", "list", "--work", "FR-001", "--type", "test").report.proof;
+  assert.equal(tests.length, 2, JSON.stringify(failure.report));
+  assert.equal(new Set(tests.map(item => item.path)).size, 2);
+  assert.deepEqual(tests.sort((a, b) => a.sequence - b.sequence).map(item => item.result), ["passed", "failed"]);
+  assert.equal(await readFile(counter, "utf8"), "run\nrun\n");
+  assert.equal(run("work", "finish", "--id", "FR-001", "--apply").code, 1);
+  assert.equal(capture(0).code, 0);
+  assert.equal(run("work", "finish", "--id", "FR-001", "--apply").code, 0);
+});
+
+test("same-title assertions append without replacing earlier Evidence", async t => {
+  const { run } = await fixture(t);
+  const candidate = run("work", "show", "--id", "FR-001").report.candidate;
+  assert.equal(passed(run, "test", "same assertion", candidate).code, 0);
+  assert.equal(passed(run, "test", "same assertion", candidate).code, 0);
+  assert.equal(run("evidence", "list", "--work", "FR-001").report.proof.length, 2);
+});
 test("new Work is one record; Evidence binds candidate, result, reviewer and cycle", async t => {
   const { root, run } = await fixture(t);
   assert.deepEqual(await readdir(path.join(root, ".catpaw/plans")), []);

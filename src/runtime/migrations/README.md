@@ -30,7 +30,7 @@ inventory -> dry-run -> resolve blockers -> stage -> validate -> backup -> publi
   permitted historical-link warnings do not；
 - stage contains a complete candidate board and must pass schema/graph checks；
 - backup stores the complete live preimage only after staged validation；
-- publish rechecks the live preimage and replaces it atomically；
+- publish rechecks the live preimage and uses guarded renames；
 - a second run against the target schema is an exact no-op。
 
 Runtime activation, adapter merge, registry mutation, migration of another

@@ -8,6 +8,17 @@ CLI; the newest release entry summarizes their versioned change.
 
 ## 4.0.2 - Unreleased
 
+- 梳理工程方法、工作与证据、Agent 协作、安装维护四个能力域；主 Agent 保持判断、
+  编排和最终采纳权。精简中英首页与 runtime 入口，合并迁移/证据/协作重复说明。
+- 补强验收声明与实际证据覆盖的对应关系，以及用户决定变化后的 Work 范围同步；
+  复用现有记录，不增加 schema、命令、强制台账或完成门禁。澄清自检与独立检查、
+  Milestone 终结与交付、已有外部授权持续有效的边界。
+- `status` 使用当前候选检查高风险证据；候选不可读时明确报告 unchecked，兼容
+  JSON 的 `missingProof` 此时为 null，附 `proofCheck`，不再误报缺失或通过。
+- contract 4 同日期同标题的 Evidence / capture 重跑追加独立记录，保留失败历史；
+  补全 Evidence 子命令帮助，共享 proof alias 的参数说明，保留旧默认值。
+- 普通词汇不单独触发 CatPaw；工程方法复用 Work 或已有可选 Plan，修正重复入口
+  中过时的版本与概念说明。源码更新不等于本机 runtime 激活。
 - 修复工作区根 Git 忽略子仓库时，明确指向子仓库内部的 Work scope 无法生成
   candidate 的问题。使用子仓库自己的 Git 清单与忽略规则，保留删除记录和项目
   相对路径；拒绝路径上的符号链接及 Git 内部状态，不自动枚举其它子仓库。

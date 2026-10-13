@@ -6,7 +6,7 @@ the installed runtime, host adapters, registry, or project boards.
 
 ## Current State
 
-- Source runtime: `4.0.0`.
+- Source runtime version: [`src/runtime/VERSION`](src/runtime/VERSION).
 - Project board contract: board schema 2.
 - Activation is machine-local. Compare source/dist with the installed runtime;
   only an older or missing installation is `pending activation`.
@@ -43,7 +43,8 @@ Proceed only after the user asks to install or upgrade:
 2. Build `dist/runtime/` and verify source/dist parity.
 3. Compare the generated manifest with `~/.catpaw/`; present the exact dry-run,
    preservation rules, conflicts, and backup target.
-4. Obtain explicit approval for runtime activation.
+4. Check that runtime activation is covered by explicit approval; an already
+   authorized upgrade does not require another confirmation.
 5. Stage and verify the complete managed runtime before publishing it.
 6. Verify installed version, manifest/hash, links, CLI smoke, and obvious secret
    findings.
@@ -65,7 +66,8 @@ Runtime activation does not imply any of the following:
 - migrating an existing board from schema 1 to schema 2;
 - importing or deleting a legacy project tree.
 
-Each action starts with a dry-run and requires its own explicit approval. In
+Each action starts with a dry-run and must be covered by explicit approval;
+one user instruction may authorize several named scopes. In
 particular, do not migrate registered projects as a side effect of runtime
 activation.
 

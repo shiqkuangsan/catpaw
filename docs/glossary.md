@@ -1,8 +1,9 @@
-# CatPaw 3 Vocabulary
+# CatPaw Vocabulary
 
 Current behavior is defined by
 [`runtime-policy.md`](../src/runtime/runtime-policy.md), its linked guidance,
-the board schema, and the CLI. Ordinary users need only three concepts.
+the board schema, and the CLI. Work is the primary user entry; the following
+terms explain current behavior and compatibility for maintainers.
 
 ## Work
 
@@ -13,21 +14,23 @@ under the project-local `.catpaw/` board.
 Several related Work items may optionally share a Milestone. This grouping does
 not change each Work item's ownership, Proof, or Approval boundary.
 
-## Proof
+## Evidence
 
 Inspectable facts supporting a claim: research, review findings, test results,
-provider output, or reflection. Proof must name its checked scope and result;
-high-risk completion needs independent Proof from an actor other than the actor
-that built the checked scope.
+provider output, or reflection. Evidence names its checked scope and result;
+high-risk completion needs passing tests and independent review for the current
+candidate, acceptance, and cycle. The checker differs from the builder; the
+primary agent still evaluates coverage and the actual result.
 
-Schema 2 stores durable Proof as typed `Evidence`. `Evidence` is the storage
-name, not a separate user concept. Proof can support a decision but cannot grant
-permission.
+Schema 2 stores typed Evidence. Proof remains a compatibility name. Evidence
+supports a decision but cannot grant permission.
 
-## Approval
+## Permission Boundaries
 
-The user's authority for an action or explicit acceptance of a named risk/gap.
-Approval is not a board artifact or a lifecycle stage. Protected/base, remote,
+The applicable user, project, host, and tool authority for an action. Approval
+remains a compatibility term, not a board artifact or a lifecycle stage.
+Product decisions, action permissions, and explicit risk acceptance are distinct;
+accepting a gap cannot turn it into passing verification. Protected/base, remote,
 history-changing, destructive, secret, permission-expanding, and external
 actions require the applicable explicit Approval regardless of available Proof.
 
@@ -62,8 +65,7 @@ CatPaw:
 |---|---|
 | `Direct / Tracked / Gated` | risk and durability routing; `--high-risk` maps to `gated` |
 | `Think / Plan / Build / Review / Test / Ship / Reflect` | stored stage values behind the four visible phases |
-| `Plan` | Work-bound execution and verification detail |
-| `Evidence` | typed durable storage used by Proof |
+| `Plan` | optional Work-bound execution and verification detail; inline planning is the default |
 | `Lens` | optional internal checklist for a professional concern |
 | delegation fields | exact outcome, facts, scope, constraints, deliverable, verification, dependencies, stop conditions, and allowed actions |
 | integration owner | the one accountable writer for an isolated mutable surface |

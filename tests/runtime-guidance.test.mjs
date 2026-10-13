@@ -176,7 +176,8 @@ test("bounded delegation preserves authority, isolation, and candidate boundarie
   assert.match(text, /one accountable writer/i);
   assert.match(text, /usable \| partial \| empty \| failed/);
   assert.match(text, /accepted \| rejected \| superseded/);
-  assert.match(text, /No Agent[\s\S]*can accept its\s+own output/i);
+  assert.match(text, /No delegated Agent can accept its own output[\s\S]*primary agent/i);
+  assert.match(text, /self-review cannot\s+satisfy required independence/i);
 });
 
 test("phase context transitions preserve only the information the next action needs", async () => {
@@ -233,11 +234,14 @@ test("engineering methods stay trigger-based and produce Proof without new user 
 
 test("independent Proof requires another actor and cannot manufacture Approval", async () => {
   const text = await runtimeText("guidance/independent-checks.md");
+  const collaboration = await runtimeText("guidance/agent-dispatch.md");
   assert.match(text, /^# Independent Proof$/m);
   assert.match(text, /actor different from the actor that built/i);
   assert.match(text, /typed Evidence/);
-  assert.match(text, /output: usable \| partial \| empty \| failed/);
-  assert.match(text, /candidate: accepted \| rejected \| superseded \| review pending/);
+  assert.match(text, /Evidence Contract.*\(evidence\.md\)/);
+  assert.match(text, /Agent Collaboration.*\(agent-dispatch\.md\)/);
+  assert.match(collaboration, /output usability as `usable \| partial \| empty \| failed`/);
+  assert.match(collaboration, /candidate decision as `accepted \| rejected \| superseded`[\s\S]*review pending/);
   assert.match(text, /Gated\/high-risk Work/i);
   assert.match(text, /If a recommended check[\s\S]*record why it was skipped/i);
   assert.match(text, /required independence cannot be replaced with primary self-review/i);
@@ -263,7 +267,7 @@ test("managed Agent transports remain read-only options with observable evidence
   assert.match(text, /neither output nor Proof grants Approval/i);
 });
 
-test("primary public docs stay within the concept budget", async () => {
+test("public entrypoints retain agent judgment and route to canonical policy", async () => {
   const paths = [
     path.join(REPO, "README.md"),
     path.join(REPO, "README.zh-CN.md"),
@@ -274,7 +278,8 @@ test("primary public docs stay within the concept budget", async () => {
     assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);
     assert.match(text, /Understand -> Execute -> Check -> Finish/);
     assert.match(text, /explore[\s\S]*build[\s\S]*check/i);
-    assert.match(text, /(?:adds? no|none of this adds|不新增)[\s\S]*(?:stage|artifact)[\s\S]*(?:user concept|用户概念)/i);
+    assert.match(text, /primary agent owns judgment|主 Agent 负责判断/i);
+    assert.match(text, /\]\((?:src\/runtime\/)?runtime-policy\.md\)/);
     assert.doesNotMatch(text, /Role Catalog|Task Envelope|Agent Executor/);
   }
 });

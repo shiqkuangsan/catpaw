@@ -142,7 +142,10 @@ then run the dry-run again.
    `${CATPAW_HOME:-~/.catpaw}/backups/<project-key>/<UTC-timestamp>/`.
 6. Replace the live board only after staged validation and backup succeed.
 
-The engine gates staged schema/archive integrity and atomic publication.
+The engine gates staged schema/archive integrity and guarded publication.
+Publication uses two renames with rollback on handled failure, leaving a brief
+unavailable interval. It is not an atomic directory exchange and does not offer
+the runtime/adapter operation journal's process-interruption recovery.
 An operator or release completion claim additionally requires
 inventory/mapping/disposition count conservation, exact Work/Milestone identity
 and Plan/Evidence binding reconciliation, manifest checksum verification

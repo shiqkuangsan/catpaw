@@ -1,6 +1,7 @@
 # AGENTS.md
 
-This repository is the versioned source for CatPaw 4.0.0 Work Runtime.
+This repository is the versioned source for CatPaw Work Runtime. The source
+version is owned by `src/runtime/VERSION`.
 
 ## Repository Role
 

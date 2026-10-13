@@ -80,8 +80,8 @@ time/context bound。完成标准是问题得到可复现答案，而不是代�
 ## Proof And Handoff
 
 - 小型非持久 Work 只在当前上下文保留必要的 reproduction 与 verification。
-- 持久 Work 将 contract、失败处理和验证命令写进内部 Plan；只有影响 completion
-  判断的结果才通过 `proof add` 写入 typed Evidence。
+- 持久 Work 将 contract、失败处理和验证命令写进 Work 或已有可选 Plan；只有影响
+  completion 判断的结果才通过 `evidence add` 写入 typed Evidence。
 - 不创建 method ledger、重复 plan、provider-specific artifact 或 skill invocation
   计数。衡量方法价值看 root cause 是否被证明、行为是否被锁定、finding 是否被采用，
   以及最终验证是否可复现。

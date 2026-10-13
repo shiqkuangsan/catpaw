@@ -273,7 +273,8 @@ test("status and Work commands expose Phase, Proof, and Next without schema leak
   assert.ok(status.stdout.startsWith(`CatPaw ${VERSION}\n`));
   assert.match(status.stdout, /Phase: Execute \| Risk: Normal/);
   assert.match(status.stdout, /Next: Run the focused regression suite/);
-  assert.doesNotMatch(status.stdout, /Schema:|Mode:|Evidence:/);
+  assert.match(status.stdout, /Evidence: 0/);
+  assert.doesNotMatch(status.stdout, /Schema:|Mode:/);
 
   const dashboard = await readFile(path.join(root, ".catpaw/index.md"), "utf8");
   assert.match(dashboard, /\| ID \| Outcome \| State \| Phase \| Risk \| Next \| Details \|/);

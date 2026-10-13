@@ -13,6 +13,7 @@ const DOCS = [
   "AI-INSTALL.md",
   "CONTRIBUTING.md",
   "docs/README.md",
+  "docs/product-capabilities.md",
   "docs/glossary.md",
   "docs/architecture/three-layer-model.md",
   "docs/architecture/sync-and-references.md",
@@ -30,6 +31,7 @@ const DOCS = [
   "docs/decisions/0029-method-density-without-concept-growth.md",
 ];
 const CURRENT_NARRATIVE_DOCS = [
+  "docs/product-capabilities.md",
   "README.md",
   "README.zh-CN.md",
   "AGENTS.md",

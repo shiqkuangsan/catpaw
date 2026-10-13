@@ -6,7 +6,7 @@ Users need one visible flow:
 Understand -> Execute -> Check -> Finish
 ```
 
-The primary agent may move backward when facts change. It must not hide risk,
+The primary agent owns judgment throughout and may move backward when facts change. It must not hide risk,
 failed Proof, unresolved questions, or a missing user boundary to preserve a linear
 story.
 
@@ -106,6 +106,8 @@ external or irreversible choice.
 Use a structured pass only when Work spans multiple concerns or systems, has
 unclear containment or cross-branch dependencies, or the user wants to clarify
 the shape before execution. Simple Work does not need this method.
+Choose only the useful devices below; a scope tree, dependency notes and decision
+labels are options, not a combined readiness form.
 
 - Start from the user outcome and build one shallow scope tree, normally two or
   three levels. The tree expresses containment only; it is not a task hierarchy.
@@ -147,7 +149,8 @@ verifiable outcome; several such Work items may use an optional Milestone.
 - Use a prototype only to answer one material unknown. Time-box it, capture the
   answer, and do not treat disposable code as adopted implementation.
 - After a meaningful unit, update durable Work and Proof facts and report current
-  progress plus `Next`.
+  progress plus `Next`. When user decisions change scope or granted actions,
+  reconcile the current Work under [Evidence Contract](evidence.md#decisions-and-permission-boundaries).
 - If an assumption fails, return to Understand instead of pretending execution
   remains on plan.
 
@@ -174,8 +177,11 @@ recording checks, finishing high-risk Work, continuing Work or repairing history
 ## Finish
 
 - Review the exact diff or deliverable, Proof, remaining gaps, and recovery path.
+  Check [claim coverage](evidence.md#claim-coverage) against current acceptance;
+  satisfying CLI record gates does not establish complete delivery.
 - The primary agent decides whether a candidate is accepted, rejected, or
-  superseded; candidate authors cannot accept their own output.
+  superseded; delegated candidate authors cannot accept their own output on
+  its behalf. Primary implementation still requires independent checks where mandated.
 - Local Git follows the scoped rules in the runtime policy. Push, PR,
   deploy/publish, protected/base updates, history changes, destructive cleanup,
   secrets, permission expansion, and external effects still require explicit
@@ -186,9 +192,9 @@ recording checks, finishing high-risk Work, continuing Work or repairing history
 ## Continuous Progress
 
 Multi-step Work with an existing granted scope continues without asking the user
-for each internal step. Pause only for a material product choice, a new or wider
-permission boundary, external or
-irreversible effect, user acceptance of a required Proof gap, or a real blocker.
+for each internal step. Pause only for an unresolved material product choice,
+an action outside existing permission, a required Proof gap, or a real blocker.
+Already-authorized external or irreversible actions proceed once their checks pass.
 Neither an Agent output nor a successful tool result supplies permission.
 
 When a phase boundary crosses an Agent, tool, repository, session, owner, or

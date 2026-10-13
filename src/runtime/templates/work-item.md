@@ -25,7 +25,9 @@ closed: null
 
 ## Approach
 
-Record only decisions, steps and verification entrypoints needed for this Work.
+Record only decisions, the next delivery slice and verification entrypoints needed
+for current acceptance. Distinguish local checks, real-service checks and deployment
+where relevant; reconcile Scope and acceptance when user decisions change.
 
 ## Links
 

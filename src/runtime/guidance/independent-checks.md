@@ -18,23 +18,10 @@ intent and an actor different from the actor that built the checked scope.
 
 ## Proof And Storage
 
-Proof is an inspectable fact: a reproducible finding, executed test, independent
-review, provider result, or clear remaining gap. Durable Proof is stored as
-schema 2 typed Evidence (`research`, `review`, `test`, `provider`, or
-`reflection`). Only usable output and executed verification count; process
-start, exit zero, stable output, or “looks good” does not.
-
-For each material Agent call, retain only the minimum useful result:
-
-```text
-output: usable | partial | empty | failed
-candidate: accepted | rejected | superseded | review pending
-verification: <command, Proof path, or remaining gap>
-```
-
-The primary agent reads the final output, reproduces material findings, and
-decides the candidate state. Partial, empty, or failed output enters a selected
-fallback and cannot satisfy a required independent check.
+证据覆盖、typed Evidence 和候选有效性由 [Evidence Contract](evidence.md) 持有；
+调用结果、候选采纳与交接格式沿用 [Agent Collaboration](agent-dispatch.md)。
+主 Agent 读取实际输出并复核关键发现。部分结果、空输出或失败进入明确的回退，
+不能满足必需的独立检查；启动进程、exit zero 或输出稳定也不能代替检查结论。
 
 ## Trigger
 
@@ -83,8 +70,6 @@ when its content looks useful.
 ## Approval Boundary
 
 Independent Proof never supplies Approval. Local Git authority comes only from
-the authorized Work, runtime policy, exact primary-agent grant, and tool
-enforcement. A `check` actor must not stage or commit the checked implementation.
-Push, PR, deploy, protected/base updates, history changes, destructive actions,
-external effects, secrets, and permission expansion still require explicit user
-Approval.
+the authorized Work and [runtime policy](../runtime-policy.md), bounded by the
+exact primary-agent grant and tool enforcement. A `check` actor must not stage
+or commit the checked implementation; checks never expand existing authority.

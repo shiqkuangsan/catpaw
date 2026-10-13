@@ -17,4 +17,4 @@ lens: null
 
 ## Limits
 
-- Remaining gap:
+- Unchecked scope or environment / remaining gap:

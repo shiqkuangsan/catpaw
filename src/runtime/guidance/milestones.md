@@ -35,11 +35,14 @@ catpaw milestone cancel --id <id>
 `milestone close --status done|cancelled` remains compatible.
 
 默认 dry-run；写入需要 `--apply`。Done close 要求 Scope 非空且全部 Work 已进入
-terminal status。Cancelled 不伪造 completion claim。
+terminal status，包括 `cancelled`；这只是结构检查，不判断 outcome 是否实现。
+主 Agent 必须对照 exit criteria 核实整体交付，并说明取消项对目标的影响；不能把
+“全部终结”当成“全部交付”。Cancelled 不伪造 completion claim。
 
 ## Continuous Progress
 
 开始前固定 outcome、non-goals、Scope 和 exit criteria。执行中每完成一个 Work
-就更新 artifact 与 Milestone Scope，然后继续下一个已授权单元；只在产品判断、
-外部操作、新授权或 blocker 时停下。Close 时统一报告完成项、验证、风险和下一
+就更新 artifact 与 Milestone Scope，然后继续下一个已授权单元；暂停条件沿用
+[Work Handling](workflow.md#continuous-progress)，不因已授权的外部操作重复请示。
+Close 时统一报告完成项、验证、风险和下一
 phase，不让用户再追问当前到了哪里。

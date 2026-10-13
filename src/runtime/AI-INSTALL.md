@@ -65,8 +65,9 @@ Dry-run 需要展示完整 native mappings、`inferred-metadata` provenance、
 不要求用户补 YAML；每个原文件仍进入 checksummed `legacy/schema-1/` archive。该
 archive 不是第六类 artifact，正常 schema 2 command 会忽略。
 
-只有用户确认 structural blockers 已清零，并接受 mappings、inference summary、legacy
-archive/manifest、unknown files 与 backup location 后执行：
+Agent 核实 structural blockers 已清零，并展示 mappings、inference summary、legacy
+archive/manifest、unknown files 与 backup location。现有授权覆盖该 board 的迁移时
+继续执行；仅在尚缺授权、目标扩大或仍有实质选择时询问用户：
 
 ```text
 catpaw board migrate --project /abs/project --apply
@@ -77,7 +78,8 @@ Apply 在 staged validation 后把完整 preimage 写入
 registered projects；每个 board 独立授权，第二次运行应为 no-op。
 
 Legacy `todos/` 先 inventory，保留原文件并把可确定内容写入新的 Work Board；
-删除或 bulk cleanup 必须单独列出目标并再次确认。
+删除或 bulk cleanup 必须单独列出目标并核对授权；已有精确目标授权不重复确认，
+import 授权本身不包含清理。
 
 ## Global Adapter And Registry
 

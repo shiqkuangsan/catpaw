@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { candidateFor } from "../candidate.mjs";
 import { readTextInput } from "../text-input.mjs";
+import { pathExists } from "../board.mjs";
 
 import {
   applyMutationPlan,
@@ -79,7 +80,8 @@ async function runAdd(options) {
   const directory = options.work === null
     ? "evidence/topics"
     : `evidence/${options.work}`;
-  const evidencePath = `${directory}/${options.date}-${options.type}-${asciiSlug(options.title)}.md`;
+  const evidenceBase = `${directory}/${options.date}-${options.type}-${asciiSlug(options.title)}`;
+  let evidencePath = `${evidenceBase}.md`;
   const metadata = evidenceMetadata(options);
   const work = inspected.board.workItems.find(item => item.id === options.work);
   if (work?.contract === 4) {
@@ -91,6 +93,12 @@ async function runAdd(options) {
       sequence: Math.max(0, ...inspected.board.evidence.filter(item => item.work === work.id).map(item => item.sequence ?? 0)) + 1,
       origin: "asserted", ...options.capture,
     });
+    // Each contract 4 assertion or captured run is a new observation. Preserve
+    // earlier results even when its purpose/title is unchanged across reruns.
+    let suffix = metadata.sequence;
+    while (await pathExists(path.join(inspected.board.boardPath, evidencePath))) {
+      evidencePath = `${evidenceBase}-${suffix++}.md`;
+    }
   }
   const content = await instantiateTemplate({
     name: "evidence.md",

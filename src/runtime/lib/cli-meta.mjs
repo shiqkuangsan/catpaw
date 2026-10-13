@@ -1,5 +1,28 @@
 import { readFile } from "node:fs/promises";
 
+function evidenceAddHelp(group) {
+  return `Usage: catpaw ${group} add --title <title> [options]
+
+Options:
+  --work <id>                    Bind Evidence to Work; omit for topic Evidence
+  --type <type>                  ${group === "proof" ? "Storage classification (default: research)" : "Required storage classification"}
+  --body <text>                  Inline record body
+  --body-file <path|->           Read body from a file or stdin
+  --independent --agent <actor>  Record the asserted independent actor
+  --result <result>              passed | failed | blocked | not-run
+  --candidate <sha>              Required for contract 4 passing assertions
+  --stage <stage>                Override the type's default storage stage
+  --lens <name>                  Optional check perspective
+  --date <YYYY-MM-DD>
+  --apply
+
+Types: research | review | test | provider | reflection
+Use work show to obtain the checked candidate. Contract 4 writes append a new
+observation even when date/title repeat; earlier results are never overwritten.
+Keep checked scope, environment, original result location, and limits in the body.
+`;
+}
+
 const GENERAL_HELP = `CatPaw — reliable coding-agent Work
 
 Usage:
@@ -112,7 +135,8 @@ Contract 4 requires passing current-candidate test and independent review for hi
 Preserve the terminal closure and begin a new contract 4 cycle.
 `,
   evidence: `Usage:
-  catpaw evidence add --work <id> --type <type> --title <title> --body <text>
+  catpaw evidence add --type <type> --title <title> (--body <text>|--body-file <path|->)
+                      [--work <id>]
                       [--result passed|failed|blocked|not-run] [--candidate <sha>]
                       [--independent --agent <actor>] [--apply]
   catpaw evidence list [--work <id>] [--type <type>]
@@ -121,9 +145,29 @@ Preserve the terminal closure and begin a new contract 4 cycle.
                       -- <executable> [args]
 
 Use work show to obtain the checked candidate. Passing assertions require its SHA.
+Types: research | review | test | provider | reflection; omit --work for topic Evidence.
+Use 'catpaw evidence <subcommand> --help' for detailed options.
 run previews without execution; --apply executes only within existing authorization.
 Command arguments and raw output are not retained. Exit zero does not prove test adequacy.
 proof add|list|show remain compatible aliases (proof add defaults to research).
+`,
+  "evidence add": evidenceAddHelp("evidence"),
+  "evidence list": `Usage: catpaw evidence list [--work <id>] [--type <type>] [--json]
+`,
+  "evidence show": `Usage: catpaw evidence show --path <board-relative-path> [--json]
+`,
+  "evidence run": `Usage: catpaw evidence run --work <id> --title <purpose> [options]
+                           -- <executable> [args]
+
+Options:
+  --timeout-ms <n>               1..3600000 (default: 120000)
+  --date <YYYY-MM-DD>
+  --apply                       Execute within existing authorization
+
+Requires active contract 4 Work. Preview does not execute the command.
+Each run appends a test result: passed, failed, or blocked. Same-title reruns
+preserve earlier results. Arguments and raw output are not retained, only digests.
+Exit zero does not establish acceptance coverage. Detached descendants may outlive capture.
 `,
   "work cancel": `Usage: catpaw work cancel --id <id> [--date <YYYY-MM-DD>] [--apply]
 `,
@@ -137,21 +181,7 @@ proof add|list|show remain compatible aliases (proof add defaults to research).
 Stored Proof types: research | review | test | provider | reflection
 'evidence add|list|show|run' is the preferred interface. See 'evidence --help'.
 `,
-  "proof add": `Usage: catpaw proof add --title <title> [options]
-
-Options:
-  --work <id>                    Bind Proof to Work; omit for topic Proof
-  --type <type>                  Storage classification (default: research)
-  --body <text>                  Inline record body
-  --body-file <path|->           Read body from a file or stdin
-  --independent --agent <actor>  Record the asserted independent actor
-  --result <result>              passed | failed | blocked | not-run
-  --candidate <sha>              Required for contract 4 passing assertions
-  --date <YYYY-MM-DD>
-  --apply
-
-Preview and apply perform the same content validation.
-`,
+  "proof add": evidenceAddHelp("proof"),
   "proof list": `Usage: catpaw proof list [--work <id>] [--type <type>] [--json]
 `,
   "proof show": `Usage: catpaw proof show --path <board-relative-path> [--json]
@@ -203,7 +233,6 @@ function normalizedTopic(topic) {
     if (command === "intent") return "intent";
     return "transport";
   }
-  if (group === "evidence") return "evidence";
   if (group === "work" && command === "close") return "work finish";
   if (group === "milestone" && command === "close") return "milestone";
   return [group, command].filter(Boolean).join(" ");

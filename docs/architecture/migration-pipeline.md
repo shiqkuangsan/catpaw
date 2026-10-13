@@ -1,6 +1,6 @@
 # Board Migration Pipeline
 
-CatPaw 3 converts an existing **schema 1** project board into **schema 2** as an
+CatPaw converts an existing **schema 1** project board into **schema 2** as an
 explicit per-project operation. Runtime activation and board migration are
 separate authorization scopes.
 
@@ -12,7 +12,7 @@ schema 1 board
   -> stage native graph plus legacy archive
   -> validate graph, checksums, and files
   -> backup complete preimage
-  -> publish atomically
+  -> publish through guarded renames
   -> verify and become idempotent
 ```
 
@@ -26,7 +26,7 @@ history outside the native graph, but that made migrated projects appear to
 lose Work, Plans, Milestones, and Evidence. Both behaviors exposed implementation
 details to users.
 
-The current CatPaw 3 converter maps every recognized artifact and fills machine metadata
+The converter maps every recognized artifact and fills machine metadata
 without user input. Explicit metadata wins, followed by canonical structure,
 scoped status prose/index/Milestone facts, artifact relationships, and
 conservative defaults. Unknown lifecycle state becomes `blocked`; it never
@@ -83,7 +83,7 @@ write a backup, stage, board file, adapter, or registry entry.
 
 The generated operations carry the analysis preimage digest into the patch
 planner. Drift before plan creation blocks as `stale-analysis-preimage`; drift
-after plan creation remains covered by the atomic publisher's stale checks.
+after plan creation remains covered by the publisher's stale checks.
 The publisher also verifies that the copied stage starts from that preimage and
 that the staged postimage remains byte-identical from validation through the
 final publish check.
@@ -115,7 +115,10 @@ A failed stage leaves the live board untouched and creates no success claim.
 Only a validated stage may proceed. Before publication, CatPaw stores the
 complete live preimage under the configured CatPaw backup root, rechecks that
 the live board still matches the planned preimage, and publishes the staged
-tree atomically.
+tree through two guarded renames. Handled failures roll back, but publication
+has a brief unavailable interval. This is not an atomic directory exchange;
+the board patch engine does not provide runtime/adapter journal recovery after
+process interruption.
 
 If the preimage changed, publication stops and the plan must be recomputed. A
 successful migration can then update the registry through its separate,

@@ -126,7 +126,8 @@ test("runtime policy is a routing card and delegates detail to canonical owners"
   assert.match(text, /用户、项目和宿主均允许[\s\S]*非保护[\s\S]*task branch\/worktree[\s\S]*commit/);
   assert.match(text, /diff、相关验证与凭据扫描/);
   assert.match(text, /每个可变范围同时只有一个负责写入者/);
-  assert.match(text, /候选作者不能自行采纳自己的候选/);
+  assert.match(text, /受委派的候选作者不能代替主 Agent 作最终采纳/);
+  assert.match(text, /主 Agent 可实现[\s\S]*不能把自检当作独立检查/);
   assert.match(text, /委派或整合候选前必须读[\s\S]*guidance\/agent-dispatch\.md/);
   assert.match(text, /分别需要精确且独立[\s\S]*必须读取[\s\S]*#scoped-local-git/);
   assert.match(text, /`explore`[\s\S]*`check`[\s\S]*cc\/cx[\s\S]*不得 stage 或 commit/);
@@ -213,21 +214,23 @@ test("maintenance retains deterministic legacy import boundaries", async () => {
     path.join(RUNTIME, "guidance/maintenance.md"),
     "utf8",
   );
+  const migration = await readFile(path.join(RUNTIME, "migrations/schema-2.md"), "utf8");
+  assert.match(text, /Schema 2 Migration.*\(\.\.\/migrations\/schema-2\.md\)/);
   for (const mapping of [
-    /todos\/reqs\/\*[\s\S]*work\//i,
-    /todos\/plans\/[\s\S]*plans\//i,
-    /todos\/research\/\*[\s\S]*research Evidence/i,
-    /todos\/tests[\s\S]*test Evidence/i,
-    /todos\/lessons\.md[\s\S]*reflection Evidence/i,
+    /reqs\/\*[^\n]*work\//i,
+    /plans\/active\/\*[^\n]*plans\//i,
+    /research\/\*[^\n]*Evidence/i,
+    /tests\/\*[^\n]*Evidence/i,
+    /lessons\.md[^\n]*reflection Evidence/i,
   ]) {
     assert.match(text, mapping);
   }
-  assert.match(text, /普通用户[\s\S]*implementation detail/i);
-  assert.match(text, /status -> blocked[\s\S]*mode -> tracked[\s\S]*gated/i);
-  assert.match(text, /migration observation date/i);
-  assert.match(text, /identity[\s\S]*duplicate ID[\s\S]*target collision/i);
+  assert.match(migration, /Ordinary users never author metadata/i);
+  assert.match(migration, /status becomes `blocked`[\s\S]*default to Tracked[\s\S]*defaults to Gated/i);
+  assert.match(migration, /migration\s+observation date/i);
+  assert.match(migration, /identity[\s\S]*duplicate IDs[\s\S]*destination collisions/i);
   assert.match(text, /board doctor/);
-  assert.match(text, /preserve[\s\S]*legacy tree/i);
+  assert.match(text, /legacy tree[\s\S]*保留原件/);
 });
 
 test("maintenance retains exact registry check and remove semantics", async () => {

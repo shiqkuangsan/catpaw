@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { applyPatchPlan } from "../atomic-write.mjs";
 import { runtimeVersion } from "../cli-meta.mjs";
+import { candidateFor } from "../candidate.mjs";
 import { completionEvidenceState } from "../completion-evidence.mjs";
 import {
   loadBoard,
@@ -110,8 +111,11 @@ function boardCounts(board) {
 }
 
 function nextStatusAction(counts, findings, migrationRequired) {
-  if (findings.some((finding) => finding.severity === "error")) {
+  if (findings.some((finding) => finding.severity === "error" && finding.code !== "candidate-check-unavailable")) {
     return "Run board doctor.";
+  }
+  if (findings.some((finding) => finding.code === "candidate-check-unavailable")) {
+    return "Restore access to the declared deliverable scope, then run catpaw status again.";
   }
   if (migrationRequired) return "Run board migrate.";
   if (counts.active.milestones > 0) return "Continue active milestone work.";
@@ -233,19 +237,36 @@ async function runStatus(options) {
   ];
   const counts = boardCounts(board);
   const migrationRequired = board.schema === 1;
-  const hasErrors = findings.some((finding) => finding.severity === "error");
   const readableSchema1 = board.schema === 1 && !board.index.parseError;
-  const activeWork = board.workItems
-    .filter((item) => !item.terminal)
-    .map((item) => {
-      const proof = board.evidence.filter((record) => record.work === item.id);
-      const completion = completionEvidenceState(board, item.id);
-      return {
+  const activeWork = [];
+  if (options.preferredGroup === "status") {
+    for (const item of board.workItems.filter((work) => !work.terminal)) {
+      const summary = {
         ...workSummary(item, board.boardPath),
-        proofCount: proof.length,
-        missingProof: item.mode === "gated" ? completion.missing : [],
+        proofCount: board.evidence.filter((record) => record.work === item.id).length,
+        proofCheck: "not-required",
+        missingProof: [],
       };
-    });
+      if (item.mode === "gated") {
+        try {
+          const candidate = await candidateFor(options, item);
+          summary.missingProof = completionEvidenceState(board, item.id, candidate).missing;
+          summary.proofCheck = "checked";
+        } catch (error) {
+          summary.proofCheck = "unchecked";
+          summary.missingProof = null;
+          findings.push(finding(
+            "error", "candidate-check-unavailable", item.id, "candidate",
+            projectRelative(board.projectRoot, item.filePath),
+            `Cannot check current-candidate Evidence: ${error.message}`,
+            "Restore access to the declared deliverable scope, then run catpaw status again.",
+          ));
+        }
+      }
+      activeWork.push(summary);
+    }
+  }
+  const hasErrors = findings.some((item) => item.severity === "error");
   const activeMilestones = board.milestones
     .filter((item) => !TERMINAL_STATUSES.has(item.status))
     .map((item) => ({
@@ -506,7 +527,7 @@ export function renderBoardReport(report) {
         lines.push(
           `- ${work.id} ${work.title}`,
           `  State: ${work.status} | Phase: ${work.phase} | Risk: ${work.risk}`,
-          `  Proof: ${work.proofCount}${work.missingProof.length > 0 ? ` | Missing: ${work.missingProof.join(", ")}` : ""}`,
+          `  Evidence: ${work.proofCount}${work.proofCheck === "unchecked" ? " | Coverage: unchecked (candidate unavailable)" : work.missingProof.length > 0 ? ` | Missing: ${work.missingProof.join(", ")}` : ""}`,
           `  Next: ${work.next}`,
         );
       }
@@ -519,7 +540,7 @@ export function renderBoardReport(report) {
         lines.push(`- ${milestone.id} ${milestone.title} (${milestone.status})`);
       }
     }
-    const errors = report.findings.filter((item) => item.severity === "error");
+    const errors = report.findings.filter((item) => item.severity === "error" && item.code !== "candidate-check-unavailable");
     lines.push(
       "",
       `Board: ${errors.length === 0 ? "healthy" : `${errors.length} error(s)`}`,
