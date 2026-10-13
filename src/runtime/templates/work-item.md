@@ -25,9 +25,11 @@ closed: null
 
 ## Approach
 
-Record only decisions, the next delivery slice and verification entrypoints needed
-for current acceptance. Distinguish local checks, real-service checks and deployment
-where relevant; reconcile Scope and acceptance when user decisions change.
+Record only the user outcome, acceptance scenarios, selected verification path
+and reason, entrypoints/environment, and actual results to inspect. State whether
+this Work ends at development acceptance or includes production delivery. Keep
+decisions and the next slice inline; reconcile Scope and acceptance when they change.
+Use the project's acceptance entrypoints; this is guidance, not a required form.
 
 ## Links
 

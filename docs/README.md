@@ -54,6 +54,8 @@ metadata routes the reader to the controlling later ADR and runtime authority.
 - [Migration Pipeline](architecture/migration-pipeline.md) explains explicit,
   staged board conversion from schema 1 to schema 2.
 - [Glossary](glossary.md) defines maintainer vocabulary.
+- [Verification Path Evaluation](evaluations/4.0.2-verification-paths.md) records
+  the bounded source-guidance checks and independent Agent scenario results.
 
 ## Document Lifecycle
 
@@ -64,6 +66,7 @@ metadata routes the reader to the controlling later ADR and runtime authority.
 | `product-capabilities.md` | Current product inventory, limits, and value criteria |
 | `architecture/` | Current explanatory models that clarify runtime boundaries |
 | `decisions/` | Accepted, amended, and superseded ADR history |
+| `evaluations/` | Versioned validation results and explicit evidence limits |
 | `glossary.md` | Current maintainer vocabulary |
 
 Temporary design and implementation plans, execution checklists, review

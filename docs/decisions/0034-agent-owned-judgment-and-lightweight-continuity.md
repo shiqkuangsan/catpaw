@@ -48,6 +48,12 @@ same-title rerun results despite successful Work inspection.
   mechanisms. Consolidate repeated rules under their canonical authority.
   Leave contract-field edits in the existing Work record; defer new update
   options and registry writes until usage justifies expanding the CLI.
+- Keep impact-based verification selection in Work guidance and completion
+  semantics in Evidence guidance. Projects own runnable acceptance entrypoints,
+  environments and assertions. A development-only scope can finish after its
+  required checks; a production-delivery scope continues through authorized
+  deployment and production verification. File extensions and command names do
+  not determine behavior impact or real-path coverage.
 
 ## Consequences
 

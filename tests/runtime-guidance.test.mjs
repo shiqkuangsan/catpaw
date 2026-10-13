@@ -47,6 +47,24 @@ test("runtime keeps five internal checklists without exposing a role tree", asyn
   }
 });
 
+test("verification selection has one owner and separates development from production claims", async () => {
+  const [workflow, methods, evidence, template] = await Promise.all([
+    runtimeText("guidance/workflow.md"), runtimeText("guidance/engineering-methods.md"),
+    runtimeText("guidance/evidence.md"), runtimeText("templates/work-item.md"),
+  ]);
+  assert.match(workflow, /^## Verification Path$/m);
+  assert.match(workflow, /不按文件扩展名[\s\S]*Prompt/);
+  assert.match(workflow, /更严格要求/);
+  assert.match(workflow, /纯说明[\s\S]*不默认调用模型或跑完整 E2E/);
+  assert.match(workflow, /真实 Agent、真实服务、真实渠道分别核对/);
+  assert.match(methods, /workflow\.md#verification-path/);
+  assert.match(workflow, /evidence\.md#completion-scope/);
+  assert.match(evidence, /范围仅到开发验收[\s\S]*即可 Finish/);
+  assert.match(evidence, /范围包含生产交付[\s\S]*不重复请示[\s\S]*不提前关闭/);
+  assert.match(evidence, /必需验收受阻[\s\S]*具体缺口/);
+  assert.match(template, /verification path[\s\S]*entrypoints\/environment[\s\S]*development acceptance[\s\S]*production delivery/);
+});
+
 test("runtime policy centers Work and keeps permission boundaries below the user model", async () => {
   const text = await runtimeText("runtime-policy.md");
   assert.match(text, /Work[\s\S]*Proof[\s\S]*Approval/);

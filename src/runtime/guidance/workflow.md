@@ -80,6 +80,8 @@ engineering contracts are in
   avoid delegation whose handoff cost exceeds its value.
 - Durable Work records acceptance, verification entrypoints, dependencies and
   failure handling inline, or in its optional existing Plan. Do not duplicate them.
+  Select the verification path below before implementation; clear Work proceeds
+  without asking the user to design its testing process.
 
 Resolve every discoverable source-backed fact through the available authorities.
 Ask the user only for a material decision or blocking fact that only they can
@@ -136,6 +138,34 @@ Steps, Verification, Risks, or Notes. Do not create a Tree/Map artifact or a
 second plan. A tree leaf becomes separate Work only when it has an independently
 verifiable outcome; several such Work items may use an optional Milestone.
 
+## Verification Path
+
+主 Agent 根据行为影响、跨系统边界和风险选择验证深度，简短说明理由；遵循项目
+已有的更严格要求。按实际执行语义判断，不按文件扩展名或修改行数分类：Prompt
+Markdown、模型/超时配置和工具描述都可能改变行为。
+
+| 本次影响 | 选择的验证 |
+|---|---|
+| 纯说明、文案、无行为变化 | 相关静态、链接或展示检查，不默认调用模型或跑完整 E2E |
+| 局部行为变化 | 针对性测试/稳定复现，再做影响范围回归 |
+| Prompt、工具合同、跨服务、状态流转或渠道交互 | 按受影响边界补集成验证；涉及 Agent 判断时使用真实 Agent；涉及运行路径时验证代表目标环境的用户路径 |
+| 安全、数据完整性、发布或其它高风险 | 在相应路径上加项目要求的风险、恢复和独立检查，不用通用表降低项目门槛 |
+
+CatPaw 持有选择方法；项目持有入口、环境、成功断言和证据位置。DEV Runtime、
+真实外部服务与渠道的具体要求由项目决定，不能把命令名中的 smoke/e2e 当成覆盖
+证明。真实 Agent、真实服务、真实渠道分别核对；故障注入放在获准的隔离环境，
+不为补异常覆盖而扰动真实业务。
+
+持久 Work 在已有正文中简记用户期望/验收场景、选用路径和理由、命令或入口、环境、
+要核对的实际结果，以及本次终点是开发验收还是包含生产交付。小任务留在对话，
+不新增必填表单、阶段或台账；只为影响结果且无法自行查明的必要歧义提问。
+
+沿所选路径持续执行：理解与必要确认 → 开发和测试 → 相关集成验证 → 必要的用户
+路径 E2E → 开发验收。失败回到对应环节修复。候选、配置或行为改变后重验受影响
+场景，核实仍有效的原始证据后可复用，并按 Evidence 的候选绑定规则记录。环境或
+授权阻塞时完成独立可做部分，保留必需缺口；不得为了关闭 Work 删掉未通过的验收。
+完成边界由 [Completion Scope](evidence.md#completion-scope) 持有。
+
 ## Execute
 
 - Work along existing ownership boundaries and keep changes bounded.
@@ -159,6 +189,8 @@ verifiable outcome; several such Work items may use an optional Milestone.
 - Review both the delivery contract and the engineering quality of the change;
   use the two-axis Review method for non-trivial Work.
 - Run the smallest relevant verification first, then expand with blast radius.
+  Complete the selected [verification path](#verification-path), not merely its
+  first passing command.
 - Distinguish pass, fail, not-run, blocked, and environment-limited outcomes.
 - High-risk Work uses a `check` actor different from the actor that built the
   checked scope. Review finds defects; verification reproduces acceptance. They

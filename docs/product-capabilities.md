@@ -20,7 +20,7 @@ authority 和对应实现为准；源码能力不等于本机安装或生产环�
 
 | 能力 | 当前可用内容 | 实际边界与权威 |
 |---|---|---|
-| Understand | 核对目标、范围、验收和授权；自己查事实，只问影响交付的必要问题；复杂工作可画浅层范围和依赖、选首个端到端切片 | [Work Handling](../src/runtime/guidance/workflow.md)。不是自动需求分析器，也不强制访谈、结构图或新工件 |
+| Understand | 核对目标、范围、验收和授权；按行为影响选验证路径与完成边界；自己查事实，只问必要问题；复杂工作可选端到端切片 | [Work Handling](../src/runtime/guidance/workflow.md#verification-path)。主 Agent 选择深度，项目持有具体入口，不强制访谈、结构图或新工件 |
 | 根因调查 | 最小复现、逐项排除、沿数据流定位、可证伪假设、单变量验证、修复和回归 | [Engineering Methods](../src/runtime/guidance/engineering-methods.md#debugging)。诊断不充分时只能声明缓解与缺口 |
 | 行为锁定 | RED → GREEN → REFACTOR → REGRESSION | [RED/GREEN](../src/runtime/guidance/engineering-methods.md#redgreen)。用于行为或回归风险，不要求所有文档修改先写测试 |
 | 双维度审查 | 检查交付合同与工程质量；复核重要发现再决定是否采纳 | [Review](../src/runtime/guidance/engineering-methods.md#review)。两个维度不等于固定两个 Agent |

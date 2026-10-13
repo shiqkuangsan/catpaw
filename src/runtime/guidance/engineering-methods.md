@@ -6,6 +6,10 @@ CatPaw 在 Work 执行中按真实 trigger 选择工程方法。方法只能改�
 
 ## Selection
 
+验证深度先按 [Verification Path](workflow.md#verification-path) 与项目合同选择；
+本节选择具体工程方法，不另定义一套验收阶段。不强制 RED/GREEN 不代表免除验收，
+会改变运行行为的配置仍需覆盖受影响路径。
+
 - 遇到 bug、失败测试、异常输出、性能退化或 integration mismatch 时使用
   [Debugging](#debugging)。
 - 实现 behavior-sensitive feature、bug fix 或高 regression risk 变更，并且存在可运行

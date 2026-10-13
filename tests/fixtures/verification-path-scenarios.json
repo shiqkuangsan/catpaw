@@ -1,0 +1,45 @@
+{
+  "instructions": "Read the source runtime guidance and the applicable project entrypoints. For each case, report the immediate next action, selected checks and reasons, what is real or simulated, current completion claim, and any necessary user question. Cases are hypothetical; do not execute business operations, model-provider CLIs, Git writes, installation, or messages. Do not read the evaluation report before answering.",
+  "cases": [
+    {
+      "id": "docs-only",
+      "project": "qa",
+      "input": "只修复 DEV 文档中的一个错误链接，无 Prompt、配置或代码变化。任务只要求修正说明。你接手后怎么推进，验证到哪里？"
+    },
+    {
+      "id": "prompt-markdown",
+      "project": "qa",
+      "input": "修改了 Markdown Prompt：用户明确要求排期时间时，需求表动态调整列且同条需求同一行。现有单测和真实 Agent 本地 Simulator smoke 已通过。任务范围是开发验收，尚未做钉钉 DEV 展示。现在是否完成，下一步是什么？"
+    },
+    {
+      "id": "dev-complete",
+      "project": "qa",
+      "input": "这项需求仅要求开发验收。对应候选和配置的必要本地、真实 Agent、真实 Jira 以及受影响 DEV 渠道场景全部通过；正常、拒绝和跨轮结果已独立读回持久事实并核对回答正确。没有发布部署授权。现在如何报告，能否结束？"
+    },
+    {
+      "id": "production-authorized",
+      "project": "qa",
+      "input": "本次用户已明确授权实现、提交、推送、发布、部署和生产验证。开发验收已全部通过，候选未变，发布前置条件均满足。此时到达 DEV E2E 检查点。下一步是什么，需要向用户问什么？"
+    },
+    {
+      "id": "blocked-editor",
+      "project": "jira",
+      "input": "修改 TODO 到已澄清的真实工作流与确认逻辑；本地模拟集成和真实 Agent smoke 已通过。当前可用的 dedicated DEV sidecar 只有 reader 查询配置，本轮明确禁止真实外部写入和群消息，真实写入/渠道路径是该需求的必要验收。现有查询成功。还能做什么，能否报告开发验收完成？"
+    },
+    {
+      "id": "candidate-drift",
+      "project": "qa",
+      "input": "旧候选的真实 DEV 场景通过后，又修改了超时和工具描述，未重跑受影响场景；原本通过的无关文档链接检查仍有效。Agent 提议复用原 DEV 通过直接关闭需求。你怎么判断？"
+    },
+    {
+      "id": "misleading-e2e",
+      "project": "qa",
+      "input": "群投递逻辑发生变化。e2e:editor 全绿，verify:qa-intake 通过，DEV preflight 成功且 delivery-off 已记录一次请求。对方据此说完整 E2E 已过。请核对每项证据实际覆盖什么，以及下一步。"
+    },
+    {
+      "id": "local-behavior",
+      "project": "qa",
+      "input": "只修复本地验收报告脚本的耗时求和，没有改变产品 Runtime、Prompt、工具、网络协议或渠道结果。该脚本已有能复现的单测。本次只要求开发验收。你会选择什么验证，是否需要真实 Jira/钉钉和多模型全量回归？"
+    }
+  ]
+}
