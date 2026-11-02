@@ -1,353 +1,170 @@
-import { access, lstat, readFile, readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { formatFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
+import { writeAtomic } from "./fsutil.mjs";
+import { readLog } from "./log.mjs";
 
-import { parseFrontmatter } from "./frontmatter.mjs";
-import {
-  frontmatterParseFinding,
-  missingIndexFinding,
-  schemaFindings,
-} from "./findings.mjs";
-import { validateMetadata } from "./schema.mjs";
+export const SCHEMA = 3;
+export const STATUSES = new Set(["open", "blocked", "done", "dropped"]);
+export const SECTIONS = ["Goal", "Acceptance", "Gaps", "Decisions", "Next"];
+const GAP_LINE = /^- \[(open|accepted)\] (G\d+): (.*)$/;
+const ID_PATTERN = /^[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9-]+$/;
 
-const TERMINAL_STATUSES = new Set(["done", "cancelled"]);
-const LEGACY_WORK_ID_PATTERN = /^(FR|BUG|CHORE)-\d+/;
-const SCHEMA_2_ARTIFACT_ROOTS = Object.freeze({
-  milestones: "milestones",
-  workItems: "work",
-  plans: "plans",
-  evidence: "evidence",
-});
-
-export const SCHEMA_2_LAYOUT = Object.freeze({
-  artifactRoots: SCHEMA_2_ARTIFACT_ROOTS,
-  requiredDirectories: Object.freeze([
-    ...Object.values(SCHEMA_2_ARTIFACT_ROOTS),
-    `${SCHEMA_2_ARTIFACT_ROOTS.evidence}/topics`,
-  ]),
-});
-
-function compareNames(left, right) {
-  if (left.name < right.name) return -1;
-  if (left.name > right.name) return 1;
-  return 0;
+export class CatpawError extends Error {
+  constructor(message, code = "ERR_CATPAW") {
+    super(message);
+    this.code = code;
+  }
 }
 
-export async function pathExists(target) {
+async function exists(file) {
   try {
-    await access(target);
+    await stat(file);
     return true;
-  } catch (error) {
-    if (error?.code === "ENOENT") return false;
-    throw error;
+  } catch {
+    return false;
   }
 }
 
-export async function pathKind(target) {
-  let stats;
-  try {
-    stats = await lstat(target);
-  } catch (error) {
-    if (error?.code === "ENOENT") return "missing";
-    if (error?.code === "ENOTDIR") return "invalid-parent";
-    throw error;
-  }
-
-  if (stats.isDirectory()) return "directory";
-  if (stats.isFile()) return "file";
-  if (stats.isSymbolicLink()) return "symlink";
-  return "special";
+export function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function boardRootError(boardPath) {
-  const error = new Error(`Board root is not a directory: ${boardPath}`);
-  error.code = "ERR_BOARD_ROOT_NOT_DIRECTORY";
-  return error;
+export function boardPaths(projectRoot) {
+  const root = path.resolve(projectRoot);
+  const dir = path.join(root, ".catpaw");
+  return { root, dir, marker: path.join(dir, "catpaw.json"), work: path.join(dir, "work") };
 }
 
-async function validateBoardRoot(boardPath) {
-  const kind = await pathKind(boardPath);
-  if (kind === "missing" || kind === "directory") return;
-  if (kind === "symlink") {
-    try {
-      if ((await stat(boardPath)).isDirectory()) return;
-    } catch (error) {
-      if (error?.code !== "ENOENT" && error?.code !== "ENOTDIR") throw error;
-    }
+export async function detectSchema(projectRoot) {
+  const paths = boardPaths(projectRoot);
+  if (!(await exists(paths.dir))) return null;
+  if (await exists(paths.marker)) {
+    const marker = JSON.parse(await readFile(paths.marker, "utf8"));
+    return marker.schema ?? SCHEMA;
   }
-  throw boardRootError(boardPath);
+  const index = path.join(paths.dir, "index.md");
+  if (await exists(index)) {
+    const { data } = parseFrontmatter(await readFile(index, "utf8"));
+    if (data.schema) return data.schema;
+  }
+  return (await exists(paths.work)) ? 2 : 0;
 }
 
-export function projectRelative(projectRoot, target) {
-  const relativePath = path.relative(projectRoot, target) || ".";
-  return relativePath.split(path.sep).join("/");
-}
-
-export async function listMarkdownFiles(directory, options = {}) {
-  if (await pathKind(directory) !== "directory") return [];
-
-  const entries = await readdir(directory, { withFileTypes: true });
-  entries.sort(compareNames);
-  const files = [];
-
-  for (const entry of entries) {
-    const target = path.join(directory, entry.name);
-    if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(target);
-    } else if (entry.isDirectory() && options.recursive) {
-      files.push(...(await listMarkdownFiles(target, options)));
-    }
+export async function openBoard(projectRoot) {
+  const schema = await detectSchema(projectRoot);
+  const paths = boardPaths(projectRoot);
+  if (schema === null) {
+    throw new CatpawError(`No .catpaw board in ${paths.root}. Run 'catpaw init'.`, "ERR_NO_BOARD");
   }
-
-  return files;
-}
-
-async function listLegacyReviewSummaries(directory) {
-  if (await pathKind(directory) !== "directory") return [];
-
-  const entries = await readdir(directory, { withFileTypes: true });
-  entries.sort(compareNames);
-  const summaries = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const summary = path.join(directory, entry.name, "summary.md");
-    if (await pathExists(summary)) summaries.push(summary);
-  }
-  return summaries;
-}
-
-function legacyWorkId(filePath) {
-  return path.basename(filePath, ".md").match(LEGACY_WORK_ID_PATTERN)?.[0] ?? null;
-}
-
-async function readArtifact({
-  artifactKind,
-  filePath,
-  projectRoot,
-  validate,
-  legacyWork,
-  findings,
-}) {
-  const text = await readFile(filePath, "utf8");
-  const relativePath = projectRelative(projectRoot, filePath);
-  let parsed;
-
-  try {
-    parsed = parseFrontmatter(text);
-  } catch (error) {
-    findings.push(frontmatterParseFinding(artifactKind, relativePath, error));
-    return {
-      kind: artifactKind,
-      path: relativePath,
-      filePath,
-      text,
-      body: null,
-      metadata: null,
-      parseError: error.message,
-    };
-  }
-
-  const metadata = parsed.data;
-  const artifact = {
-    ...metadata,
-    kind: artifactKind,
-    path: relativePath,
-    filePath,
-    text,
-    body: parsed.body,
-    metadata,
-  };
-
-  if (legacyWork && !Object.hasOwn(artifact, "id")) {
-    artifact.id = legacyWorkId(filePath) ?? path.basename(filePath, ".md");
-  }
-  if (artifactKind === "workItem") {
-    artifact.terminal = TERMINAL_STATUSES.has(artifact.status);
-  }
-
-  if (validate) {
-    findings.push(
-      ...schemaFindings(artifactKind, artifact, validateMetadata(artifactKind, metadata)),
+  if (schema !== SCHEMA) {
+    throw new CatpawError(
+      `Board at ${paths.dir} uses schema ${schema}. Preview conversion with 'catpaw convert'.`,
+      "ERR_SCHEMA",
     );
   }
-
-  return artifact;
+  return paths;
 }
 
-async function readArtifacts(files, options) {
-  const artifacts = [];
-  for (const filePath of files) {
-    artifacts.push(await readArtifact({ ...options, filePath }));
+export async function initBoard(projectRoot) {
+  const paths = boardPaths(projectRoot);
+  const schema = await detectSchema(projectRoot);
+  if (schema === SCHEMA) return { paths, created: false };
+  if (schema !== null) {
+    throw new CatpawError(`Existing board uses schema ${schema}; use 'catpaw convert'.`, "ERR_SCHEMA");
   }
-  return artifacts;
+  await writeAtomic(paths.marker, `${JSON.stringify({ schema: SCHEMA }, null, 2)}\n`);
+  return { paths, created: true };
 }
 
-async function readIndex(projectRoot, boardPath, findings) {
-  const filePath = path.join(boardPath, "index.md");
-  const relativePath = projectRelative(projectRoot, filePath);
-  if (!(await pathExists(filePath))) {
-    findings.push(missingIndexFinding(relativePath));
-    return {
-      kind: "board",
-      path: relativePath,
-      filePath,
-      text: "",
-      body: null,
-      metadata: null,
-      missing: true,
-    };
+export function workFiles(board, id) {
+  const dir = path.join(board.work, id);
+  return { dir, work: path.join(dir, "WORK.md"), log: path.join(dir, "LOG.md") };
+}
+
+export function splitSections(body) {
+  const lines = body.split("\n");
+  const sections = new Map();
+  let title = "";
+  let name = null;
+  let buffer = [];
+  for (const line of lines) {
+    const heading = line.match(/^## (.+?)\s*$/);
+    if (heading) {
+      if (name) sections.set(name, buffer.join("\n").trim());
+      name = heading[1];
+      buffer = [];
+    } else if (name) buffer.push(line);
+    else if (line.startsWith("# ")) title = line.slice(2).trim();
   }
+  if (name) sections.set(name, buffer.join("\n").trim());
+  return { title, sections };
+}
 
-  const text = await readFile(filePath, "utf8");
+export function joinSections(heading, sections) {
+  const names = [...SECTIONS, ...[...sections.keys()].filter((key) => !SECTIONS.includes(key))];
+  const parts = [`# ${heading}`];
+  for (const name of names) parts.push(`## ${name}\n\n${sections.get(name) ?? ""}`.trimEnd());
+  return `${parts.join("\n\n")}\n`;
+}
 
+export function parseGaps(text = "") {
+  return text
+    .split("\n")
+    .map((line) => line.match(GAP_LINE))
+    .filter(Boolean)
+    .map(([, state, id, rest]) => ({ id, state, text: rest }));
+}
+
+export async function readWork(board, id) {
+  const files = workFiles(board, id);
+  let text;
   try {
-    const parsed = parseFrontmatter(text);
-    return {
-      ...parsed.data,
-      kind: "board",
-      path: relativePath,
-      filePath,
-      text,
-      body: parsed.body,
-      metadata: parsed.data,
-    };
+    text = await readFile(files.work, "utf8");
   } catch (error) {
-    findings.push(frontmatterParseFinding("board", relativePath, error));
-    return {
-      kind: "board",
-      path: relativePath,
-      filePath,
-      text,
-      body: null,
-      metadata: null,
-      parseError: error.message,
-    };
+    if (error.code === "ENOENT") throw new CatpawError(`Unknown Work ${id}.`, "ERR_UNKNOWN_WORK");
+    throw error;
+  }
+  const { data, body } = parseFrontmatter(text);
+  const { sections } = splitSections(body);
+  return {
+    id,
+    files,
+    data,
+    sections,
+    gaps: parseGaps(sections.get("Gaps")),
+    log: await readLog(files.log),
+  };
+}
+
+export async function writeWork(work) {
+  const data = { ...work.data, updated: today() };
+  const body = joinSections(`${data.id}: ${data.title}`, work.sections);
+  await writeAtomic(work.files.work, formatFrontmatter(data, body));
+  work.data = data;
+}
+
+export async function listWorkIds(board) {
+  try {
+    const entries = await readdir(board.work, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort(compareIds);
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
   }
 }
 
-async function loadSchema2(projectRoot, boardPath, index, findings) {
-  if (index.metadata) {
-    findings.push(...schemaFindings("board", index, validateMetadata("board", index.metadata)));
-  }
-
-  const common = { projectRoot, validate: true, findings };
-  const { artifactRoots } = SCHEMA_2_LAYOUT;
-  const milestones = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, artifactRoots.milestones)),
-    { ...common, artifactKind: "milestone" },
-  );
-  const workItems = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, artifactRoots.workItems)),
-    { ...common, artifactKind: "workItem" },
-  );
-  const plans = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, artifactRoots.plans)),
-    { ...common, artifactKind: "plan" },
-  );
-  const evidence = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, artifactRoots.evidence), {
-      recursive: true,
-    }),
-    { ...common, artifactKind: "evidence" },
-  );
-
-  return {
-    milestones,
-    workItems,
-    plans,
-    evidence,
-    reqs: workItems,
-    activePlans: plans,
-    archivedPlans: [],
-    tests: evidence.filter((item) => item.type === "test"),
-    reviews: evidence.filter((item) => item.type === "review"),
-  };
+export function compareIds(a, b) {
+  return a.localeCompare(b, "en", { numeric: true });
 }
 
-async function loadSchema1(projectRoot, boardPath, findings) {
-  const common = { projectRoot, validate: false, findings };
-  const milestones = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, "milestones")),
-    { ...common, artifactKind: "milestone" },
-  );
-  const workItems = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, "reqs")),
-    { ...common, artifactKind: "workItem", legacyWork: true },
-  );
-  const activePlans = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, "plans", "active")),
-    { ...common, artifactKind: "plan" },
-  );
-  const archivedPlans = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, "plans", "archive")),
-    { ...common, artifactKind: "plan" },
-  );
-  const tests = await readArtifacts(
-    await listMarkdownFiles(path.join(boardPath, "tests", "matrices")),
-    { ...common, artifactKind: "test" },
-  );
-  const reviews = await readArtifacts(
-    await listLegacyReviewSummaries(path.join(boardPath, "reviews")),
-    { ...common, artifactKind: "review" },
-  );
-
-  return {
-    milestones,
-    workItems,
-    plans: [...activePlans, ...archivedPlans],
-    evidence: [...tests, ...reviews],
-    reqs: workItems,
-    activePlans,
-    archivedPlans,
-    tests,
-    reviews,
-  };
+export async function nextId(board) {
+  const ids = await listWorkIds(board);
+  const max = ids.reduce((top, id) => Math.max(top, Number(id.match(/^W-(\d+)$/)?.[1] ?? 0)), 0);
+  return `W-${String(max + 1).padStart(3, "0")}`;
 }
 
-function emptyArtifacts() {
-  return {
-    milestones: [],
-    workItems: [],
-    plans: [],
-    evidence: [],
-    reqs: [],
-    activePlans: [],
-    archivedPlans: [],
-    tests: [],
-    reviews: [],
-  };
-}
-
-export async function loadBoard(options = {}) {
-  const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
-  const boardPath = path.resolve(options.boardPath ?? path.join(projectRoot, ".catpaw"));
-  await validateBoardRoot(boardPath);
-  const findings = [];
-  const index = await readIndex(projectRoot, boardPath, findings);
-  const hasDeclaredSchema = index.metadata && Object.hasOwn(index.metadata, "schema");
-  const schema = index.metadata ? (hasDeclaredSchema ? index.schema : 1) : null;
-  let artifacts;
-  if (schema === null) {
-    artifacts = emptyArtifacts();
-  } else if (schema === 2) {
-    artifacts = await loadSchema2(projectRoot, boardPath, index, findings);
-  } else if (schema === 1) {
-    artifacts = await loadSchema1(projectRoot, boardPath, findings);
-  } else {
-    findings.push(...schemaFindings("board", index, validateMetadata("board", index.metadata)));
-    artifacts = emptyArtifacts();
-  }
-
-  return {
-    projectRoot,
-    boardPath,
-    schema,
-    schemaVersion: schema,
-    runtime: index.runtime ?? null,
-    index,
-    indexPath: index.filePath,
-    indexText: index.text,
-    indexRuntime: index.runtime ?? null,
-    ...artifacts,
-    findings,
-  };
+export function validateId(id) {
+  if (!ID_PATTERN.test(id)) throw new CatpawError(`Invalid Work id '${id}'.`, "ERR_ARGS");
+  return id;
 }

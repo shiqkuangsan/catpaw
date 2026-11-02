@@ -1,55 +1,48 @@
 # CatPaw Runtime
 
-CatPaw 为主 Agent 提供工作协议、工程方法、项目记忆和本地工具，帮助它持续推进，并保留可核对的
-完成依据。主 Agent 负责判断、编排和最终采纳；CLI 负责可重复的记录与一致性检查。
+规则见 [policy.md](policy.md)（`catpaw policy` 输出同一内容），命令见 `catpaw --help`。
 
-```text
-Understand -> Execute -> Check -> Finish
+## 接入
+
+```bash
+npm install -g /path/to/catpaw
 ```
 
-## 日常入口
+| 宿主 | 接入 |
+|---|---|
+| Claude Code | 把 [snippets/claude-code-settings.json](snippets/claude-code-settings.json) 的 `SessionStart` hook 合并进 settings；会话开始自动注入当前 Work |
+| Codex 及其他 | 把 [snippets/agents.md](snippets/agents.md) 加入 `AGENTS.md`；Agent 按其中指引自行运行 `catpaw status` |
+| Git | 把 [snippets/pre-push](snippets/pre-push) 放到 `.git/hooks/pre-push`；违反规则的 done Work 会阻止推送 |
+| CI / 发布 | `catpaw gate <id>`：该 Work 在当前代码上不满足完成规则时 exit 1 |
 
-先读 [Runtime Policy](runtime-policy.md)。恢复已有工作时运行 `catpaw status`；
-参数以 `catpaw <command> --help` 为准。小任务留在对话，需要连续性时才建一份 Work。
-计划默认内联，不另建重复台账。Evidence 支撑具体声明，Proof 是兼容称呼；
-Approval 表示用户权限边界，记录与工具结果不能授予权限。
+退出码：0 成功；1 违反完成规则（`finish`、`gate`）；2 参数或环境错误。
 
-| 要做什么 | 命令入口 | 按需读取 |
-|---|---|---|
-| 开始、推进或结束工作 | `work` | [Work Handling](guidance/workflow.md) |
-| 调查根因、锁定行为、审查或做有界原型 | Agent 按需执行 | [Engineering Methods](guidance/engineering-methods.md) |
-| 选择价值、系统、体验、安全或性能检查问题 | Agent 按风险选择 | [Lenses](lenses/README.md) |
-| 记录或捕获验证结果 | `evidence` | [Evidence Contract](guidance/evidence.md) |
-| 组织多个相关工作 | `milestone` | [Milestones](guidance/milestones.md) |
-| 查看 `explore`、`build`、`check` 委派任务类型 | `intent` | [Agent Collaboration](guidance/agent-dispatch.md) |
-| 取得独立检查、选择回退并报告缺口 | 主 Agent 委派 | [Independent Checks](guidance/independent-checks.md) |
-| 调用只读 `cc` / `cx` 第二意见 | `transport` | [Agent Transports](providers/README.md) |
-| 检查或维护工作板 | `board` | [Maintenance](guidance/maintenance.md) |
-| 安装、更新或恢复 runtime / adapter | `runtime` / `adapter` | [AI Install](AI-INSTALL.md) |
+## 看板格式
 
-写操作默认 dry-run，显式 `--apply` 才执行；这不替代对应动作的授权。
-`evidence run` 默认也只预览，执行成功仅证明命令运行结果，不能证明验收充分。
-候选有效性、记录一致性与实际完成分别核对，具体见 [Evidence Contract](guidance/evidence.md)。
+```text
+.catpaw/
+  catpaw.json            {"schema": 3}
+  work/<ID>/WORK.md      当前状态：frontmatter + Goal / Acceptance / Gaps / Decisions / Next
+  work/<ID>/LOG.md       只追加：Check、Gap、Note、done 等记录
+  archive/schema-2/      convert 后保留的旧看板（如有）
+```
 
-`catpaw` 是命令路径的简称：源码中为 `src/runtime/bin/catpaw.mjs`，安装后为
-`~/.catpaw/bin/catpaw.mjs`；用 Node 运行。CatPaw 不自动修改 `PATH`。
+`WORK.md` frontmatter：`id`、`title`、`status`（open/blocked/done/dropped）、`risk`（normal/high）、
+`repos`（JSON 数组，相对项目根）、`parent`、`created`、`updated`。Gaps 每行
+`- [open|accepted] G<n>: <内容>`。除 `status` 和 Gaps 外可以直接编辑；
+状态和 Gap 通过命令变更，以便留下记录。
 
-## 存储与兼容
+`LOG.md` 每条记录以 `<!-- catpaw {...} -->` 开头，JSON 中含 `at`、`kind`，Check 另含
+`result`、`by`、`snapshot`、`repos`，可选 `actor`、`output`。不要改写已有记录。
 
-项目 `.catpaw/` 保存 `work/`、可选 `plans/` / `milestones/`、`evidence/` 和
-`index.md`。它是项目记忆，不是 runtime 副本；共享与保留方式由项目决定。
+## 从 schema 2 转换
 
-工作板仍用 schema 2。新 Work 的 contract 4 绑定候选、验收和周期；
-`work continue` 保留历史完成并开启新周期。旧记录保留原有语义，旧 runtime 可能
-拒绝新字段；无需批量迁移。Schema 1 导入可保留隔离的 `legacy/schema-1/` 校验归档。
+```bash
+catpaw convert            # 预览
+catpaw convert --apply    # 执行
+```
 
-`proof add|list|show`、`work close`、`milestone close`、`agent ...` 和
-`work start --mode tracked|gated` 继续兼容。内部 metadata 不要求用户操作；
-存储契约由 [Schema 2](schemas/board-v2.json) 持有，CLI help 说明可用参数。
-
-## 安装边界
-
-已安装 runtime 位于 `~/.catpaw/`。源码、dist、installed runtime、host adapter
-和项目工作板分别管理；构建不等于激活。一项授权不自动扩展到其它范围，已有完整
-授权则连续执行。安装与恢复流程见 [AI Install](AI-INSTALL.md) 和
-[Maintenance](guidance/maintenance.md)。
+旧 Work 正文、Plan 和 Evidence 原文按时间写入对应 `LOG.md`；有结果的 Evidence 变为 Check，
+其 snapshot 为 `schema2:<candidate>`，永远不算当前。Milestone 变为 Work，成员通过 `parent` 关联。
+topic Evidence、`index.md` 和其他目录只在 `archive/schema-2/` 中保留。转换前后校验条目数和
+failed/blocked 数量，旧看板在转换期间被修改则放弃替换。仍在进行的 Work 会在 Next 中提示整理导入内容。

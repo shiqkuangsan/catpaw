@@ -1,0 +1,20 @@
+{
+  "name": "catpaw",
+  "version": "5.0.0",
+  "description": "Delivery ledger for coding agents",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "catpaw": "src/runtime/bin/catpaw.mjs"
+  },
+  "files": [
+    "src/runtime"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

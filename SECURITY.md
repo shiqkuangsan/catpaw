@@ -1,33 +1,20 @@
 # Security Policy
 
-CatPaw is a local workflow runtime for AI-assisted software work. It should not
-collect, transmit, or require secrets.
+CatPaw is a local CLI that reads and writes `.catpaw/` inside a project and runs
+read-only `git` commands to compute snapshots. It does not use the network,
+collect secrets or invoke other agents.
 
 ## Reporting A Vulnerability
 
-Please report security issues through GitHub Security Advisories when available,
-or by opening a minimal public issue that avoids exposing sensitive details.
-
-Do not include live credentials, private keys, customer data, or proprietary
-source code in public issues.
-
-## Scope
-
-Security-sensitive areas include:
-
-- runtime install and upgrade behavior;
-- project artifact migration;
-- external Agent invocation and session routing;
-- registry handling under `~/.catpaw/state/`;
-- instructions that could authorize destructive actions, commits, pushes, PRs,
-  deploys, or secret access.
+Report security issues through GitHub Security Advisories when available, or by
+opening a minimal public issue that avoids sensitive details. Do not include
+credentials, private keys, customer data or proprietary source code.
 
 ## Expected Invariants
 
-- CatPaw commands do not automatically commit, push, create PRs, deploy, or run
-  destructive cleanup.
-- Runtime files are installed under `~/.catpaw/`, not provider config
-  directories.
-- Project `.catpaw/` boards contain project artifacts only, not the full runtime
-  package.
-- Local registry state is not copied into the runtime package or source repo.
+- CatPaw never commits, pushes, deploys or deletes project files. `convert`
+  moves the old board into `.catpaw/archive/schema-2/` and refuses to replace it
+  if it changed during conversion.
+- Records, checks and command output never grant permission.
+- Snapshot computation reads repository state only and excludes the board.
+- Check records point to raw output; they should not contain secrets.

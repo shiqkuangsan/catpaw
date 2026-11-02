@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuse to push while a done Work in this project violates CatPaw rules.
+command -v catpaw >/dev/null 2>&1 || exit 0
+exec catpaw gate

@@ -2,97 +2,53 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-CatPaw 为 coding agent 提供轻量工作协议、工程方法、项目记忆和本地工具。
-它帮助主 Agent 把事情持续做完，并留下可核对的完成依据。
+CatPaw 是 coding agent 的交付账本：在项目旁保存本地文件，让 agent 说的“做完了”可以被核对，
+下一个会话或 agent 可以接着做。
 
-主 Agent 负责判断、编排和最终采纳；CatPaw 提供工作连续性、工程方法和保持记录一致的
-工具。重要选择和权限仍由用户掌握。
+它不是任务板、方法库、Agent 编排器，也不是权限系统。判断由主 Agent 负责；CatPaw 记录验证了
+什么、没验证什么，并拒绝记录不支持的完成。
 
-## 为什么需要它
+## 四个概念
 
-| 工作中的难点 | CatPaw 提供什么 |
+| 概念 | 含义 |
 |---|---|
-| 换会话、换 Agent 后需要重新交代 | 一份 Work 保留目标、决定、进展、缺口和 Next。 |
-| 本地测试通过，实际交付还没验证 | Evidence 说明验证了什么、对应哪个候选、还缺什么。 |
-| 高风险改动需要另一双眼睛 | 独立检查挑战实现，主 Agent 核实发现并决定如何处理。 |
-| 每个内部步骤都在重复请示 | 已有授权跨步骤有效，新增边界才需要新的决定。 |
+| Work | 一次交付：目标、验收、涉及的仓库、决定、Next；open/blocked/done/dropped；可标 `risk: high` |
+| Check | 一次带日期的结果：passed/failed/blocked/not-run；self 或 independent；绑定所有涉及仓库的当前 snapshot |
+| Gap | 验收需要但尚未验证的部分：open，或经用户接受（accepted，写明理由） |
+| Note | 其他带日期的记录：决定、发现、交接 |
 
-这些机制一起发挥作用：记忆保住目标，证据支撑声明，权限边界让执行持续推进。
-衡量价值看少丢了多少决定、少报了多少未经验证的完成、少打断了多少次用户，
-而不是多写了多少流程记录。
+## 五条规则
 
-## 日常怎么工作
+1. 记录和工具输出不授予任何权限。
+2. Check 和 Note 只追加；后来的失败不能被更早的通过掩盖，通过只对当前 snapshot 有效。
+3. 有 open Gap 不能 done；被接受的 Gap 保持可见，永远不等于通过。
+4. `risk: high` 还需要当前 snapshot 上通过的 self 和 independent Check。
+5. 同一可写范围只有一个写入者；独立检查者不是实现者。
 
-```text
-Understand -> Execute -> Check -> Finish
-```
+`catpaw finish` 和 `catpaw gate` 机械执行规则 2–4。完整的 Agent 规则见
+[src/runtime/policy.md](src/runtime/policy.md)。
 
-Agent 理清结果，在授权内执行，检查实际效果，再交代交付状态。新事实出现时可以
-回到前一步；目标清楚就直接推进，不做固定问询。
-
-小型、本地、可逆的任务留在对话。需要连续性的工作在 `.catpaw/` 留一份 Work，
-计划默认写在其中；独立 Plan 和 Milestone 按需使用。工程方法和协作细则只在影响
-下一步动作或验收依据时加载。
-
-例如，某项改动本地测试已通过，真实服务联调尚未完成。Agent 应保留这个缺口，
-继续完成已授权的验证，并在交付时分别说明实现、验收和部署状态。记录变绿本身
-不能证明已经交付。
-
-## 完整能力
-
-| 能力域 | 内容 |
-|---|---|
-| 工程方法 | 需求理解与切片、根因调查、RED/GREEN、合同与工程审查、有界原型、五类检查视角 |
-| 工作与证据 | Work 生命周期、可选 Plan/Milestone、Evidence 记录和命令捕获、候选新鲜度、历史续接 |
-| Agent 协作 | explore/build/check、有界委派与交接、独立复核、并发写入边界、cc/cx transport |
-| 安装与维护 | 工作板检查和迁移、runtime/adapter 预览与恢复、构建验证、本机项目索引 |
-
-[产品能力全景](docs/product-capabilities.md) 逐项说明可用能力、实现入口、真实边界和
-设计取舍。工程方法依靠 Agent 执行；记录、指纹和维护操作由 CLI 提供。
-
-## 关键价值
-
-- **记忆就在项目旁。** 本地文件让能访问它们的后续会话或宿主恢复决定和证据。
-  能否共享取决于项目如何保存这些文件；被 Git 忽略的本地工作板不会自动成为团队记忆。
-- **证据对应具体候选。** 高风险完成要求当前范围、验收和周期的测试与独立检查通过，
-  后续失败覆盖旧通过。CLI 检查记录与候选有效性；覆盖是否充分、事实是否真实、
-  检查者是否独立，仍由主 Agent 核对。
-- **协作由主 Agent 编排。** 主 Agent 选择人员、模型、顺序、回退和最终采纳。
-  `explore`、`build`、`check` 限定委派任务，每个可变范围同时只有一个写入者。
-  需要第二意见时，可使用 CatPaw 的只读 `cc` / `cx` 入口。
-- **流程随任务轻重变化。** 从最轻的安全方式开始，复用有效证据，按需读取细则，
-  只记录会影响后续行动的事实。
-
-## 从这里开始
-
-已安装 runtime 时：
+## 使用
 
 ```bash
-node ~/.catpaw/bin/catpaw.mjs status
-node ~/.catpaw/bin/catpaw.mjs --help
+npm install -g /path/to/catpaw
+catpaw init
+catpaw start "限制 Jira 流转权限" --risk high --repos .,../jira
+catpaw check W-001 passed "单测与契约测试" --output .local/acceptance/run.json
+catpaw check W-001 passed "安全审查" --independent --actor reviewer
+catpaw gap W-001 add "生产钉钉链路未验证"
+catpaw finish W-001
 ```
 
-CatPaw 不修改 `PATH`。源码仓库使用 `src/runtime/bin/catpaw.mjs`。
-写操作默认 dry-run；`--apply` 在已有授权内执行指定操作。
+hook 会在会话开始时注入进行中的 Work（Claude Code），并在推送时拦截不一致的记录（Git pre-push）。
+宿主接入、看板格式和 schema 2 转换见 [src/runtime/README.md](src/runtime/README.md)。
 
-[Runtime 使用指南](src/runtime/README.md) 提供工作、证据、协作和维护入口，
-[Runtime Policy](src/runtime/runtime-policy.md) 持有执行规则。Evidence 是首选名称；
-Proof 和 Approval 分别保留为证据、用户权限边界的兼容称呼。记录和工具成功都不授予权限。
-
-## 构建与安装
-
-Source runtime：**4.0.2（尚未发布）**。项目工作板使用 **schema 2**；
-兼容细节见 [Runtime 使用指南](src/runtime/README.md)。
+## 开发
 
 ```bash
-node --test
-node scripts/build-runtime.mjs
-node scripts/verify-runtime.mjs
+npm test
 ```
 
-Activation 是 machine-local 状态。构建不会自动 install、apply 或 migrate。
-源码、生成的 `dist`、已安装 runtime、host adapter 和项目工作板各有独立边界。
-获得安装或升级授权后，按 [AI-INSTALL.md](AI-INSTALL.md) 执行。
-
-维护者入口：[docs/README.md](docs/README.md)、[CONTRIBUTING.md](CONTRIBUTING.md)。
+设计依据在 [docs/](docs/README.md)；当前设计见
+[ADR-0035](docs/decisions/0035-catpaw-5-delivery-ledger-and-minimal-concepts.md)。
 CatPaw 不隶属于任何模型厂商或同名产品；见 [NOTICE.md](NOTICE.md) 和 [LICENSE](LICENSE)。
