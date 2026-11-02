@@ -1,4 +1,7 @@
-import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +12,7 @@ import {
   detectSchema,
   initBoard,
   listWorkIds,
+  lockBoard,
   nextId,
   openBoard,
   readWork,
@@ -36,6 +40,9 @@ Usage: catpaw <command> [args] [--project <path>] [--json]
   status [<id>]                         Open Work, or one Work with finishability
   check <id> <passed|failed|blocked|not-run> <summary>
         [--independent] [--actor name] [--output path]... [--body-file f|-]
+  check <id> <summary> [--timeout sec] [...] -- <command> [args]
+                                        CatPaw runs the command and records
+                                        the result from its exit code
   note <id> <text> [--body-file f|-]    Decision, finding or handoff
   gap <id> add <text>                   Record something not yet verified
   gap <id> accept <G#> <reason>         User accepts a gap; it stays visible
@@ -47,13 +54,18 @@ Usage: catpaw <command> [args] [--project <path>] [--json]
   convert [--apply]                     Convert a schema 2 board (preview by default)
   policy                                Print the agent policy
 
-Writes apply immediately except convert. Records never grant permission.`;
+Writes apply immediately except convert. Records never grant permission.
+Exit 1 also when a command run by 'check ... --' does not pass.`;
 
 export function parseArgs(argv) {
   const positional = [];
   const options = {};
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === "--") {
+      options.command = argv.slice(i + 1);
+      break;
+    }
     if (arg === "-h") options.help = true;
     else if (arg === "-V") options.version = true;
     else if (arg.startsWith("--")) {
@@ -116,6 +128,11 @@ async function snapshotFor(board, work) {
   return takeSnapshot(board.root, work.data.repos ?? ["."], board.dir);
 }
 
+function describe(entry) {
+  if (entry.kind !== "check") return entry.kind;
+  return `check ${entry.result} (${entry.by}${entry.run ? ", run" : ""})`;
+}
+
 function brief(work, max = 280) {
   const clip = (text) => (text.length > max ? `${text.slice(0, max)}…` : text);
   const lines = [`- ${work.id} [${work.data.status}${work.data.risk === "high" ? ", risk high" : ""}] ${work.data.title}`];
@@ -123,10 +140,7 @@ function brief(work, max = 280) {
   if (next) lines.push(`  Next: ${clip(next)}`);
   for (const gap of work.gaps) lines.push(`  Gap ${gap.id} (${gap.state}): ${clip(gap.text)}`);
   const last = work.log.at(-1);
-  if (last) {
-    const what = last.kind === "check" ? `check ${last.result} (${last.by})` : last.kind;
-    lines.push(`  Last: ${String(last.at).slice(0, 10)} ${what}`);
-  }
+  if (last) lines.push(`  Last: ${String(last.at).slice(0, 10)} ${describe(last)}`);
   return lines.join("\n");
 }
 
@@ -148,6 +162,88 @@ async function allWork(board) {
   return Promise.all(ids.map((id) => readWork(board, id)));
 }
 
+async function startWork(ctx, board) {
+  const title = need(ctx.args[0], "title");
+  const id = validateId(ctx.options.id ?? (await nextId(board)));
+  if ((await listWorkIds(board)).includes(id)) throw new CatpawError(`Work ${id} exists.`, "ERR_EXISTS");
+  if (ctx.options.risk && !["high", "normal"].includes(ctx.options.risk)) {
+    throw new CatpawError("--risk must be high or normal.", "ERR_ARGS");
+  }
+  const sections = new Map([
+    ["Goal", ctx.options.goal ?? ""],
+    ["Acceptance", (ctx.options.acceptance ?? []).map((a) => `- ${a}`).join("\n")],
+    ["Gaps", ""],
+    ["Decisions", ""],
+    ["Next", ctx.options.next ?? ""],
+  ]);
+  const work = {
+    id,
+    files: workFiles(board, id),
+    data: {
+      id,
+      title,
+      status: "open",
+      risk: ctx.options.risk ?? "normal",
+      repos: repoList(ctx.options),
+      parent: ctx.options.parent ?? null,
+      created: today(),
+      updated: today(),
+    },
+    sections,
+  };
+  await writeWork(work);
+  await appendEntry(work.files.log, { at: now(), kind: "note" }, `Started: ${title}`);
+  return { text: `Started ${id}: ${title}\n${path.relative(ctx.project, work.files.work)}`, data: summary(work) };
+}
+
+async function changeGap(ctx, board) {
+  const work = await load(board, ctx.args[0]);
+  const action = need(ctx.args[1], "gap action (add, accept, close)");
+  const lines = (work.sections.get("Gaps") ?? "").split("\n").filter((l) => l.trim());
+  let gapId;
+  let body;
+  if (action === "add") {
+    const text = need(ctx.args[2], "gap text");
+    const used = [...work.gaps.map((g) => g.id), ...work.log.filter((e) => e.gap).map((e) => e.gap)];
+    gapId = `G${used.reduce((top, id) => Math.max(top, Number(id.slice(1))), 0) + 1}`;
+    lines.push(`- [open] ${gapId}: ${text}`);
+    body = `Opened ${gapId}: ${text}`;
+  } else if (action === "accept" || action === "close") {
+    gapId = need(ctx.args[2], "gap id");
+    const reason = need(ctx.args[3], action === "accept" ? "acceptance reason" : "how it was resolved");
+    const gap = work.gaps.find((g) => g.id === gapId);
+    if (!gap) throw new CatpawError(`${work.id} has no gap ${gapId}.`, "ERR_ARGS");
+    const index = lines.findIndex((l) => l.startsWith(`- [${gap.state}] ${gapId}:`));
+    if (action === "accept") {
+      lines[index] = `- [accepted] ${gapId}: ${gap.text} — accepted: ${reason}`;
+      body = `Accepted ${gapId}: ${reason}`;
+    } else {
+      lines.splice(index, 1);
+      body = `Closed ${gapId} (${gap.text}): ${reason}`;
+    }
+  } else throw new CatpawError(`Unknown gap action '${action}'.`, "ERR_ARGS");
+  work.sections.set("Gaps", lines.join("\n"));
+  await writeWork(work);
+  await appendEntry(work.files.log, { at: now(), kind: "gap", gap: gapId, action }, body);
+  return { text: `${work.id} ${body}`, data: { gap: gapId, action } };
+}
+
+async function finishWork(ctx, board) {
+  const work = await load(board, ctx.args[0]);
+  if (work.data.status !== "open") {
+    throw new CatpawError(`${work.id} is ${work.data.status}; only open Work can finish.`, "ERR_STATE");
+  }
+  const snap = await snapshotFor(board, work);
+  const problems = evaluate(work, snap.id);
+  if (problems.length) {
+    throw new CatpawError(`${work.id} cannot finish:\n${problems.map((p) => `  - ${p}`).join("\n")}`, "ERR_RULES");
+  }
+  work.data.status = "done";
+  await writeWork(work);
+  await appendEntry(work.files.log, { at: now(), kind: "done", snapshot: snap.id, repos: snap.detail }, ctx.args[1] ?? "");
+  return { text: `${work.id} done on snapshot ${snap.id}`, data: { snapshot: snap } };
+}
+
 const commands = {
   async init(ctx) {
     const { paths, created } = await initBoard(ctx.project);
@@ -156,37 +252,7 @@ const commands = {
 
   async start(ctx) {
     const board = await openBoard(ctx.project);
-    const title = need(ctx.args[0], "title");
-    const id = validateId(ctx.options.id ?? (await nextId(board)));
-    if ((await listWorkIds(board)).includes(id)) throw new CatpawError(`Work ${id} exists.`, "ERR_EXISTS");
-    if (ctx.options.risk && !["high", "normal"].includes(ctx.options.risk)) {
-      throw new CatpawError("--risk must be high or normal.", "ERR_ARGS");
-    }
-    const sections = new Map([
-      ["Goal", ctx.options.goal ?? ""],
-      ["Acceptance", (ctx.options.acceptance ?? []).map((a) => `- ${a}`).join("\n")],
-      ["Gaps", ""],
-      ["Decisions", ""],
-      ["Next", ctx.options.next ?? ""],
-    ]);
-    const work = {
-      id,
-      files: workFiles(board, id),
-      data: {
-        id,
-        title,
-        status: "open",
-        risk: ctx.options.risk ?? "normal",
-        repos: repoList(ctx.options),
-        parent: ctx.options.parent ?? null,
-        created: today(),
-        updated: today(),
-      },
-      sections,
-    };
-    await writeWork(work);
-    await appendEntry(work.files.log, { at: now(), kind: "note" }, `Started: ${title}`);
-    return { text: `Started ${id}: ${title}\n${path.relative(ctx.project, work.files.work)}`, data: summary(work) };
+    return lockBoard(board, () => startWork(ctx, board));
   },
 
   async status(ctx) {
@@ -196,9 +262,8 @@ const commands = {
       const snap = await snapshotFor(board, work);
       const problems = work.data.status === "done" ? auditDone(work) : evaluate(work, snap.id);
       const recent = work.log.slice(-5).map((e) => {
-        const what = e.kind === "check" ? `check ${e.result} (${e.by})` : e.kind;
         const current = e.snapshot === snap.id ? " [current snapshot]" : "";
-        return `  ${String(e.at).slice(0, 16)} ${what}${current}: ${e.body.split("\n")[0].slice(0, 160)}`;
+        return `  ${String(e.at).slice(0, 16)} ${describe(e)}${current}: ${e.body.split("\n")[0].slice(0, 160)}`;
       });
       const verdict =
         work.data.status === "done"
@@ -224,11 +289,27 @@ const commands = {
 
   async check(ctx) {
     const board = await openBoard(ctx.project);
-    const work = await load(board, ctx.args[0]);
-    const result = need(ctx.args[1], "result");
-    if (!RESULTS.has(result)) throw new CatpawError(`Result must be one of ${[...RESULTS].join(", ")}.`, "ERR_ARGS");
-    const text = need(ctx.args[2], "summary");
-    const snap = await snapshotFor(board, work);
+    const command = ctx.options.command;
+    let work = await load(board, ctx.args[0]);
+    let result;
+    let text;
+    let ran = null;
+    let snap;
+    if (command) {
+      if (!command.length) throw new CatpawError("Missing command after '--'.", "ERR_ARGS");
+      if (ctx.args.length !== 2) {
+        throw new CatpawError("With '--' the exit code decides the result: check <id> <summary> -- <command>.", "ERR_ARGS");
+      }
+      text = ctx.args[1];
+      snap = await snapshotFor(board, work);
+      ran = await runCheck(ctx, board, work.id, command, snap);
+      result = ran.result;
+    } else {
+      result = need(ctx.args[1], "result");
+      if (!RESULTS.has(result)) throw new CatpawError(`Result must be one of ${[...RESULTS].join(", ")}.`, "ERR_ARGS");
+      text = need(ctx.args[2], "summary");
+      snap = await snapshotFor(board, work);
+    }
     const entry = {
       at: now(),
       kind: "check",
@@ -238,71 +319,47 @@ const commands = {
       repos: snap.detail,
     };
     if (ctx.options.actor) entry.actor = ctx.options.actor;
-    if (ctx.options.output) entry.output = ctx.options.output;
+    const outputs = [...(ran ? [ran.output] : []), ...(ctx.options.output ?? [])];
+    if (outputs.length) entry.output = outputs;
+    if (ran) entry.run = ran.run;
     const extra = await bodyFrom(ctx.options);
-    await appendEntry(work.files.log, entry, [text, extra].filter(Boolean).join("\n\n"));
-    work.log.push(entry);
-    const problems = evaluate(work, snap.id);
+    const body = [text, ran?.line, extra].filter(Boolean).join("\n\n");
+    const current = ran?.after ?? snap;
+    const problems = await lockBoard(board, async () => {
+      work = await load(board, work.id);
+      await appendEntry(work.files.log, entry, body);
+      work.log.push(entry);
+      return evaluate(work, current.id);
+    });
     const verdict = problems.length ? `not finishable:\n${problems.map((p) => `  - ${p}`).join("\n")}` : "finishable";
-    return { text: `${work.id} check ${result} (${entry.by}) on ${snap.id}\n${verdict}`, data: { entry, problems } };
+    const lines = [`${work.id} ${describe(entry)} on ${snap.id}`];
+    if (ran) {
+      lines.push(`  ${ran.line}`);
+      if (ran.run.drift) lines.push("  warning: files changed during the run; the result is bound to the snapshot before it");
+      if (result !== "passed" && ran.tail) lines.push("  output tail:", ran.tail.replace(/^/gm, "    "));
+    }
+    lines.push(verdict);
+    return { text: lines.join("\n"), data: { entry, problems }, exitCode: ran && result !== "passed" ? 1 : 0 };
   },
 
   async note(ctx) {
     const board = await openBoard(ctx.project);
-    const work = await load(board, ctx.args[0]);
     const text = [need(ctx.args[1], "text"), await bodyFrom(ctx.options)].filter(Boolean).join("\n\n");
-    await appendEntry(work.files.log, { at: now(), kind: "note" }, text);
-    return { text: `${work.id} note recorded`, data: {} };
+    return lockBoard(board, async () => {
+      const work = await load(board, ctx.args[0]);
+      await appendEntry(work.files.log, { at: now(), kind: "note" }, text);
+      return { text: `${work.id} note recorded`, data: {} };
+    });
   },
 
   async gap(ctx) {
     const board = await openBoard(ctx.project);
-    const work = await load(board, ctx.args[0]);
-    const action = need(ctx.args[1], "gap action (add, accept, close)");
-    const lines = (work.sections.get("Gaps") ?? "").split("\n").filter((l) => l.trim());
-    let gapId;
-    let body;
-    if (action === "add") {
-      const text = need(ctx.args[2], "gap text");
-      const used = [...work.gaps.map((g) => g.id), ...work.log.filter((e) => e.gap).map((e) => e.gap)];
-      gapId = `G${used.reduce((top, id) => Math.max(top, Number(id.slice(1))), 0) + 1}`;
-      lines.push(`- [open] ${gapId}: ${text}`);
-      body = `Opened ${gapId}: ${text}`;
-    } else if (action === "accept" || action === "close") {
-      gapId = need(ctx.args[2], "gap id");
-      const reason = need(ctx.args[3], action === "accept" ? "acceptance reason" : "how it was resolved");
-      const gap = work.gaps.find((g) => g.id === gapId);
-      if (!gap) throw new CatpawError(`${work.id} has no gap ${gapId}.`, "ERR_ARGS");
-      const index = lines.findIndex((l) => l.startsWith(`- [${gap.state}] ${gapId}:`));
-      if (action === "accept") {
-        lines[index] = `- [accepted] ${gapId}: ${gap.text} — accepted: ${reason}`;
-        body = `Accepted ${gapId}: ${reason}`;
-      } else {
-        lines.splice(index, 1);
-        body = `Closed ${gapId} (${gap.text}): ${reason}`;
-      }
-    } else throw new CatpawError(`Unknown gap action '${action}'.`, "ERR_ARGS");
-    work.sections.set("Gaps", lines.join("\n"));
-    await writeWork(work);
-    await appendEntry(work.files.log, { at: now(), kind: "gap", gap: gapId, action }, body);
-    return { text: `${work.id} ${body}`, data: { gap: gapId, action } };
+    return lockBoard(board, () => changeGap(ctx, board));
   },
 
   async finish(ctx) {
     const board = await openBoard(ctx.project);
-    const work = await load(board, ctx.args[0]);
-    if (work.data.status !== "open") {
-      throw new CatpawError(`${work.id} is ${work.data.status}; only open Work can finish.`, "ERR_STATE");
-    }
-    const snap = await snapshotFor(board, work);
-    const problems = evaluate(work, snap.id);
-    if (problems.length) {
-      throw new CatpawError(`${work.id} cannot finish:\n${problems.map((p) => `  - ${p}`).join("\n")}`, "ERR_RULES");
-    }
-    work.data.status = "done";
-    await writeWork(work);
-    await appendEntry(work.files.log, { at: now(), kind: "done", snapshot: snap.id, repos: snap.detail }, ctx.args[1] ?? "");
-    return { text: `${work.id} done on snapshot ${snap.id}`, data: { snapshot: snap } };
+    return lockBoard(board, () => finishWork(ctx, board));
   },
 
   async block(ctx) {
@@ -379,15 +436,86 @@ const commands = {
 
 async function setStatus(ctx, status, kind, from) {
   const board = await openBoard(ctx.project);
-  const work = await load(board, ctx.args[0]);
   const reason = need(ctx.args[1], "reason");
-  if (!from.includes(work.data.status)) {
-    throw new CatpawError(`${work.id} is ${work.data.status}; cannot become ${status}.`, "ERR_STATE");
+  return lockBoard(board, async () => {
+    const work = await load(board, ctx.args[0]);
+    if (!from.includes(work.data.status)) {
+      throw new CatpawError(`${work.id} is ${work.data.status}; cannot become ${status}.`, "ERR_STATE");
+    }
+    work.data.status = status;
+    await writeWork(work);
+    await appendEntry(work.files.log, { at: now(), kind }, `${status}: ${reason}`);
+    return { text: `${work.id} ${status}`, data: summary(work) };
+  });
+}
+
+function quote(arg) {
+  return /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", "'\\''")}'`;
+}
+
+// Run a check command and derive its result from the exit code. Output goes to
+// .catpaw/runs/, which ignores itself in Git. The board lock is not held here.
+async function runCheck(ctx, board, id, command, before) {
+  const timeout = ctx.options.timeout === undefined ? 0 : Number(ctx.options.timeout);
+  if (!(timeout >= 0)) throw new CatpawError("--timeout must be a number of seconds.", "ERR_ARGS");
+  const runs = path.join(board.dir, "runs");
+  await mkdir(path.join(runs, id), { recursive: true });
+  await writeFile(path.join(runs, ".gitignore"), "*\n");
+  const file = path.join(runs, id, `${now().replace(/[:]/g, "")}-${randomBytes(4).toString("hex")}.log`);
+  const out = createWriteStream(file, { flags: "wx" });
+  const shown = command.map(quote).join(" ");
+  out.write(`$ ${shown}\n# cwd: ${ctx.cwd}\n\n`);
+  const started = Date.now();
+  let tail = "";
+  const outcome = await new Promise((resolve) => {
+    const child = spawn(command[0], command.slice(1), { cwd: ctx.cwd, stdio: ["ignore", "pipe", "pipe"] });
+    let stopped = null;
+    const stop = (why) => {
+      stopped = why;
+      child.kill("SIGTERM");
+    };
+    const onSignal = (signal) => stop(`interrupted by ${signal}`);
+    const timer = timeout ? setTimeout(() => stop(`timed out after ${timeout}s`), timeout * 1000) : null;
+    process.on("SIGINT", onSignal).on("SIGTERM", onSignal);
+    const done = (value) => {
+      clearTimeout(timer);
+      process.off("SIGINT", onSignal).off("SIGTERM", onSignal);
+      resolve(value);
+    };
+    const collect = (chunk) => {
+      out.write(chunk);
+      tail = (tail + chunk.toString("utf8")).slice(-8000);
+    };
+    child.stdout.on("data", collect);
+    child.stderr.on("data", collect);
+    child.on("error", (error) => done({ error }));
+    child.on("close", (code, signal) => done({ code, signal, stopped }));
+  });
+  await new Promise((resolve) => out.end(resolve));
+  const ms = Date.now() - started;
+  const after = await takeSnapshot(board.root, (await load(board, id)).data.repos ?? ["."], board.dir);
+  const run = { command, cwd: path.relative(board.root, ctx.cwd) || ".", exit: outcome.code ?? null, ms };
+  let result;
+  let how;
+  if (outcome.error) {
+    result = "blocked";
+    how = `could not start: ${outcome.error.code ?? outcome.error.message}`;
+  } else if (outcome.stopped?.startsWith("interrupted")) {
+    result = "blocked";
+    how = outcome.stopped;
+  } else if (outcome.stopped) {
+    result = "failed";
+    how = outcome.stopped;
+  } else {
+    result = outcome.code === 0 ? "passed" : "failed";
+    how = outcome.signal ? `killed by ${outcome.signal}` : `exit ${outcome.code}`;
   }
-  work.data.status = status;
-  await writeWork(work);
-  await appendEntry(work.files.log, { at: now(), kind }, `${status}: ${reason}`);
-  return { text: `${work.id} ${status}`, data: summary(work) };
+  if (outcome.signal) run.signal = outcome.signal;
+  if (after.id !== before.id) run.drift = after.id;
+  const output = path.relative(board.root, file);
+  const line = `Ran \`${shown}\`: ${how} in ${(ms / 1000).toFixed(1)}s; output ${output}`;
+  const lastLines = tail.trimEnd().split("\n").slice(-30).join("\n");
+  return { result, run, output, line, tail: lastLines, after };
 }
 
 export async function main(argv, { cwd = process.cwd() } = {}) {
@@ -402,6 +530,6 @@ export async function main(argv, { cwd = process.cwd() } = {}) {
   const project = options.project
     ? path.resolve(cwd, options.project)
     : name === "init" ? path.resolve(cwd) : await resolveProject(cwd);
-  const result = await command({ project, args, options });
+  const result = await command({ project, cwd: path.resolve(cwd), args, options });
   return { exitCode: 0, ...result, json: Boolean(options.json) };
 }

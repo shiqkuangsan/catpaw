@@ -26,12 +26,13 @@ export function parseLog(text) {
   const entries = [];
   let current = null;
   for (const line of text.split("\n")) {
-    const match = line.match(MARKER_PATTERN);
-    if (match) {
+    // Bodies escape the marker, so any raw marker line starts an entry; one
+    // that does not parse becomes an invalid entry instead of body text.
+    if (line.startsWith(MARKER)) {
       if (current) entries.push(current);
       let meta;
       try {
-        meta = JSON.parse(match[1]);
+        meta = JSON.parse(line.match(MARKER_PATTERN)[1]);
       } catch {
         meta = { kind: "invalid" };
       }

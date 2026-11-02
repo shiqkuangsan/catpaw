@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.1.0 - Unreleased
+
+Restores the ledger's own integrity. See
+[ADR-0036](../../docs/decisions/0036-captured-checks-board-lock-and-format-integrity.md).
+
+- `catpaw check <id> <summary> -- <command>` runs the command and records the
+  result from its exit code. Output is kept under `.catpaw/runs/` (ignored by
+  Git); the entry carries `run` with command, exit and duration, and `drift`
+  when files changed during the run. A run that does not pass exits 1.
+- All writes take a board lock, so concurrent `gap`, `start` and status
+  changes no longer lose updates or reuse ids. Stale locks are taken over.
+- `finish` and `gate` reject content the rules cannot read: malformed Gaps
+  lines, duplicate gap ids, unknown status or risk, a frontmatter id that does
+  not match its directory, and corrupted `LOG.md` entries.
+
+Required actions: none for boards. Update host snippets from
+`snippets/agents.md` to prefer captured checks.
+
 ## 5.0.0 - Unreleased
 
 CatPaw becomes a delivery ledger with four concepts (Work, Check, Gap, Note)

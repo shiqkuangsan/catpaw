@@ -34,7 +34,7 @@ CatPaw 是 coding agent 的交付账本：在项目旁保存本地文件，让 a
 npm install -g /path/to/catpaw
 catpaw init
 catpaw start "限制 Jira 流转权限" --risk high --repos .,../jira
-catpaw check W-001 passed "单测与契约测试" --output .local/acceptance/run.json
+catpaw check W-001 "单测与契约测试" -- npm test
 catpaw check W-001 passed "安全审查" --independent --actor reviewer
 catpaw gap W-001 add "生产钉钉链路未验证"
 catpaw finish W-001

@@ -1,6 +1,6 @@
 {
   "name": "catpaw",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Delivery ledger for coding agents",
   "private": true,
   "type": "module",

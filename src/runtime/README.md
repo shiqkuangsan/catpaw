@@ -16,7 +16,7 @@ npm install -g /path/to/catpaw
 | Git | 把 [snippets/pre-push](snippets/pre-push) 放到 `.git/hooks/pre-push`；违反规则的 done Work 会阻止推送 |
 | CI / 发布 | `catpaw gate <id>`：该 Work 在当前代码上不满足完成规则时 exit 1 |
 
-退出码：0 成功；1 违反完成规则（`finish`、`gate`）；2 参数或环境错误。
+退出码：0 成功；1 违反完成规则（`finish`、`gate`）或代跑检查未通过；2 参数、环境错误或锁等待超时。
 
 ## 看板格式
 
@@ -25,6 +25,8 @@ npm install -g /path/to/catpaw
   catpaw.json            {"schema": 3}
   work/<ID>/WORK.md      当前状态：frontmatter + Goal / Acceptance / Gaps / Decisions / Next
   work/<ID>/LOG.md       只追加：Check、Gap、Note、done 等记录
+  runs/<ID>/*.log        代跑检查的原始输出；目录自带 .gitignore，不进 Git
+  .lock                  写入时的短暂锁；持有进程已退出或超过 60 秒视为失效
   archive/schema-2/      convert 后保留的旧看板（如有）
 ```
 
@@ -34,7 +36,17 @@ npm install -g /path/to/catpaw
 状态和 Gap 通过命令变更，以便留下记录。
 
 `LOG.md` 每条记录以 `<!-- catpaw {...} -->` 开头，JSON 中含 `at`、`kind`，Check 另含
-`result`、`by`、`snapshot`、`repos`，可选 `actor`、`output`。不要改写已有记录。
+`result`、`by`、`snapshot`、`repos`，可选 `actor`、`output`；代跑的 Check 另含 `run`
+（`command`、`cwd`、`exit`、`ms`，可选 `signal`，运行中文件变化时有 `drift`）。不要改写已有记录。
+
+所有写命令在 `.lock` 下读改写，并发调用不会丢 Gap 或重复分配 id。`finish` 和 `gate` 把
+无法解析的内容视为违规：不合格式的 Gaps 行、重复 Gap 编号、未知 status/risk、
+frontmatter `id` 与目录不符、损坏的 `LOG.md` 条目。
+
+代跑检查：`catpaw check <id> "<摘要>" [--timeout 秒] -- <命令> [参数]`。命令在当前目录直接执行（不经 shell；
+需要管道时用 `sh -c`），退出码 0 记 passed，非 0 或超时记 failed，无法启动或被中断记 blocked；
+结果不为 passed 时 CLI exit 1。结果绑定运行前的 snapshot；运行中文件被改动时记录 `drift` 并提示。
+不保持锁运行命令。
 
 ## 从 schema 2 转换
 

@@ -1,13 +1,14 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { formatFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
-import { writeAtomic } from "./fsutil.mjs";
+import { withLock, writeAtomic } from "./fsutil.mjs";
 import { readLog } from "./log.mjs";
 
 export const SCHEMA = 3;
 export const STATUSES = new Set(["open", "blocked", "done", "dropped"]);
+export const RISKS = new Set(["normal", "high"]);
 export const SECTIONS = ["Goal", "Acceptance", "Gaps", "Decisions", "Next"];
-const GAP_LINE = /^- \[(open|accepted)\] (G\d+): (.*)$/;
+export const GAP_LINE = /^- \[(open|accepted)\] (G\d+): (.*)$/;
 const ID_PATTERN = /^[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9-]+$/;
 
 export class CatpawError extends Error {
@@ -64,6 +65,12 @@ export async function openBoard(projectRoot) {
     );
   }
   return paths;
+}
+
+// Every board write runs under one lock so read-modify-write of WORK.md and
+// Work id allocation cannot lose concurrent updates.
+export function lockBoard(board, fn) {
+  return withLock(path.join(board.dir, ".lock"), fn);
 }
 
 export async function initBoard(projectRoot) {

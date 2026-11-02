@@ -27,7 +27,8 @@ snapshot 是每个涉及仓库的 `HEAD` 加未提交改动的哈希，由 CLI �
 4. `risk: high` 的 Work 完成还需要：当前 snapshot 上最近的 self Check 和 independent Check 都是 passed。
 5. 同一可写范围同时只有一个写入者；independent Check 的执行者不是该范围的实现者。
 
-`catpaw finish` 和 `catpaw gate` 机械执行规则 2–4。规则 1、5 和 Check 内容是否真实覆盖验收，由主 Agent 负责。
+`catpaw finish` 和 `catpaw gate` 机械执行规则 2–4；`WORK.md` 或 `LOG.md` 有无法解析的内容
+（如写错格式的 Gap 行）时同样拒绝，修正格式即可。规则 1、5 和 Check 内容是否真实覆盖验收，由主 Agent 负责。
 
 ## 工作方式
 
@@ -36,8 +37,11 @@ snapshot 是每个涉及仓库的 `HEAD` 加未提交改动的哈希，由 CLI �
   只有会改变目标、范围、验收或权限的歧义才停下来问用户；其余自己查明。
 - **执行中**：`WORK.md` 是当前状态，直接编辑并保持简短；过时内容删掉，历史进 `LOG.md`。
   每完成一个有意义单元就更新 Next；新的决定用 `catpaw note` 记一笔。
-- **检查**：实际运行验证后立即 `catpaw check <id> <result> "<覆盖了什么>"`，用 `--output`
-  指向原始结果。失败也要记录，而且要先记失败再修。读代码、进程启动、exit 0、Agent 自称完成都不是 Check。
+- **检查**：能用命令验证的，让 CatPaw 代跑：`catpaw check <id> "<覆盖了什么>" -- <命令>`，
+  结果由退出码决定，输出存到 `.catpaw/runs/`，失败自动入账。无法用命令表达的（手动验证、
+  生产观察、审查）才自报：`catpaw check <id> <result> "<覆盖了什么>"`，用 `--output` 指向原始结果。
+  失败也要记录，而且要先记失败再修。读代码、进程启动、Agent 自称完成都不是 Check；
+  命令能否覆盖验收仍由主 Agent 判断。
 - **缺口**：本地通过但真实服务、生产、某平台或某场景未验证时，`catpaw gap <id> add`。
   开发验收与生产交付不同：只做到开发验收就把生产验证列为 Gap，由用户决定是否接受。
   不能替用户接受 Gap。
@@ -55,7 +59,7 @@ snapshot 是每个涉及仓库的 `HEAD` 加未提交改动的哈希，由 CLI �
 ## 命令
 
 ```text
-catpaw init | start | status [id] | check | note | gap add|accept|close
+catpaw init | start | status [id] | check [-- <命令>] | note | gap add|accept|close
 catpaw finish | block | reopen | drop | gate [id] | hook session-start | convert | policy
 ```
 

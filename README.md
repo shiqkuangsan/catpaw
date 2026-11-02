@@ -36,7 +36,7 @@ policy is [src/runtime/policy.md](src/runtime/policy.md).
 npm install -g /path/to/catpaw
 catpaw init
 catpaw start "Restrict Jira transitions" --risk high --repos .,../jira
-catpaw check W-001 passed "unit and contract tests" --output .local/acceptance/run.json
+catpaw check W-001 "unit and contract tests" -- npm test
 catpaw check W-001 passed "security review" --independent --actor reviewer
 catpaw gap W-001 add "production DingTalk path not verified"
 catpaw finish W-001
