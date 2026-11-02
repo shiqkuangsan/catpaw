@@ -225,7 +225,7 @@ export async function convertBoard(projectRoot, { apply = false } = {}) {
   const schema = await detectSchema(root);
   if (schema === null) throw new CatpawError(`No .catpaw board in ${root}.`, "ERR_NO_BOARD");
   if (schema === SCHEMA) return { text: `Board at ${root} already uses schema ${SCHEMA}.`, converted: false };
-  if (schema !== 2 && schema !== 0) {
+  if (schema !== 2) {
     throw new CatpawError(`Schema ${schema} boards are not supported; convert to schema 2 with CatPaw 4 first.`, "ERR_SCHEMA");
   }
   const before = await fingerprint(boardPaths(root).dir);

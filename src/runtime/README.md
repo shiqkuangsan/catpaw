@@ -11,7 +11,8 @@ npm install -g /path/to/catpaw
 | 宿主 | 接入 |
 |---|---|
 | Claude Code | 把 [snippets/claude-code-settings.json](snippets/claude-code-settings.json) 的 `SessionStart` hook 合并进 settings；会话开始自动注入当前 Work |
-| Codex 及其他 | 把 [snippets/agents.md](snippets/agents.md) 加入 `AGENTS.md`；Agent 按其中指引自行运行 `catpaw status` |
+| Codex | 把 [snippets/codex-hooks.json](snippets/codex-hooks.json) 合并进 `~/.codex/hooks.json`，再在 CLI 里用 `/hooks` 审核并信任；hook 定义改动后需重新信任 |
+| 其他宿主 | 把 [snippets/agents.md](snippets/agents.md) 加入 `AGENTS.md`；Agent 按其中指引自行运行 `catpaw status` |
 | Git | 把 [snippets/pre-push](snippets/pre-push) 放到 `.git/hooks/pre-push`；违反规则的 done Work 会阻止推送 |
 | CI / 发布 | `catpaw gate <id>`：该 Work 在当前代码上不满足完成规则时 exit 1 |
 

@@ -107,3 +107,14 @@ test("policy and help are available", async () => {
   assert.match((await run(dir, "--help")).text, /catpaw <command>/);
   assert.match((await run(dir, "--version")).text, /^\d+\.\d+\.\d+$/);
 });
+
+test("a .catpaw directory without board markers is not a board", async () => {
+  const parent = await tempDir();
+  await mkdir(path.join(parent, ".catpaw/bin"), { recursive: true });
+  const child = path.join(parent, "project");
+  await mkdir(child);
+  const input = JSON.stringify({ cwd: child });
+  const out = execFileSync("node", [BIN, "hook", "session-start"], { cwd: child, input, encoding: "utf8" });
+  assert.equal(out, "");
+  assert.match((await runError(child, "status")).message, /catpaw init/);
+});

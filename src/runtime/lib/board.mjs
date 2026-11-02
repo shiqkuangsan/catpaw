@@ -48,7 +48,7 @@ export async function detectSchema(projectRoot) {
     const { data } = parseFrontmatter(await readFile(index, "utf8"));
     if (data.schema) return data.schema;
   }
-  return (await exists(paths.work)) ? 2 : 0;
+  return (await exists(paths.work)) ? 2 : null;
 }
 
 export async function openBoard(projectRoot) {

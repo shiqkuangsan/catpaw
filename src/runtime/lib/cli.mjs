@@ -1,4 +1,5 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -82,19 +83,11 @@ async function bodyFrom(options) {
   return options.bodyFile === "-" ? readStdin() : readFile(options.bodyFile, "utf8");
 }
 
-async function hasBoard(dir) {
-  try {
-    await stat(path.join(dir, ".catpaw"));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// The home directory's .catpaw is the CatPaw 4 runtime install, never a board.
 export async function resolveProject(start) {
   let dir = path.resolve(start);
   for (;;) {
-    if (await hasBoard(dir)) return dir;
+    if (dir !== os.homedir() && (await detectSchema(dir)) !== null) return dir;
     const parent = path.dirname(dir);
     if (parent === dir) return path.resolve(start);
     dir = parent;
