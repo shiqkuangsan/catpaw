@@ -7,8 +7,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CatpawError,
+  SCHEMA,
   STATUSES,
   boardPaths,
+  confirmBoardSchema,
   detectSchema,
   initBoard,
   listWorkIds,
@@ -16,14 +18,15 @@ import {
   nextId,
   openBoard,
   readWork,
+  supportsSchema,
   today,
   validateId,
   workFiles,
   writeWork,
 } from "./board.mjs";
 import { convertBoard } from "./convert.mjs";
-import { appendEntry, RESULTS } from "./log.mjs";
-import { auditDone, evaluate, lastEntry } from "./rules.mjs";
+import { addEntry, RESULTS } from "./log.mjs";
+import { auditDone, evaluate } from "./rules.mjs";
 import { takeSnapshot } from "./snapshot.mjs";
 
 const RUNTIME = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,7 +37,7 @@ export const HELP = `CatPaw — delivery ledger for coding agents
 
 Usage: catpaw <command> [args] [--project <path>] [--json]
 
-  init                                  Create a schema 3 board in .catpaw/
+  init                                  Create a schema ${SCHEMA} board in .catpaw/
   start <title> [--risk high] [--repos a,b] [--id ID] [--parent ID]
         [--goal text] [--acceptance text]... [--next text]
   status [<id>]                         Open Work, or one Work with finishability
@@ -51,7 +54,7 @@ Usage: catpaw <command> [args] [--project <path>] [--json]
   block <id> <reason> | reopen <id> <reason> | drop <id> <reason>
   gate [<id>]                           Exit 1 on rule violations (pre-push, CI)
   hook session-start                    Brief for host SessionStart hooks
-  convert [--apply]                     Convert a schema 2 board (preview by default)
+  convert [--apply]                     Convert a schema 2 or 3 board (preview by default)
   policy                                Print the agent policy
 
 Writes apply immediately except convert. Records never grant permission.
@@ -121,7 +124,9 @@ function now() {
 }
 
 async function load(board, id) {
-  return readWork(board, validateId(need(id, "Work id")));
+  const work = await readWork(board, validateId(need(id, "Work id")));
+  await confirmBoardSchema(board);
+  return work;
 }
 
 async function snapshotFor(board, work) {
@@ -139,7 +144,7 @@ function brief(work, max = 280) {
   const next = (work.sections.get("Next") ?? "").replace(/\s+/g, " ").trim();
   if (next) lines.push(`  Next: ${clip(next)}`);
   for (const gap of work.gaps) lines.push(`  Gap ${gap.id} (${gap.state}): ${clip(gap.text)}`);
-  const last = work.log.at(-1);
+  const last = work.log[0];
   if (last) lines.push(`  Last: ${String(last.at).slice(0, 10)} ${describe(last)}`);
   return lines.join("\n");
 }
@@ -159,7 +164,13 @@ function summary(work) {
 
 async function allWork(board) {
   const ids = await listWorkIds(board);
-  return Promise.all(ids.map((id) => readWork(board, id)));
+  const works = await Promise.all(ids.map((id) => readWork(board, id)));
+  await confirmBoardSchema(board);
+  return works;
+}
+
+function recordEntry(board, work, entry, body) {
+  return addEntry(work.files.log, entry, body, board.schema === SCHEMA);
 }
 
 async function startWork(ctx, board) {
@@ -192,7 +203,7 @@ async function startWork(ctx, board) {
     sections,
   };
   await writeWork(work);
-  await appendEntry(work.files.log, { at: now(), kind: "note" }, `Started: ${title}`);
+  await recordEntry(board, work, { at: now(), kind: "note" }, `Started: ${title}`);
   return { text: `Started ${id}: ${title}\n${path.relative(ctx.project, work.files.work)}`, data: summary(work) };
 }
 
@@ -224,7 +235,7 @@ async function changeGap(ctx, board) {
   } else throw new CatpawError(`Unknown gap action '${action}'.`, "ERR_ARGS");
   work.sections.set("Gaps", lines.join("\n"));
   await writeWork(work);
-  await appendEntry(work.files.log, { at: now(), kind: "gap", gap: gapId, action }, body);
+  await recordEntry(board, work, { at: now(), kind: "gap", gap: gapId, action }, body);
   return { text: `${work.id} ${body}`, data: { gap: gapId, action } };
 }
 
@@ -240,7 +251,7 @@ async function finishWork(ctx, board) {
   }
   work.data.status = "done";
   await writeWork(work);
-  await appendEntry(work.files.log, { at: now(), kind: "done", snapshot: snap.id, repos: snap.detail }, ctx.args[1] ?? "");
+  await recordEntry(board, work, { at: now(), kind: "done", snapshot: snap.id, repos: snap.detail }, ctx.args[1] ?? "");
   return { text: `${work.id} done on snapshot ${snap.id}`, data: { snapshot: snap } };
 }
 
@@ -261,7 +272,7 @@ const commands = {
       const work = await load(board, ctx.args[0]);
       const snap = await snapshotFor(board, work);
       const problems = work.data.status === "done" ? auditDone(work) : evaluate(work, snap.id);
-      const recent = work.log.slice(-5).map((e) => {
+      const recent = work.log.slice(0, 5).map((e) => {
         const current = e.snapshot === snap.id ? " [current snapshot]" : "";
         return `  ${String(e.at).slice(0, 16)} ${describe(e)}${current}: ${e.body.split("\n")[0].slice(0, 160)}`;
       });
@@ -327,8 +338,8 @@ const commands = {
     const current = ran?.after ?? snap;
     const problems = await lockBoard(board, async () => {
       work = await load(board, work.id);
-      await appendEntry(work.files.log, entry, body);
-      work.log.push(entry);
+      await recordEntry(board, work, entry, body);
+      work.log.unshift(entry);
       return evaluate(work, current.id);
     });
     const verdict = problems.length ? `not finishable:\n${problems.map((p) => `  - ${p}`).join("\n")}` : "finishable";
@@ -347,7 +358,7 @@ const commands = {
     const text = [need(ctx.args[1], "text"), await bodyFrom(ctx.options)].filter(Boolean).join("\n\n");
     return lockBoard(board, async () => {
       const work = await load(board, ctx.args[0]);
-      await appendEntry(work.files.log, { at: now(), kind: "note" }, text);
+      await recordEntry(board, work, { at: now(), kind: "note" }, text);
       return { text: `${work.id} note recorded`, data: {} };
     });
   },
@@ -409,10 +420,10 @@ const commands = {
     }
     const schema = await detectSchema(cwd);
     if (schema === null) return { text: "", data: {} };
-    if (schema !== 3) {
+    if (!supportsSchema(schema)) {
       return { text: `CatPaw: .catpaw uses schema ${schema}; preview conversion with 'catpaw convert'.`, data: {} };
     }
-    const board = boardPaths(cwd);
+    const board = { ...boardPaths(cwd), schema };
     const works = (await allWork(board)).filter((w) => w.data.status === "open" || w.data.status === "blocked");
     if (!works.length) return { text: "", data: {} };
     const shown = works.slice(-10);
@@ -444,7 +455,7 @@ async function setStatus(ctx, status, kind, from) {
     }
     work.data.status = status;
     await writeWork(work);
-    await appendEntry(work.files.log, { at: now(), kind }, `${status}: ${reason}`);
+    await recordEntry(board, work, { at: now(), kind }, `${status}: ${reason}`);
     return { text: `${work.id} ${status}`, data: summary(work) };
   });
 }

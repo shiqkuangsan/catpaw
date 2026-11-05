@@ -6,8 +6,7 @@ import { BY, KINDS, RESULTS } from "./log.mjs";
 const DECISIVE = new Set(["passed", "failed", "blocked"]);
 
 function latestDecisive(checks, by) {
-  const decisive = checks.filter((c) => c.by === by && DECISIVE.has(c.result));
-  return decisive.at(-1) ?? null;
+  return checks.find((c) => c.by === by && DECISIVE.has(c.result)) ?? null;
 }
 
 // WORK.md is hand-editable. Anything the rules cannot read must block
@@ -31,9 +30,10 @@ export function formatProblems(work) {
     else seen.add(match[2]);
   }
   work.log.forEach((entry, index) => {
-    if (!KINDS.has(entry.kind)) problems.push(`unreadable LOG.md entry ${index + 1}`);
+    const number = work.schema === 3 ? work.log.length - index : index + 1;
+    if (!KINDS.has(entry.kind)) problems.push(`unreadable LOG.md entry ${number}`);
     else if (entry.kind === "check" && !(RESULTS.has(entry.result) && BY.has(entry.by) && entry.snapshot)) {
-      problems.push(`malformed check in LOG.md entry ${index + 1}`);
+      problems.push(`malformed check in LOG.md entry ${number}`);
     }
   });
   return problems;
@@ -61,15 +61,11 @@ export function evaluate(work, snapshotId) {
   return problems;
 }
 
-export function lastEntry(work, kind) {
-  return work.log.filter((e) => e.kind === kind).at(-1) ?? null;
-}
-
 // A done Work must carry a finish record whose snapshot still satisfies the
 // rules, including failures recorded after it on that same snapshot.
 export function auditDone(work) {
   if (work.data.status !== "done") return [];
-  const done = lastEntry(work, "done");
+  const done = work.log.find((e) => e.kind === "done");
   if (!done) return ["status is done without a finish record"];
   if (done.imported) return formatProblems(work);
   return evaluate(work, done.snapshot);

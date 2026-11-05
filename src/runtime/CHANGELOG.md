@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.2.0 - Unreleased
+
+- 新建看板使用 schema 4，`LOG.md` 新记录在顶部；`status <id>` 的 Recent 和 JSON 日志也按最新在前显示。
+- 现有 schema 3 看板仍可使用。要调整其 `LOG.md`，先运行 `catpaw convert` 预览，再用
+  `catpaw convert --apply` 执行；原看板保存在 `.catpaw/archive/schema-3/`。
+  转换后的看板需用 5.2.0 或更新版本打开。
+
 ## 5.1.0 - Unreleased
 
 Restores the ledger's own integrity. See

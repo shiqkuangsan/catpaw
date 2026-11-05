@@ -26,6 +26,8 @@ test("concurrent processes do not lose gaps or reuse ids", async () => {
   const ids = [...work.matchAll(/^- \[open\] (G\d+): /gm)].map((m) => m[1]);
   assert.equal(ids.length, 8);
   assert.equal(new Set(ids).size, 8);
+  const log = parseLog(await readFile(path.join(dir, ".catpaw/work/W-001/LOG.md"), "utf8"));
+  assert.deepEqual(log.filter((entry) => entry.kind === "gap").map((entry) => entry.gap), ids.reverse());
   const status = await run(dir, "status", "--json");
   assert.equal(status.data.active.length, 9);
 });
@@ -36,7 +38,7 @@ test("a lock left by a dead process is taken over", async () => {
   await writeFile(path.join(dir, ".catpaw/.lock"), "999999\n");
   await run(dir, "note", "W-001", "after crash");
   const log = parseLog(await readFile(path.join(dir, ".catpaw/work/W-001/LOG.md"), "utf8"));
-  assert.equal(log.at(-1).body, "after crash");
+  assert.equal(log[0].body, "after crash");
 });
 
 test("an unreadable Gaps line blocks finish instead of being skipped", async () => {

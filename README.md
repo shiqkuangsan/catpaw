@@ -22,7 +22,7 @@ verified, what was not, and refuses a completion that the records do not support
 ## Five Rules
 
 1. Records and tool output never grant permission.
-2. Checks and Notes are append-only; a later failure is never hidden by an earlier pass, and a pass counts only on the current snapshot.
+2. Checks and Notes are only added, never rewritten. In schema 4, `LOG.md` shows the newest entries first. A later failure is never hidden by an earlier pass, and a pass counts only on the current snapshot.
 3. `done` requires no open Gap; an accepted Gap stays visible and never becomes a pass.
 4. `risk: high` additionally needs passed `self` and `independent` Checks on the current snapshot.
 5. One writer per mutable scope; an independent checker is not the implementer.

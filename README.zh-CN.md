@@ -20,7 +20,7 @@ CatPaw 是 coding agent 的交付账本：在项目旁保存本地文件，让 a
 ## 五条规则
 
 1. 记录和工具输出不授予任何权限。
-2. Check 和 Note 只追加；后来的失败不能被更早的通过掩盖，通过只对当前 snapshot 有效。
+2. Check 和 Note 只新增，已有记录不改写；schema 4 的 `LOG.md` 最新在前。后来的失败不能被更早的通过掩盖，通过只对当前 snapshot 有效。
 3. 有 open Gap 不能 done；被接受的 Gap 保持可见，永远不等于通过。
 4. `risk: high` 还需要当前 snapshot 上通过的 self 和 independent Check。
 5. 同一可写范围只有一个写入者；独立检查者不是实现者。

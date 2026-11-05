@@ -22,12 +22,12 @@ npm install -g /path/to/catpaw
 
 ```text
 .catpaw/
-  catpaw.json            {"schema": 3}
+  catpaw.json            {"schema": 4}
   work/<ID>/WORK.md      当前状态：frontmatter + Goal / Acceptance / Gaps / Decisions / Next
-  work/<ID>/LOG.md       只追加：Check、Gap、Note、done 等记录
+  work/<ID>/LOG.md       最新在前：Check、Gap、Note、done 等记录
   runs/<ID>/*.log        代跑检查的原始输出；目录自带 .gitignore，不进 Git
   .lock                  写入时的短暂锁；持有进程已退出或超过 60 秒视为失效
-  archive/schema-2/      convert 后保留的旧看板（如有）
+  archive/schema-<n>/    convert 后保留的旧看板（如有）
 ```
 
 `WORK.md` frontmatter：`id`、`title`、`status`（open/blocked/done/dropped）、`risk`（normal/high）、
@@ -48,14 +48,18 @@ frontmatter `id` 与目录不符、损坏的 `LOG.md` 条目。
 结果不为 passed 时 CLI exit 1。结果绑定运行前的 snapshot；运行中文件被改动时记录 `drift` 并提示。
 不保持锁运行命令。
 
-## 从 schema 2 转换
+## 转换旧看板
 
 ```bash
 catpaw convert            # 预览
 catpaw convert --apply    # 执行
 ```
 
-旧 Work 正文、Plan 和 Evidence 原文按时间写入对应 `LOG.md`；有结果的 Evidence 变为 Check，
+**schema 3 → 4**：新版仍能读写 schema 3；`status <id>` 始终最新在前，但旧文件在转换前保持原来的顺序。
+执行转换会把各 `LOG.md` 的记录顺序倒过来，保留正文、检查结果和原始输出路径；原看板保存在
+`archive/schema-3/`。执行前停止该项目的其他 CatPaw 命令，转换后使用 5.2.0 或更新版本。
+
+**schema 2 → 4**：旧 Work 正文、Plan 和 Evidence 原文按时间从新到旧写入对应 `LOG.md`；有结果的 Evidence 变为 Check，
 其 snapshot 为 `schema2:<candidate>`，永远不算当前。Milestone 变为 Work，成员通过 `parent` 关联。
 topic Evidence、`index.md` 和其他目录只在 `archive/schema-2/` 中保留。转换前后校验条目数和
 failed/blocked 数量，旧看板在转换期间被修改则放弃替换。仍在进行的 Work 会在 Next 中提示整理导入内容。

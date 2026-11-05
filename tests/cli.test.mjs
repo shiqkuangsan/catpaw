@@ -10,7 +10,7 @@ import { project, run, runError, tempDir } from "./helpers.mjs";
 
 const BIN = fileURLToPath(new URL("../src/runtime/bin/catpaw.mjs", import.meta.url));
 
-test("start writes WORK.md and an append-only LOG.md", async () => {
+test("start writes WORK.md and the first LOG.md entry", async () => {
   const dir = await project();
   await run(dir, "start", "Ship: export", "--acceptance", "CSV opens", "--acceptance", "UTF-8", "--next", "write parser");
   const { data, body } = parseFrontmatter(await readFile(path.join(dir, ".catpaw/work/W-001/WORK.md"), "utf8"));
@@ -53,7 +53,11 @@ test("status lifecycle commands log transitions", async () => {
   await run(dir, "drop", "W-001", "superseded");
   assert.equal((await runError(dir, "finish", "W-001")).code, "ERR_STATE");
   const kinds = parseLog(await readFile(path.join(dir, ".catpaw/work/W-001/LOG.md"), "utf8")).map((e) => e.kind);
-  assert.deepEqual(kinds, ["note", "blocked", "reopened", "dropped"]);
+  assert.deepEqual(kinds, ["dropped", "reopened", "blocked", "note"]);
+  const status = await run(dir, "status", "W-001");
+  assert.match(status.text, /Last: .* dropped/);
+  assert.match(status.text, /Recent:\n.*dropped: dropped: superseded\n.*reopened: open: answered/);
+  assert.deepEqual(status.data.log.map((entry) => entry.kind), kinds);
 });
 
 test("commands find the board from a subdirectory", async () => {

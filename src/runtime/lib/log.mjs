@@ -1,8 +1,8 @@
-// LOG.md: append-only entries. Each entry starts with a machine-readable
-// comment followed by a human heading and free-form body.
+// Each LOG.md entry starts with a machine-readable comment, a heading and
+// a free-form body. Schema 4 puts new entries at the top.
 
 import { readFile } from "node:fs/promises";
-import { appendText } from "./fsutil.mjs";
+import { appendText, writeAtomic } from "./fsutil.mjs";
 
 const MARKER = "<!-- catpaw ";
 const MARKER_PATTERN = /^<!-- catpaw (\{.*\}) -->$/;
@@ -49,14 +49,41 @@ export function parseLog(text) {
 }
 
 export async function readLog(file) {
+  return parseLog(await readLogText(file));
+}
+
+async function readLogText(file) {
   try {
-    return parseLog(await readFile(file, "utf8"));
+    return await readFile(file, "utf8");
   } catch (error) {
-    if (error.code === "ENOENT") return [];
+    if (error.code === "ENOENT") return "";
     throw error;
   }
 }
 
-export async function appendEntry(file, entry, body) {
-  await appendText(file, formatEntry(entry, body));
+function withNewline(text) {
+  return text && !text.endsWith("\n") ? `${text}\n` : text;
+}
+
+// Reverse whole blocks, including malformed markers. Reformatting parsed
+// entries would lose hand-edited text or make a damaged record disappear.
+export function reverseLog(text) {
+  const starts = [...text.matchAll(/^<!-- catpaw /gm)].map((match) => match.index);
+  if (starts.length < 2) return text;
+  const blocks = starts.map((start, i) => text.slice(start, starts[i + 1]));
+  return text.slice(0, starts[0]) + blocks.reverse().map(withNewline).join("");
+}
+
+// The caller holds the board lock for this read and write.
+export async function addEntry(file, entry, body, newestFirst) {
+  const next = formatEntry(entry, body);
+  const existing = await readLogText(file);
+  if (!newestFirst) {
+    const separator = existing && !existing.endsWith("\n") ? "\n" : "";
+    await appendText(file, separator + next);
+    return;
+  }
+  const first = existing.search(/^<!-- catpaw /m);
+  const offset = first === -1 ? existing.length : first;
+  await writeAtomic(file, withNewline(existing.slice(0, offset)) + next + existing.slice(offset));
 }

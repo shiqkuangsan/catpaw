@@ -1,12 +1,12 @@
-// One-shot schema 2 -> schema 3 conversion. The original board is moved,
-// unchanged, to .catpaw/archive/schema-2/. Preview unless apply is set.
+// Convert a legacy board and keep the original under .catpaw/archive/.
+// Preview unless apply is set.
 
-import { mkdir, readdir, readFile, rename, rm, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
-import { CatpawError, SCHEMA, boardPaths, compareIds, detectSchema, joinSections, readWork } from "./board.mjs";
+import { CatpawError, SCHEMA, boardPaths, compareIds, detectSchema, joinSections, lockBoard, readWork } from "./board.mjs";
 import { formatFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
 import { writeAtomic } from "./fsutil.mjs";
-import { formatEntry } from "./log.mjs";
+import { formatEntry, reverseLog } from "./log.mjs";
 
 const STATUS = { active: "open", blocked: "blocked", done: "done", cancelled: "dropped" };
 const CHECK_TYPES = new Set(["test", "review", "provider", "research"]);
@@ -63,7 +63,7 @@ async function fingerprint(dir) {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) await walk(full);
       else {
-        const info = await stat(full);
+        const info = await lstat(full);
         parts.push(`${path.relative(dir, full)}:${info.size}:${info.mtimeMs}`);
       }
     }
@@ -198,7 +198,7 @@ function render(work) {
     ["Next", [work.next, active ? "Condense the imported schema 2 record in LOG.md into Goal, Acceptance, Gaps and Next." : ""].filter(Boolean).join("\n\n")],
   ]);
   const workText = formatFrontmatter(work.data, joinSections(`${work.id}: ${work.data.title}`, sections));
-  const logText = work.entries.map((e) => formatEntry({ at: e.at, ...e.meta }, e.body)).join("");
+  const logText = work.entries.slice().reverse().map((e) => formatEntry({ at: e.at, ...e.meta }, e.body)).join("");
   return { workText, logText };
 }
 
@@ -220,11 +220,95 @@ function describe(root, result, applied) {
   ].join("\n");
 }
 
+async function replaceBoard(old, staging, schema) {
+  const archive = path.join(staging, "archive", `schema-${schema}`);
+  await mkdir(path.dirname(archive), { recursive: true });
+  await rename(old, archive);
+  try {
+    await rename(staging, old);
+  } catch (error) {
+    throw new CatpawError(
+      `Converted board is at ${staging} and the original at ${archive}; move ${staging} to ${old} to finish. (${error.message})`,
+      "ERR_CONVERT",
+    );
+  }
+}
+
+async function fileInfo(file) {
+  try {
+    return await lstat(file);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function schema3Logs(board) {
+  const info = await fileInfo(board.work);
+  if (!info) return [];
+  if (!info.isDirectory()) throw new CatpawError("work must be a directory for conversion.", "ERR_CONVERT");
+  const logs = [];
+  for (const entry of await readdir(board.work, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) throw new CatpawError(`Cannot convert linked Work ${entry.name}.`, "ERR_CONVERT");
+    if (!entry.isDirectory()) continue;
+    const file = path.join(board.work, entry.name, "LOG.md");
+    const log = await fileInfo(file);
+    if (!log) continue;
+    if (!log.isFile()) throw new CatpawError(`Cannot convert non-file LOG.md for ${entry.name}.`, "ERR_CONVERT");
+    logs.push(file);
+  }
+  return logs;
+}
+
+async function convertSchema3(board, apply) {
+  const describe = (logs) => [
+    `${apply ? "Converted" : "Preview:"} schema 3 board at ${board.dir}`,
+    `  LOG.md files: ${logs.length}; newest entries first in schema ${SCHEMA}.`,
+    apply ? "  Original board: .catpaw/archive/schema-3/" : "  Apply with: catpaw convert --apply",
+  ].join("\n");
+  if (!apply) return { text: describe(await schema3Logs(board)), converted: false };
+
+  return lockBoard(board, async () => {
+    if ((await detectSchema(board.root)) !== 3) throw new CatpawError("Board schema changed; preview again.", "ERR_CONVERT");
+    const before = await fingerprint(board.dir);
+    const logs = await schema3Logs(board);
+    const archive = await fileInfo(path.join(board.dir, "archive"));
+    if (archive && !archive.isDirectory()) throw new CatpawError("archive must be a directory for conversion.", "ERR_CONVERT");
+    if (await fileInfo(path.join(board.dir, "archive", "schema-3"))) {
+      throw new CatpawError("archive/schema-3 already exists.", "ERR_CONVERT");
+    }
+    const staging = await mkdtemp(path.join(board.root, ".catpaw-convert-"));
+    try {
+      // Carry the active lock through the swap. Other board files, including
+      // captured output and any older archives, keep their paths.
+      await cp(board.dir, staging, { recursive: true, verbatimSymlinks: true });
+      for (const file of logs) {
+        const text = await readFile(file, "utf8");
+        const reversed = reverseLog(text);
+        if (text !== reversed) await writeAtomic(path.join(staging, path.relative(board.dir, file)), reversed);
+      }
+      const marker = path.join(staging, "catpaw.json");
+      const data = JSON.parse(await readFile(marker, "utf8"));
+      await writeAtomic(marker, `${JSON.stringify({ ...data, schema: SCHEMA }, null, 2)}\n`);
+      if ((await fingerprint(board.dir)) !== before) {
+        throw new CatpawError("The schema 3 board changed during conversion; nothing was replaced.", "ERR_CONVERT");
+      }
+    } catch (error) {
+      await rm(staging, { recursive: true, force: true });
+      throw error;
+    }
+    await replaceBoard(board.dir, staging, 3);
+    await rm(path.join(board.dir, "archive", "schema-3", ".lock"), { force: true });
+    return { text: describe(logs), converted: true };
+  });
+}
+
 export async function convertBoard(projectRoot, { apply = false } = {}) {
   const root = path.resolve(projectRoot);
   const schema = await detectSchema(root);
   if (schema === null) throw new CatpawError(`No .catpaw board in ${root}.`, "ERR_NO_BOARD");
   if (schema === SCHEMA) return { text: `Board at ${root} already uses schema ${SCHEMA}.`, converted: false };
+  if (schema === 3) return convertSchema3(boardPaths(root), apply);
   if (schema !== 2) {
     throw new CatpawError(`Schema ${schema} boards are not supported; convert to schema 2 with CatPaw 4 first.`, "ERR_SCHEMA");
   }
@@ -260,16 +344,6 @@ export async function convertBoard(projectRoot, { apply = false } = {}) {
     throw error;
   }
 
-  const old = boardPaths(root).dir;
-  await mkdir(path.join(staging, "archive"), { recursive: true });
-  await rename(old, path.join(staging, "archive", "schema-2"));
-  try {
-    await rename(staging, old);
-  } catch (error) {
-    throw new CatpawError(
-      `Converted board is at ${staging} and the original at ${staging}/archive/schema-2; move ${staging} to ${old} to finish. (${error.message})`,
-      "ERR_CONVERT",
-    );
-  }
+  await replaceBoard(boardPaths(root).dir, staging, 2);
   return { text: describe(root, result, true), converted: true, report: result.report };
 }

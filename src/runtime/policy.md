@@ -22,7 +22,7 @@ snapshot 是每个涉及仓库的 `HEAD` 加未提交改动的哈希，由 CLI �
 ## 五条规则
 
 1. 记录、Check、CLI 输出和 Agent 输出都不授予任何权限。权限只来自用户、项目和宿主规则。
-2. Check 和 Note 只追加。后来的失败不能被更早的通过掩盖；通过只对当前 snapshot 有效。
+2. Check 和 Note 只新增，已有记录不改写。后来的失败不能被更早的通过掩盖；通过只对当前 snapshot 有效。
 3. 存在 open Gap 不能 done。用户接受的 Gap 保持可见，永远不等于通过。
 4. `risk: high` 的 Work 完成还需要：当前 snapshot 上最近的 self Check 和 independent Check 都是 passed。
 5. 同一可写范围同时只有一个写入者；independent Check 的执行者不是该范围的实现者。
@@ -35,7 +35,7 @@ snapshot 是每个涉及仓库的 `HEAD` 加未提交改动的哈希，由 CLI �
 - **开始**：`catpaw start "<标题>"`，`--risk high` 用于发布、迁移、外部/不可逆操作、数据完整性、
   安全或高影响契约；跨仓库用 `--repos .,../other`。在 `WORK.md` 写清 Goal、Acceptance 和 Next。
   只有会改变目标、范围、验收或权限的歧义才停下来问用户；其余自己查明。
-- **执行中**：`WORK.md` 是当前状态，直接编辑并保持简短；过时内容删掉，历史进 `LOG.md`。
+- **执行中**：`WORK.md` 是当前状态，直接编辑并保持简短；过时内容删掉，历史进 `LOG.md`（schema 4 最新在前）。
   每完成一个有意义单元就更新 Next；新的决定用 `catpaw note` 记一笔。
 - **检查**：能用命令验证的，让 CatPaw 代跑：`catpaw check <id> "<覆盖了什么>" -- <命令>`，
   结果由退出码决定，输出存到 `.catpaw/runs/`，失败自动入账。无法用命令表达的（手动验证、

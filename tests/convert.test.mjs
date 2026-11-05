@@ -3,7 +3,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { parseLog } from "../src/runtime/lib/log.mjs";
-import { gitRepo, run, runError, tempDir } from "./helpers.mjs";
+import { gitRepo, project, run, runError, tempDir } from "./helpers.mjs";
 
 async function write(file, text) {
   await mkdir(path.dirname(file), { recursive: true });
@@ -69,12 +69,12 @@ test("convert applies, archives the original and keeps every failure", async () 
   const log = parseLog(await readFile(path.join(dir, ".catpaw/work/FR-001/LOG.md"), "utf8"));
   assert.deepEqual(
     log.map((e) => [e.kind, e.result ?? null]),
-    [["note", null], ["note", null], ["check", "failed"], ["check", "passed"], ["done", null]],
+    [["done", null], ["check", "passed"], ["check", "failed"], ["note", null], ["note", null]],
   );
-  assert.match(log[0].body, /## Handoff\n\nkeep this/);
+  assert.match(log[4].body, /## Handoff\n\nkeep this/);
   assert.equal(log[2].snapshot, "schema2:abc");
-  assert.equal(log[3].by, "independent");
-  assert.equal(log[3].actor, "rev");
+  assert.equal(log[1].by, "independent");
+  assert.equal(log[1].actor, "rev");
 
   const followup = parseLog(await readFile(path.join(dir, ".catpaw/work/FR-002/LOG.md"), "utf8"));
   assert.deepEqual(followup.map((e) => e.kind), ["note", "note"]);
@@ -86,7 +86,7 @@ test("convert applies, archives the original and keeps every failure", async () 
   const status = await run(dir, "status");
   assert.match(status.text, /CatPaw: 2 active Work \(1 done, 1 dropped\)/);
   assert.equal((await run(dir, "gate")).exitCode, 0);
-  assert.match((await run(dir, "convert")).text, /already uses schema 3/);
+  assert.match((await run(dir, "convert")).text, /already uses schema 4/);
 });
 
 test("imported checks never count as current", async () => {
@@ -95,4 +95,45 @@ test("imported checks never count as current", async () => {
   const status = await run(dir, "status", "FR-001");
   assert.doesNotMatch(status.text, /current snapshot\]: .*Final review/);
   assert.match(status.text, /done record consistent/);
+});
+
+test("schema 3 preview is read-only and conversion keeps the latest failure and its output", async () => {
+  const dir = await project();
+  const board = path.join(dir, ".catpaw");
+  const marker = path.join(board, "catpaw.json");
+  await writeFile(marker, '{"schema":3,"extra":"keep"}\n');
+  await run(dir, "start", "Legacy log");
+  await run(dir, "check", "W-001", "passed", "first pass");
+  await run(dir, "finish", "W-001");
+  await run(dir, "check", "W-001", "later failure", "--", process.execPath, "-e", 'console.log("failure output"); process.exit(1)');
+
+  const logPath = "work/W-001/LOG.md";
+  const logFile = path.join(board, logPath);
+  // Legacy timestamps are recorded to the second. Physical order breaks ties.
+  const original = "# History\n\n" + (await readFile(logFile, "utf8"))
+    .replaceAll(/"at":"[^"]+"/g, '"at":"2026-11-05T00:00:00Z"').trimEnd();
+  await writeFile(logFile, original);
+  const legacy = parseLog(original);
+  assert.equal(legacy.at(-1).result, "failed");
+  const output = path.resolve(dir, legacy.at(-1).output[0]);
+  const originalOutput = await readFile(output, "utf8");
+  const oldStatus = await run(dir, "status", "W-001");
+  assert.equal(oldStatus.data.log[0].result, "failed");
+  assert.match((await run(dir, "gate")).text, /latest self check .* failed/);
+
+  const preview = await run(dir, "convert");
+  assert.match(preview.text, /LOG.md files: 1/);
+  assert.equal(await readFile(logFile, "utf8"), original);
+  assert.equal(JSON.parse(await readFile(marker, "utf8")).schema, 3);
+  await run(dir, "convert", "--apply");
+  assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { schema: 4, extra: "keep" });
+  assert.equal(await readFile(path.join(board, "archive/schema-3", logPath), "utf8"), original);
+  const converted = await readFile(logFile, "utf8");
+  assert.match(converted, /^# History\n\n<!-- catpaw /);
+  assert.deepEqual(parseLog(converted), legacy.reverse());
+  assert.equal(await readFile(output, "utf8"), originalOutput);
+  assert.match((await run(dir, "gate")).text, /latest self check .* failed/);
+  await run(dir, "check", "W-001", "passed", "rerun");
+  assert.equal((await run(dir, "gate")).exitCode, 0);
+  assert.equal(parseLog(await readFile(logFile, "utf8"))[0].body, "rerun");
 });

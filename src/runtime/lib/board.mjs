@@ -4,7 +4,8 @@ import { formatFrontmatter, parseFrontmatter } from "./frontmatter.mjs";
 import { withLock, writeAtomic } from "./fsutil.mjs";
 import { readLog } from "./log.mjs";
 
-export const SCHEMA = 3;
+export const SCHEMA = 4;
+export const supportsSchema = (schema) => schema === 3 || schema === SCHEMA;
 export const STATUSES = new Set(["open", "blocked", "done", "dropped"]);
 export const RISKS = new Set(["normal", "high"]);
 export const SECTIONS = ["Goal", "Acceptance", "Gaps", "Decisions", "Next"];
@@ -42,7 +43,7 @@ export async function detectSchema(projectRoot) {
   if (!(await exists(paths.dir))) return null;
   if (await exists(paths.marker)) {
     const marker = JSON.parse(await readFile(paths.marker, "utf8"));
-    return marker.schema ?? SCHEMA;
+    return marker.schema ?? 3;
   }
   const index = path.join(paths.dir, "index.md");
   if (await exists(index)) {
@@ -58,25 +59,34 @@ export async function openBoard(projectRoot) {
   if (schema === null) {
     throw new CatpawError(`No .catpaw board in ${paths.root}. Run 'catpaw init'.`, "ERR_NO_BOARD");
   }
-  if (schema !== SCHEMA) {
+  if (!supportsSchema(schema)) {
     throw new CatpawError(
       `Board at ${paths.dir} uses schema ${schema}. Preview conversion with 'catpaw convert'.`,
       "ERR_SCHEMA",
     );
   }
-  return paths;
+  return { ...paths, schema };
 }
 
 // Every board write runs under one lock so read-modify-write of WORK.md and
 // Work id allocation cannot lose concurrent updates.
 export function lockBoard(board, fn) {
-  return withLock(path.join(board.dir, ".lock"), fn);
+  return withLock(path.join(board.dir, ".lock"), async () => {
+    await confirmBoardSchema(board);
+    return fn();
+  });
+}
+
+export async function confirmBoardSchema(board) {
+  if (board.schema != null && (await detectSchema(board.root)) !== board.schema) {
+    throw new CatpawError("Board schema changed; retry the command.", "ERR_SCHEMA");
+  }
 }
 
 export async function initBoard(projectRoot) {
   const paths = boardPaths(projectRoot);
   const schema = await detectSchema(projectRoot);
-  if (schema === SCHEMA) return { paths, created: false };
+  if (supportsSchema(schema)) return { paths, created: false };
   if (schema !== null) {
     throw new CatpawError(`Existing board uses schema ${schema}; use 'catpaw convert'.`, "ERR_SCHEMA");
   }
@@ -134,13 +144,15 @@ export async function readWork(board, id) {
   }
   const { data, body } = parseFrontmatter(text);
   const { sections } = splitSections(body);
+  const log = await readLog(files.log);
   return {
     id,
+    schema: board.schema,
     files,
     data,
     sections,
     gaps: parseGaps(sections.get("Gaps")),
-    log: await readLog(files.log),
+    log: board.schema === 3 ? log.reverse() : log,
   };
 }
 
