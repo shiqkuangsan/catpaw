@@ -274,7 +274,9 @@ const commands = {
       const problems = work.data.status === "done" ? auditDone(work) : evaluate(work, snap.id);
       const recent = work.log.slice(0, 5).map((e) => {
         const current = e.snapshot === snap.id ? " [current snapshot]" : "";
-        return `  ${String(e.at).slice(0, 16)} ${describe(e)}${current}: ${e.body.split("\n")[0].slice(0, 160)}`;
+        const at = String(e.at);
+        const time = at.endsWith("Z") ? `${at.slice(0, 16)} UTC` : at;
+        return `  ${time} ${describe(e)}${current}: ${e.body.split("\n")[0].slice(0, 160)}`;
       });
       const verdict =
         work.data.status === "done"

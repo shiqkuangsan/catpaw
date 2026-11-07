@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.2.1 - Unreleased
+
+- `status <id>` 的 Recent 时间为 UTC 时间戳显式显示 `UTC`，避免被误读为系统本地时间。
+- 只有日期的历史记录保持日期显示，带其他时区偏移的记录保留完整时间及偏移。
+
 ## 5.2.0 - Unreleased
 
 - 新建看板使用 schema 4，`LOG.md` 新记录在顶部；`status <id>` 的 Recent 和 JSON 日志也按最新在前显示。

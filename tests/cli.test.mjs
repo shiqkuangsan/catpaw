@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { parseFrontmatter } from "../src/runtime/lib/frontmatter.mjs";
-import { parseLog } from "../src/runtime/lib/log.mjs";
+import { formatEntry, parseLog } from "../src/runtime/lib/log.mjs";
 import { project, run, runError, tempDir } from "./helpers.mjs";
 
 const BIN = fileURLToPath(new URL("../src/runtime/bin/catpaw.mjs", import.meta.url));
@@ -65,6 +65,31 @@ test("commands find the board from a subdirectory", async () => {
   await mkdir(path.join(dir, "src/deep"), { recursive: true });
   await run(dir, "start", "x");
   assert.match((await run(path.join(dir, "src/deep"), "status")).text, /W-001/);
+});
+
+test("Recent labels UTC instants and preserves date-only and offset timestamps", async () => {
+  const dir = await project();
+  await run(dir, "start", "Timezone display");
+  const timestamps = [
+    "2026-11-07T16:02:23Z",
+    "2026-11-07T16:01:23.456Z",
+    "2026-11-07T08:00:00-08:00",
+    "2026-09-01",
+  ];
+  await writeFile(
+    path.join(dir, ".catpaw/work/W-001/LOG.md"),
+    timestamps.map((at, index) => formatEntry({ at, kind: "note" }, `entry ${index}`)).join(""),
+  );
+  const status = await run(dir, "status", "W-001");
+  const lines = status.text.split("\n");
+  const start = lines.indexOf("  Recent:") + 1;
+  assert.deepEqual(lines.slice(start, start + timestamps.length), [
+    "  2026-11-07T16:02 UTC note: entry 0",
+    "  2026-11-07T16:01 UTC note: entry 1",
+    "  2026-11-07T08:00:00-08:00 note: entry 2",
+    "  2026-09-01 note: entry 3",
+  ]);
+  assert.deepEqual(status.data.log.map((entry) => entry.at), timestamps);
 });
 
 test("missing board and wrong schema give actionable errors", async () => {
