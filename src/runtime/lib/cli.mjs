@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -468,20 +468,37 @@ function quote(arg) {
 
 // Run a check command and derive its result from the exit code. Output goes to
 // .catpaw/runs/, which ignores itself in Git. The board lock is not held here.
+// Piped stdin (a heredoc script, for example) is forwarded as if the command ran
+// directly, and saved next to the output so the checked logic stays reviewable.
 async function runCheck(ctx, board, id, command, before) {
   const timeout = ctx.options.timeout === undefined ? 0 : Number(ctx.options.timeout);
   if (!(timeout >= 0)) throw new CatpawError("--timeout must be a number of seconds.", "ERR_ARGS");
   const runs = path.join(board.dir, "runs");
   await mkdir(path.join(runs, id), { recursive: true });
   await writeFile(path.join(runs, ".gitignore"), "*\n");
-  const file = path.join(runs, id, `${now().replace(/[:]/g, "")}-${randomBytes(4).toString("hex")}.log`);
+  const base = path.join(runs, id, `${now().replace(/[:]/g, "")}-${randomBytes(4).toString("hex")}`);
+  const file = `${base}.log`;
   const out = createWriteStream(file, { flags: "wx" });
+  const input = process.stdin.isTTY ? null : { file: `${base}.stdin`, bytes: 0, hash: createHash("sha256"), out: null };
   const shown = command.map(quote).join(" ");
   out.write(`$ ${shown}\n# cwd: ${ctx.cwd}\n\n`);
   const started = Date.now();
   let tail = "";
   const outcome = await new Promise((resolve) => {
-    const child = spawn(command[0], command.slice(1), { cwd: ctx.cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command[0], command.slice(1), { cwd: ctx.cwd, stdio: [input ? "pipe" : "ignore", "pipe", "pipe"] });
+    const forward = (chunk) => {
+      input.out ??= createWriteStream(input.file, { flags: "wx" });
+      input.out.write(chunk);
+      input.bytes += chunk.length;
+      input.hash.update(chunk);
+      child.stdin.write(chunk);
+    };
+    const endInput = () => child.stdin.end();
+    if (input) {
+      child.stdin.on("error", () => {});
+      if (process.stdin.readableEnded) endInput();
+      else process.stdin.on("data", forward).on("end", endInput);
+    }
     let stopped = null;
     const stop = (why) => {
       stopped = why;
@@ -493,6 +510,10 @@ async function runCheck(ctx, board, id, command, before) {
     const done = (value) => {
       clearTimeout(timer);
       process.off("SIGINT", onSignal).off("SIGTERM", onSignal);
+      if (input) {
+        process.stdin.off("data", forward).off("end", endInput).pause();
+        process.stdin.unref?.();
+      }
       resolve(value);
     };
     const collect = (chunk) => {
@@ -505,6 +526,7 @@ async function runCheck(ctx, board, id, command, before) {
     child.on("close", (code, signal) => done({ code, signal, stopped }));
   });
   await new Promise((resolve) => out.end(resolve));
+  if (input?.out) await new Promise((resolve) => input.out.end(resolve));
   const ms = Date.now() - started;
   const after = await takeSnapshot(board.root, (await load(board, id)).data.repos ?? ["."], board.dir);
   const run = { command, cwd: path.relative(board.root, ctx.cwd) || ".", exit: outcome.code ?? null, ms };
@@ -525,8 +547,14 @@ async function runCheck(ctx, board, id, command, before) {
   }
   if (outcome.signal) run.signal = outcome.signal;
   if (after.id !== before.id) run.drift = after.id;
+  let fed = "";
+  if (input?.bytes) {
+    const sha256 = input.hash.digest("hex");
+    run.stdin = { bytes: input.bytes, sha256, file: path.relative(board.root, input.file) };
+    fed = ` with ${input.bytes} bytes of stdin (${run.stdin.file})`;
+  }
   const output = path.relative(board.root, file);
-  const line = `Ran \`${shown}\`: ${how} in ${(ms / 1000).toFixed(1)}s; output ${output}`;
+  const line = `Ran \`${shown}\`${fed}: ${how} in ${(ms / 1000).toFixed(1)}s; output ${output}`;
   const lastLines = tail.trimEnd().split("\n").slice(-30).join("\n");
   return { result, run, output, line, tail: lastLines, after };
 }

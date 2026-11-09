@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { git, project, run, runError } from "./helpers.mjs";
 
 const NODE = process.execPath;
+const BIN = fileURLToPath(new URL("../src/runtime/bin/catpaw.mjs", import.meta.url));
+
+async function runChecks(dir) {
+  return (await run(dir, "status", "W-001", "--json")).data.log.filter((e) => e.kind === "check" && e.run);
+}
 
 async function lastCheck(dir) {
   const result = await run(dir, "status", "W-001", "--json");
@@ -67,4 +74,39 @@ test("a run check does not accept a hand-written result", async () => {
   const error = await runError(dir, "check", "W-001", "passed", "tests", "--", NODE, "-e", "");
   assert.equal(error.code, "ERR_ARGS");
   assert.equal((await runError(dir, "check", "W-001", "tests", "--")).code, "ERR_ARGS");
+});
+
+test("piped stdin reaches the command and is saved with the run", async () => {
+  const dir = await project();
+  await run(dir, "start", "x");
+  const script = "console.log('from stdin'); process.exit(4)";
+  const child = spawnSync(NODE, [BIN, "check", "W-001", "stdin script", "--", NODE, "-"], { cwd: dir, input: script, encoding: "utf8" });
+  assert.equal(child.status, 1);
+  assert.match(child.stdout, /with \d+ bytes of stdin/);
+  assert.match(child.stdout, /from stdin/);
+  const [entry] = await runChecks(dir);
+  assert.equal(entry.result, "failed");
+  assert.equal(entry.run.stdin.bytes, Buffer.byteLength(script));
+  assert.equal(await readFile(path.join(dir, entry.run.stdin.file), "utf8"), script);
+});
+
+test("empty stdin records no input", async () => {
+  const dir = await project();
+  await run(dir, "start", "x");
+  const child = spawnSync(NODE, [BIN, "check", "W-001", "plain", "--", NODE, "-e", ""], { cwd: dir, input: "", encoding: "utf8" });
+  assert.equal(child.status, 0);
+  const [entry] = await runChecks(dir);
+  assert.equal(entry.run.stdin, undefined);
+});
+
+test("an open stdin pipe does not keep catpaw waiting after the command exits", async () => {
+  const dir = await project();
+  await run(dir, "start", "x");
+  const child = spawn(NODE, [BIN, "check", "W-001", "quick", "--", NODE, "-e", ""], { cwd: dir, stdio: ["pipe", "ignore", "ignore"] });
+  const code = await Promise.race([
+    new Promise((resolve) => child.on("close", resolve)),
+    new Promise((resolve) => setTimeout(() => resolve("hung"), 10_000)),
+  ]);
+  child.kill();
+  assert.equal(code, 0);
 });

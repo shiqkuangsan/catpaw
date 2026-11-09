@@ -25,7 +25,7 @@ npm install -g /path/to/catpaw
   catpaw.json            {"schema": 4}
   work/<ID>/WORK.md      当前状态：frontmatter + Goal / Acceptance / Gaps / Decisions / Next
   work/<ID>/LOG.md       最新在前：Check、Gap、Note、done 等记录
-  runs/<ID>/*.log        代跑检查的原始输出；目录自带 .gitignore，不进 Git
+  runs/<ID>/*.log        代跑检查的原始输出（有管道输入时另存 *.stdin）；目录自带 .gitignore，不进 Git
   .lock                  写入时的短暂锁；持有进程已退出或超过 60 秒视为失效
   archive/schema-<n>/    convert 后保留的旧看板（如有）
 ```
@@ -46,7 +46,8 @@ frontmatter `id` 与目录不符、损坏的 `LOG.md` 条目。
 代跑检查：`catpaw check <id> "<摘要>" [--timeout 秒] -- <命令> [参数]`。命令在当前目录直接执行（不经 shell；
 需要管道时用 `sh -c`），退出码 0 记 passed，非 0 或超时记 failed，无法启动或被中断记 blocked；
 结果不为 passed 时 CLI exit 1。结果绑定运行前的 snapshot；运行中文件被改动时记录 `drift` 并提示。
-不保持锁运行命令。
+不保持锁运行命令。catpaw 的非终端 stdin（heredoc、管道）原样转给命令，内容另存为 `.stdin` 文件，
+记录 `run.stdin`（`bytes`、`sha256`、`file`）；终端 stdin 不转发。
 
 ## 转换旧看板
 

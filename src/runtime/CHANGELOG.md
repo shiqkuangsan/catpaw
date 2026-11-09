@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.2.2 - Unreleased
+
+- 代跑检查转发非终端 stdin。此前子进程 stdin 被忽略，`python3 -` 加 heredoc 的检查读到空输入、
+  exit 0，被记为 passed。输入内容另存为 `runs/<ID>/*.stdin`，Check 记录 `run.stdin`。
+  命令结束后不再等待未关闭的 stdin。见 [ADR-0038](../../docs/decisions/0038-forward-and-record-check-stdin.md)。
+- policy：`WORK.md`、Next 或交付报告中的“未验证”内容必须逐条对应 Gap；用户事先同意不做的部分
+  也记为 Gap 再由用户接受，不由 Agent 自行从 Acceptance 删除。
+
 ## 5.2.1 - Unreleased
 
 - `status <id>` 的 Recent 时间为 UTC 时间戳显式显示 `UTC`，避免被误读为系统本地时间。
